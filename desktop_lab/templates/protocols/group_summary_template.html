@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Сводный протокол испытаний</title>
+    <style>
+        /* --- ВСТАВИТЬ ЭТОТ БЛОК ВНАЧАЛО --- */
+        {{if .FontPath}}
+        @font-face {
+            font-family: 'DejaVu Sans';
+            src: url('file://{{.FontPath}}/DejaVuSans.ttf');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'DejaVu Sans';
+            src: url('file://{{.FontPath}}/DejaVuSans-Bold.ttf');
+            font-weight: bold;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'DejaVu Sans';
+            src: url('file://{{.FontPath}}/DejaVuSans-Oblique.ttf');
+            font-weight: normal;
+            font-style: italic;
+        }
+        @font-face {
+            font-family: 'DejaVu Serif';
+            src: url('file://{{.FontPath}}/DejaVuSerif.ttf');
+        }
+        {{end}}
+        /* ---------------------------------- */
+
+        body {
+            font-family: "DejaVu Sans", sans-serif; /* Теперь этот шрифт найдется */
+            font-size: 11px;
+            margin: 20mm;
+            line-height: 1.4;
+        }
+        /* Остальные стили без изменений... */
+        h1 {
+            text-align: center;
+            font-size: 16px;
+            margin-bottom: 16px;
+        }
+        .header {
+            margin-bottom: 12px;
+        }
+        .header div {
+            margin-bottom: 4px;
+        }
+        .method-block {
+            margin-top: 16px;
+            page-break-inside: avoid;
+        }
+        .method-title {
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+        .norm {
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 5px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            text-align: center;
+        }
+        .signature {
+            margin-top: 30px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>Сводный протокол испытаний</h1>
+
+    <div class="header">
+        <div><strong>Группа:</strong> {{.GroupName}}</div>
+        <div><strong>Материал:</strong> {{.MaterialName}}</div>
+        <div><strong>Количество проб:</strong> {{.TotalSamples}}</div>
+        <div><strong>Доля соответствующих методов:</strong> {{printf "%.2f" .CompliantRate}}%</div>
+    </div>
+
+    {{range .Results}}
+    <div class="method-block">
+        <div class="method-title">{{.MethodName}} — {{.Status}}</div>
+        <div class="norm">Норма: {{.Norm}}</div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>№ пробы</th>
+                    <th>Значение</th>
+                    <th>Соответствие</th>
+                    <th>Отклонение</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Trials}}
+                <tr>
+                    <td>{{.SampleNumber}}</td>
+                    <td>{{printf "%.3f" .Value}}</td>
+                    <td>{{.Compliance}}</td>
+                    <td>{{.Deviation}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{end}}
+
+    <div class="signature">Подпись ответственного: ___________________</div>
+</body>
+</html>
