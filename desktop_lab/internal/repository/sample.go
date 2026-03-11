@@ -48,8 +48,8 @@ func (r *sampleRepo) Create(ctx context.Context, s models.Sample) error {
 	return nil
 }
 
-func (r *sampleRepo) GetByID(ctx context.Context, id string) (*models.Sample, error) {
-	s := &models.Sample{}
+func (r *sampleRepo) GetByID(ctx context.Context, id string) (models.Sample, error) {
+	s := models.Sample{}
 	var collDateStr sql.NullString
 	var rawJSON string
 
@@ -60,10 +60,10 @@ func (r *sampleRepo) GetByID(ctx context.Context, id string) (*models.Sample, er
 	).Scan(&s.ID, &s.GroupID, &s.MaterialID, &s.SampleNumber, &collDateStr, &rawJSON, &s.Note, &s.CreatedAt)
 
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return models.Sample{}, nil
 	}
 	if err != nil {
-		return nil, err
+		return models.Sample{}, err
 	}
 
 	if collDateStr.Valid {
@@ -81,4 +81,71 @@ func (r *sampleRepo) GetByID(ctx context.Context, id string) (*models.Sample, er
 	}
 
 	return s, nil
+}
+
+func (r *sampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models.Sample, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, group_id, material_id, sample_number, collection_date, context_params, note, created_at 
+		 FROM samples WHERE group_id = ?`,
+		groupID,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get samples by group id: %w", err)
+	}
+	defer rows.Close()
+
+	var samples []models.Sample
+	for rows.Next() {
+		s := models.Sample{
+			ContextParams: make(map[string]string),
+		}
+		var collDateStr sql.NullString
+		var rawJSON string
+
+		err := rows.Scan(
+			&s.ID,
+			&s.GroupID,
+			&s.MaterialID,
+			&s.SampleNumber,
+			&collDateStr,
+			&rawJSON,
+			&s.Note,
+			&s.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan sample: %w", err)
+		}
+
+		// 📅 Парсим дату отбора
+		if collDateStr.Valid {
+			t, err := time.Parse("2006-01-02", collDateStr.String)
+			if err == nil {
+				s.CollectionDate = &t
+			}
+		}
+
+		// 🗂️ Парсим JSON контекста в мапу
+		if err := s.FromJSON(rawJSON); err != nil {
+			r.log.Warn("Failed to unmarshal sample context",
+				zap.Error(err),
+				zap.String("sample_id", s.ID))
+			// Не прерываем работу — просто контекст будет пустым
+			s.ContextParams = make(map[string]string)
+		}
+
+		samples = append(samples, s)
+	}
+
+	// 🔍 Проверяем ошибки итерации
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating samples: %w", err)
+	}
+
+	// 🛡️ Возвращаем пустой слайс вместо nil для удобства на фронтенде
+	if samples == nil {
+		return []models.Sample{}, nil
+	}
+
+	return samples, nil
 }

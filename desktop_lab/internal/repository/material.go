@@ -21,14 +21,8 @@ func NewMaterialRepo(db *sqlx.DB, log *zap.Logger) MaterialRepo {
 }
 
 func (r *materialRepo) Create(ctx context.Context, m models.Material) error {
-	// Если ID пустой, генерируем его (хотя обычно это делает сервис)
 	if m.ID == "" {
-		// В реальной практике лучше требовать ID от сервиса, но для гибкости:
-		// Здесь мы полагаемся, что сервис передал ID или БД имеет дефолт (но у нас TEXT PRIMARY KEY без AUTO)
-		// Поэтому сервис должен гарантировать наличие ID.
-		if m.ID == "" {
-			return fmt.Errorf("material ID cannot be empty")
-		}
+		return fmt.Errorf("material ID cannot be empty")
 	}
 
 	_, err := r.db.ExecContext(ctx,
@@ -36,9 +30,7 @@ func (r *materialRepo) Create(ctx context.Context, m models.Material) error {
 		m.ID, m.Name, m.Code, time.Now().Format("2006-01-02 15:04:05"),
 	)
 	if err != nil {
-		// Проверка на уникальность имени
 		if m.Name != "" {
-			// SQLite вернет ошибку ограничения UNIQUE
 			return fmt.Errorf("failed to create material (name might be duplicate): %w", err)
 		}
 		return fmt.Errorf("failed to create material: %w", err)
@@ -46,6 +38,21 @@ func (r *materialRepo) Create(ctx context.Context, m models.Material) error {
 
 	r.log.Debug("Material created", zap.String("id", m.ID), zap.String("name", m.Name))
 	return nil
+}
+
+// helperParseTime вспомогательная функция для парсинга даты из SQLite
+func helperParseTime(raw interface{}) (time.Time, error) {
+	if raw == nil {
+		return time.Time{}, nil
+	}
+
+	str, ok := raw.(string)
+	if !ok {
+		return time.Time{}, fmt.Errorf("expected string for time, got %T", raw)
+	}
+
+	// SQLite возвращает формат "2006-01-02 15:04:05"
+	return time.Parse("2006-01-02 15:04:05", str)
 }
 
 func (r *materialRepo) GetAll(ctx context.Context) ([]models.Material, error) {
@@ -58,10 +65,22 @@ func (r *materialRepo) GetAll(ctx context.Context) ([]models.Material, error) {
 	var materials []models.Material
 	for rows.Next() {
 		var m models.Material
-		err := rows.Scan(&m.ID, &m.Name, &m.Code, &m.CreatedAt)
+		var createdAtRaw string // Получаем как строку
+
+		// Сканируем в временные переменные
+		err := rows.Scan(&m.ID, &m.Name, &m.Code, &createdAtRaw)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan error: %w", err)
 		}
+
+		// Парсим дату вручную
+		if createdAtRaw != "" {
+			t, err := time.Parse("2006-01-02 15:04:05", createdAtRaw)
+			if err == nil {
+				m.CreatedAt = t
+			}
+		}
+
 		materials = append(materials, m)
 	}
 	return materials, nil
@@ -69,30 +88,52 @@ func (r *materialRepo) GetAll(ctx context.Context) ([]models.Material, error) {
 
 func (r *materialRepo) GetByID(ctx context.Context, id string) (models.Material, error) {
 	var m models.Material
+	var createdAtRaw string // Получаем как строку
+
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, name, code, created_at FROM materials WHERE id = ?`, id,
-	).Scan(&m.ID, &m.Name, &m.Code, &m.CreatedAt)
+	).Scan(&m.ID, &m.Name, &m.Code, &createdAtRaw)
 
 	if err == sql.ErrNoRows {
-		return models.Material{}, nil // Возвращаем пустую структуру, сервис решит, что делать
+		return models.Material{}, nil
 	}
 	if err != nil {
 		return models.Material{}, err
 	}
+
+	// Парсим дату вручную
+	if createdAtRaw != "" {
+		t, err := time.Parse("2006-01-02 15:04:05", createdAtRaw)
+		if err == nil {
+			m.CreatedAt = t
+		}
+	}
+
 	return m, nil
 }
 
 func (r *materialRepo) GetByName(ctx context.Context, name string) (models.Material, error) {
 	var m models.Material
+	var createdAtRaw string // Получаем как строку
+
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, name, code, created_at FROM materials WHERE name = ?`, name,
-	).Scan(&m.ID, &m.Name, &m.Code, &m.CreatedAt)
+	).Scan(&m.ID, &m.Name, &m.Code, &createdAtRaw)
 
 	if err == sql.ErrNoRows {
-		return models.Material{}, nil // Возвращаем пустой, не ошибку
+		return models.Material{}, nil
 	}
 	if err != nil {
 		return models.Material{}, err
 	}
+
+	// Парсим дату вручную
+	if createdAtRaw != "" {
+		t, err := time.Parse("2006-01-02 15:04:05", createdAtRaw)
+		if err == nil {
+			m.CreatedAt = t
+		}
+	}
+
 	return m, nil
 }

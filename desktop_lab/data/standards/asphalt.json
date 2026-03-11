@@ -1,0 +1,194 @@
+{
+  "material": {
+    "name": "Асфальтобетон",
+    "code": "ASPH-001"
+  },
+  "standards": [
+    {
+      "name": "ГОСТ 9128-2013",
+      "description": "Смеси асфальтобетонные дорожные, аэродромные и асфальтобетон. Методы испытаний",
+      "dimensions": [
+        {
+          "key_name": "climate_zone",
+          "label": "Климатическая зона",
+          "data_type": "select",
+          "possible_values": ["I", "II", "III", "IV"]
+        },
+        {
+          "key_name": "layer_type",
+          "label": "Тип слоя покрытия",
+          "data_type": "select",
+          "possible_values": ["верхний", "нижний", "основание"]
+        }
+      ],
+      "methods": [
+        {
+          "code": "9128-P-01",
+          "name": "Плотность образца",
+          "unit": "г/см³",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "weight_air",
+              "label": "Масса в воздухе",
+              "unit": "г",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "weight_water",
+              "label": "Масса в воде",
+              "unit": "г",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 2.3,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "верхний"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 2.2,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "нижний"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-P-02",
+          "name": "Водопоглощение",
+          "unit": "%",
+          "formula_expr": "((weight_saturated - weight_air) / weight_air) * 100",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "weight_air",
+              "label": "Масса сухого образца",
+              "unit": "г",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "weight_saturated",
+              "label": "Масса насыщенного образца",
+              "unit": "г",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 3.0,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "9128-P-03",
+          "name": "Предел прочности при сжатии",
+          "unit": "МПа",
+          "formula_expr": "F / A",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F",
+              "label": "Разрушающая нагрузка",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "A",
+              "label": "Площадь сечения",
+              "unit": "см²",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 1.8,
+              "max_value": 4.5,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "climate_zone",
+                  "operator": "IN",
+                  "expected_value": "I,II"
+                }
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 1.5,
+              "max_value": 4.0,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "climate_zone",
+                  "operator": "IN",
+                  "expected_value": "III,IV"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ГОСТ 12801-2013",
+      "description": "Материалы на основе органических вяжущих для дорожного и аэродромного строительства. Методы испытаний",
+      "dimensions": [],
+      "methods": [
+        {
+          "code": "12801-M-01",
+          "name": "Температура размягчения битума",
+          "unit": "°C",
+          "formula_expr": "",
+          "is_mandatory": false,
+          "inputs": [
+            {
+              "param_key": "value",
+              "label": "Температура размягчения",
+              "unit": "°C",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 45,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -11,8 +11,10 @@
     "email": "your@email.com"
   },
   "info": {
-    "companyName": "Lab Corp",
-    "productName": "Lab System",
-    "productVersion": "1.0.0"
+    "companyName": "Your Company",
+    "productName": "Lab Desktop",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2024",
+    "comments": "Система управления лабораторными протоколами"
   }
 }

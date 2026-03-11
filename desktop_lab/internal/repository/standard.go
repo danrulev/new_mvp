@@ -134,7 +134,7 @@ func (r *standardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 }
 
 // GetApplicableLimit находит лимит, условия которого совпадают с контекстом пробы
-func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, contextParams map[string]string) (*models.NormativeLimit, error) {
+func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, contextParams map[string]string) (models.NormativeLimit, error) {
 	// Получаем все лимиты для метода
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, method_id, limit_type, min_value, max_value, priority 
@@ -144,7 +144,7 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 		methodID,
 	)
 	if err != nil {
-		return nil, err
+		return models.NormativeLimit{}, err
 	}
 	defer rows.Close()
 
@@ -153,18 +153,18 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 		var l models.NormativeLimit
 		err := rows.Scan(&l.ID, &l.MethodID, &l.LimitType, &l.MinValue, &l.MaxValue, &l.Priority)
 		if err != nil {
-			return nil, err
+			return models.NormativeLimit{}, err
 		}
 		limits = append(limits, l)
 	}
 
 	if len(limits) == 0 {
-		return nil, nil // Нет лимитов для этого метода
+		return models.NormativeLimit{}, nil // Нет лимитов для этого метода
 	}
 
 	// Для каждого лимита проверяем условия
 	for i := range limits {
-		limit := &limits[i]
+		limit := limits[i]
 
 		// Загружаем условия для этого лимита
 		condRows, err := r.db.QueryContext(ctx,
@@ -174,7 +174,7 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 			limit.ID,
 		)
 		if err != nil {
-			return nil, err
+			return models.NormativeLimit{}, err
 		}
 
 		match := true
@@ -182,7 +182,7 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 			var key, op, expected string
 			if err := condRows.Scan(&key, &op, &expected); err != nil {
 				condRows.Close()
-				return nil, err
+				return models.NormativeLimit{}, err
 			}
 
 			// Проверяем, есть ли такой ключ в контексте пробы
@@ -222,16 +222,16 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 			continue
 		}
 		if count == 0 {
-			return &limits[i], nil
+			return limits[i], nil
 		}
 	}
 
-	return nil, nil // Подходящего лимита не найдено
+	return models.NormativeLimit{}, nil // Подходящего лимита не найдено
 }
 
 // GetMethodWithInputs загружает метод и его параметры ввода
-func (r *standardRepo) GetMethodWithInputs(ctx context.Context, methodID string) (*models.TestMethod, error) {
-	method := &models.TestMethod{}
+func (r *standardRepo) GetMethodWithInputs(ctx context.Context, methodID string) (models.TestMethod, error) {
+	method := models.TestMethod{}
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, standard_id, code, name, formula_expr, unit, result_type, is_mandatory 
 		 FROM test_methods WHERE id = ?`,
@@ -239,10 +239,10 @@ func (r *standardRepo) GetMethodWithInputs(ctx context.Context, methodID string)
 	).Scan(&method.ID, &method.StandardID, &method.Code, &method.Name, &method.FormulaExpr, &method.Unit, &method.ResultType, &method.IsMandatory)
 
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return models.TestMethod{}, nil
 	}
 	if err != nil {
-		return nil, err
+		return models.TestMethod{}, err
 	}
 
 	// Загружаем инпуты
@@ -252,7 +252,7 @@ func (r *standardRepo) GetMethodWithInputs(ctx context.Context, methodID string)
 		methodID,
 	)
 	if err != nil {
-		return nil, err
+		return models.TestMethod{}, err
 	}
 	defer rows.Close()
 
@@ -261,7 +261,7 @@ func (r *standardRepo) GetMethodWithInputs(ctx context.Context, methodID string)
 		var isReq int
 		err := rows.Scan(&inp.ID, &inp.ParamKey, &inp.Label, &inp.Unit, &inp.InputType, &isReq)
 		if err != nil {
-			return nil, err
+			return models.TestMethod{}, err
 		}
 		inp.IsRequired = isReq == 1
 		inp.MethodID = methodID

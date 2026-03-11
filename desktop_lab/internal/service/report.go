@@ -56,13 +56,22 @@ func (s *ReportService) GenerateProtocolPDF(ctx context.Context, protocolID stri
 	}
 
 	// 2. Получаем материал для названия
-	material, err := s.materialRepo.GetByID(ctx, protocol.SampleID)
+
+	sample, err := s.protocolService.sampleRepo.GetByID(ctx, protocol.Protocol.SampleID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get material: %w", err)
+		return nil, fmt.Errorf("failed to load sample: %w", err)
+	}
+	protocol.Protocol.Sample = sample
+	// ✅ Теперь ищем материал по правильному ID
+	material, err := s.materialRepo.GetByID(ctx, protocol.Protocol.Sample.MaterialID)
+
+	results, err := s.protocolService.protocolRepo.GetResultsByProtocolID(ctx, protocolID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load protocol results: %w", err)
 	}
 
 	// 3. Преобразуем данные в формат для шаблона (адаптация новых моделей под старый шаблон)
-	templateData, err := s.prepareProtocolTemplateData(protocol, material)
+	templateData, err := s.prepareProtocolTemplateData(protocol.Protocol, results, material)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare template data: %w", err)
 	}
@@ -130,7 +139,7 @@ type ResultRowView struct {
 	RawInputs  map[string]interface{} // Если шаблон выводит входные данные
 }
 
-func (s *ReportService) prepareProtocolTemplateData(proto models.Protocol, mat models.Material) (*ProtocolTemplateData, error) {
+func (s *ReportService) prepareProtocolTemplateData(proto models.Protocol, results []models.TestResult, mat models.Material) (ProtocolTemplateData, error) {
 
 	// Форматируем дату
 	dateStr := ""
@@ -146,7 +155,7 @@ func (s *ReportService) prepareProtocolTemplateData(proto models.Protocol, mat m
 		samplePlace = val
 	}
 
-	data := &ProtocolTemplateData{
+	data := ProtocolTemplateData{
 		Protocol: ProtocolView{
 			Number: proto.ProtocolNumber,
 			Date:   dateStr,
@@ -171,7 +180,7 @@ func (s *ReportService) prepareProtocolTemplateData(proto models.Protocol, mat m
 	}
 
 	// Преобразование результатов
-	for _, res := range proto.Results {
+	for _, res := range results {
 		// Формируем строку нормы
 		normStr := "—"
 		if res.MinNorm != nil && res.MaxNorm != nil {

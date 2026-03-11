@@ -95,8 +95,8 @@ func (r *protocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 }
 
 // GetByID загружает протокол с данными пробы
-func (r *protocolRepo) GetByID(ctx context.Context, id string) (*models.Protocol, error) {
-	p := &models.Protocol{}
+func (r *protocolRepo) GetByID(ctx context.Context, id string) (models.Protocol, error) {
+	p := models.Protocol{}
 
 	var testDateStr sql.NullString
 	err := r.db.QueryRowContext(ctx,
@@ -106,10 +106,10 @@ func (r *protocolRepo) GetByID(ctx context.Context, id string) (*models.Protocol
 	).Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.LabName, &p.OperatorName, &testDateStr, &p.Status, &p.CreatedAt, &p.UpdatedAt)
 
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return models.Protocol{}, nil
 	}
 	if err != nil {
-		return nil, err
+		return models.Protocol{}, err
 	}
 
 	if testDateStr.Valid {
@@ -120,23 +120,16 @@ func (r *protocolRepo) GetByID(ctx context.Context, id string) (*models.Protocol
 	// Загружаем данные пробы
 	sample, err := r.getSample(ctx, p.SampleID)
 	if err != nil {
-		return nil, err
+		return models.Protocol{}, err
 	}
 	p.Sample = sample
-
-	// Загружаем результаты (без полной денормализации имен методов, это сделает сервис)
-	results, err := r.GetResultsByProtocolID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	p.Results = results
 
 	return p, nil
 }
 
 // getSample вспомогательный метод
-func (r *protocolRepo) getSample(ctx context.Context, id string) (*models.Sample, error) {
-	s := &models.Sample{}
+func (r *protocolRepo) getSample(ctx context.Context, id string) (models.Sample, error) {
+	s := models.Sample{}
 	var collDateStr sql.NullString
 	var rawJSON string
 
@@ -147,7 +140,7 @@ func (r *protocolRepo) getSample(ctx context.Context, id string) (*models.Sample
 	).Scan(&s.ID, &s.GroupID, &s.MaterialID, &s.SampleNumber, &collDateStr, &rawJSON, &s.Note, &s.CreatedAt)
 
 	if err != nil {
-		return nil, err
+		return models.Sample{}, err
 	}
 
 	if collDateStr.Valid {
@@ -157,7 +150,7 @@ func (r *protocolRepo) getSample(ctx context.Context, id string) (*models.Sample
 
 	// Парсим JSON контекста
 	if err := s.FromJSON(rawJSON); err != nil {
-		return nil, err
+		return models.Sample{}, err
 	}
 
 	return s, nil

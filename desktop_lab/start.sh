@@ -1,3 +1,3 @@
 #!/bin/bash
 
-./build/bin/lab-desktop
+./build/bin/desktop_lab

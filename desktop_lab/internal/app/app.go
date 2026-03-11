@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"desktop_lab/data"
 	"desktop_lab/internal/config"
 	"desktop_lab/internal/db"
 	"desktop_lab/internal/font"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"go.uber.org/zap"
 )
 
@@ -40,6 +42,8 @@ func Init(fontFS embed.FS, templateFS embed.FS) (*App, error) {
 	}
 
 	logInstance.Info("Starting Lab Desktop Application")
+
+	logInstance.Info("config", zap.Any("config", cfg))
 
 	// 3. Шрифты
 	fontDir, err := font.ExtractFonts(fontFS)
@@ -109,6 +113,12 @@ func Init(fontFS embed.FS, templateFS embed.FS) (*App, error) {
 	// чтобы не нагружать старт. Но если нужно здесь:
 	// data.SeedData(services, logInstance)
 
+	if err := data.SeedData(services, logInstance); err != nil {
+		logInstance.Error("Seed failed", zap.Error(err))
+		os.Exit(1)
+	}
+	logInstance.Info("Data seed completed")
+
 	return &App{
 		services: services,
 		ctx:      context.Background(),
@@ -116,139 +126,174 @@ func Init(fontFS embed.FS, templateFS embed.FS) (*App, error) {
 	}, nil
 }
 
-// ============================================================================
-// МЕТОДЫ ДЛЯ ЭКСПОРТА (API для фронтенда)
-// ============================================================================
+// internal/app/app.go — ДОБАВИТЬ методы для Wails
 
+// === МАТЕРИАЛЫ ===
 func (a *App) GetMaterials() ([]models.Material, error) {
 	return a.services.Materials.GetAll(a.ctx)
 }
 
-func (a *App) CreateMaterial(name, code string) (models.Material, error) {
-	return a.services.Materials.Create(a.ctx, name, code)
+func (a *App) GetMaterialByID(id string) (models.Material, error) {
+	return a.services.Materials.GetByID(a.ctx, id)
 }
 
-func (a *App) GetGroups(limit, offset int64) ([]models.ExperimentGroup, int64, error) {
-	return a.services.Groups.GetList(a.ctx, limit, offset)
-}
+// === СТАНДАРТЫ ===
+func (a *App) GetStandardsByMaterialID(materialID string) ([]models.Standard, error) {
+	a.log.Debug("Getting standards for material", zap.String("material_id", materialID))
 
-func (a *App) CreateGroup(name, project, location, matID string) (models.ExperimentGroup, error) {
-	return a.services.Groups.Create(a.ctx, name, project, location, matID)
-}
-
-func (a *App) CreateProtocol(req models.CreateProtocolRequest) (string, error) {
-	p, err := a.services.Protocols.CreateProtocolWithSample(a.ctx, req)
+	stds, err := a.services.Standards.GetByMaterialID(a.ctx, materialID)
 	if err != nil {
-		return "", err
+		a.log.Error("Failed to get standards", zap.Error(err))
+		return nil, err
 	}
-	return p.ID, nil
+
+	a.log.Debug("Found standards", zap.Int("count", len(stds)))
+	return stds, nil
 }
 
-func (a *App) GeneratePDF(protocolID string) ([]byte, error) {
-	return a.services.Reports.GenerateProtocolPDF(a.ctx, protocolID)
+func (a *App) GetMethodDetails(methodID string) (models.TestMethod, error) {
+	return a.services.Standards.GetMethodDetails(a.ctx, methodID)
+}
+
+func (a *App) GetMethodsByStandardID(standardID string) ([]models.TestMethod, error) {
+	a.log.Debug("Getting methods for standard", zap.String("standard_id", standardID))
+
+	methods, err := a.services.Standards.GetMethodsByStandardID(a.ctx, standardID)
+	if err != nil {
+		a.log.Error("Failed to get methods", zap.Error(err))
+		return nil, err
+	}
+
+	a.log.Debug("Found methods", zap.Int("count", len(methods)))
+	return methods, nil
+}
+
+// === ГРУППЫ ===
+func (a *App) CreateGroup(name, projectName, location, materialID string) (models.ExperimentGroup, error) {
+	return a.services.Groups.Create(a.ctx, name, projectName, location, materialID)
+}
+
+func (a *App) GetGroups(limit, offset int64) (models.GroupListResponse, error) {
+	items, total, err := a.services.Groups.GetList(a.ctx, limit, offset)
+	if err != nil {
+		return models.GroupListResponse{}, err
+	}
+	meta := models.PaginatedMetadata{
+		Total:      total,
+		Page:       offset/limit + 1,
+		PageSize:   limit,
+		TotalPages: (total + limit - 1) / limit,
+	}
+	return models.GroupListResponse{Items: items, Meta: meta}, nil
+}
+
+func (a *App) GetGroupByID(id string) (models.ExperimentGroup, error) {
+	return a.services.Groups.GetByID(a.ctx, id)
+}
+
+// === ПРОТОКОЛЫ ===
+func (a *App) CreateProtocolWithSample(req models.CreateProtocolRequest) (models.Protocol, error) {
+	return a.services.Protocols.CreateProtocolWithSample(a.ctx, req)
+}
+
+func (a *App) GetProtocolByID(id string) (service.GetProtocolByIDRequest, error) {
+	return a.services.Protocols.GetProtocolByID(a.ctx, id)
+}
+
+func (a *App) GetProtocols(limit, offset int64) (models.ProtocolListResponse, error) {
+	items, total, err := a.services.Protocols.GetList(a.ctx, limit, offset)
+	if err != nil {
+		return models.ProtocolListResponse{}, err
+	}
+
+	enhanced := make([]models.ProtocolListItem, 0, len(items))
+	for _, p := range items {
+		mat, _ := a.services.Materials.GetByID(a.ctx, p.Sample.MaterialID)
+		enhanced = append(enhanced, models.ProtocolListItem{
+			Protocol:     p,
+			MaterialName: mat.Name,
+		})
+	}
+
+	meta := models.PaginatedMetadata{
+		Total:      total,
+		Page:       offset/limit + 1,
+		PageSize:   limit,
+		TotalPages: (total + limit - 1) / limit,
+	}
+	return models.ProtocolListResponse{Items: enhanced, Meta: meta}, nil
 }
 
 func (a *App) GetGroupSummary(groupID string) (*models.GroupSummary, error) {
 	return a.services.Protocols.GetGroupSummary(a.ctx, groupID)
 }
 
-func (a *App) GetStandardsByMaterial(materialID string) ([]models.Standard, error) {
-	return a.services.Standards.GetByMaterialID(a.ctx, materialID)
-}
+// === ОТЧЁТЫ ===
+func (a *App) GenerateProtocolPDF(protocolID string) (string, error) {
 
-// GetMethodsByStandard возвращает методы для конкретного стандарта с входными параметрами
-func (a *App) GetMethodsByStandard(standardID string) ([]models.TestMethod, error) {
-	// В сервисе нужно реализовать метод, который грузит методы + inputs
-	// Если его нет, можно сделать заглушку или доработать сервис
-	return a.services.Standards.GetMethodsByStandardID(a.ctx, standardID)
-}
-
-// GetProtocols возвращает список протоколов с пагинацией и доп. данными
-// Возвращает структуру, совместимую с ожиданиями фронтенда
-func (a *App) GetProtocols(limit, offset int64) (*models.ProtocolListResponse, error) {
-	// Пока у нас нет метода с пагинацией в сервисе, возьмем все или реализуем заглушку
-	// В идеале: добавить в service/protocol.go метод GetList(limit, offset)
-
-	// Для примера реализуем получение всех и обрезку (неэффективно для большой БД, но для старта ок)
-	// Лучше добавить метод в сервис: a.services.Protocols.GetList(...)
-
-	// Заглушка: получаем последние N протоколов (нужно реализовать в репозитории/сервисе)
-	// Допустим, мы пока не реализовали пагинацию в сервисе, вернем ошибку или пустой список,
-	// пока ты не добавишь метод в сервис.
-
-	// === ВРЕМЕННОЕ РЕШЕНИЕ (до реализации пагинации в сервисе) ===
-	// Тебе нужно добавить метод GetProtocols(limit, offset) в service/protocol.go
-	// А здесь вызвать его.
-
-	protocols, total, err := a.services.Protocols.GetList(a.ctx, limit, offset)
+	_, err := a.services.Reports.GenerateProtocolPDF(a.ctx, protocolID)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-
-	// Обогащаем протоколы именами материалов (денормализация для UI)
-	items := make([]models.ProtocolListItem, len(protocols))
-	for i, p := range protocols {
-		matName := ""
-		if p.Sample != nil {
-			mat, _ := a.services.Materials.GetByID(a.ctx, p.Sample.MaterialID)
-			if mat.ID != "" {
-				matName = mat.Name
-			}
-		}
-
-		items[i] = models.ProtocolListItem{
-			Protocol:     p, // Здесь нужно убедиться, что поля маппятся верно
-			MaterialName: matName,
-		}
-	}
-
-	totalPages := (total + limit - 1) / limit
-	if totalPages == 0 {
-		totalPages = 1
-	}
-
-	return &models.ProtocolListResponse{
-		Items: items,
-		Meta: models.PaginatedMetadata{
-			Total:      total,
-			Page:       (offset / limit) + 1,
-			PageSize:   limit,
-			TotalPages: totalPages,
-		},
-	}, nil
+	// Возвращаем сообщение (в продакшене — путь к файлу)
+	return "PDF сгенерирован (реализуйте сохранение через диалог)", nil
 }
 
-// SaveProtocolPDFWithDialog генерирует PDF и сохраняет через диалог системы
+func (a *App) GenerateGroupSummaryPDF(groupID string) (string, error) {
+	_, err := a.services.Reports.GenerateGroupSummaryPDF(a.ctx, groupID)
+	if err != nil {
+		return "", err
+	}
+	return "Сводный PDF сгенерирован", nil
+}
+
 func (a *App) SaveProtocolPDFWithDialog(protocolID string) (string, error) {
 	// 1. Генерируем PDF
-	// pdfBytes, err := a.services.Reports.GenerateProtocolPDF(a.ctx, protocolID)
-	// if err != nil {
-	// 	return "", err
-	// }
+	pdfBytes, err := a.services.Reports.GenerateProtocolPDF(a.ctx, protocolID)
+	if err != nil {
+		return "", err
+	}
 
-	// 2. Открываем диалог сохранения (требуется импорт runtime)
-	// Примечание: Wails Runtime вызывается из JS, но можно сделать и тут, если передать контекст окна
-	// Однако, проще вернуть байты фронтенду, а там вызвать SaveDialog.
-	// Но раз ты просишь метод как в старом проекте, давай вернем путь.
-	// Для этого нужен доступ к файловой системе и диалогу.
-	// В Wails v2 это делается через runtime.SaveDialog в JS.
-	// Go метод может только вернуть байты.
-	// Поэтому изменим логику: этот метод будет возвращать байты, а JS сохранит.
-	// ИЛИ: используем wails filesystem.
+	// 2. Открываем диалог сохранения
+	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title: "Сохранить протокол",
+		Filters: []runtime.FileFilter{
+			{Pattern: "*.pdf", DisplayName: "PDF Files"},
+		},
+		DefaultFilename: "protocol.pdf",
+	})
+	if err != nil || filePath == "" {
+		return "", nil // Отменено пользователем
+	}
 
-	// Вариант для совместимости со старым кодом:
-	// Вернем ошибку, что нужно использовать GeneratePDF + SaveDialog на JS стороне,
-	// так как прямой доступ к диалогу из Go в Wails v2 требует лишних зависимостей.
-	// Но если очень нужно, можно использовать os.WriteFile в папку Загрузок.
+	// 3. Сохраняем файл
+	if err := os.WriteFile(filePath, pdfBytes, 0644); err != nil {
+		return "", fmt.Errorf("ошибка записи файла: %w", err)
+	}
 
-	return "", nil // Заглушка, см. комментарий выше
+	return filePath, nil
 }
 
-func (a *App) Shutdown(ctx context.Context) {
-	a.log.Info("Application shutting down")
-}
+func (a *App) SaveGroupPDFWithDialog(groupID string) (string, error) {
+	pdfBytes, err := a.services.Reports.GenerateGroupSummaryPDF(a.ctx, groupID)
+	if err != nil {
+		return "", err
+	}
 
-// Startup вызывается Wails при старте UI (опционально)
-func (a *App) Startup(ctx context.Context) {
-	a.log.Info("UI Started")
+	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title: "Сохранить сводку",
+		Filters: []runtime.FileFilter{
+			{Pattern: "*.pdf", DisplayName: "PDF Files"},
+		},
+		DefaultFilename: "group_summary.pdf",
+	})
+	if err != nil || filePath == "" {
+		return "", nil
+	}
+
+	if err := os.WriteFile(filePath, pdfBytes, 0644); err != nil {
+		return "", fmt.Errorf("ошибка записи файла: %w", err)
+	}
+
+	return filePath, nil
 }

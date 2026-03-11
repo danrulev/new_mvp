@@ -56,18 +56,20 @@ func (s *StandardService) GetByMaterialID(ctx context.Context, materialID string
 	// Дополнительно можно загрузить Dimensions для каждого стандарта, если нужно для UI
 	// В текущей реализации репозитория они не грузятся глубоко, можно доработать при необходимости
 
+	s.log.Info("standard loaded successfully", zap.Int("count", len(stds)))
 	return stds, nil
 }
 
 // GetMethodDetails загружает метод со всеми входными параметрами (для формы ввода)
-func (s *StandardService) GetMethodDetails(ctx context.Context, methodID string) (*models.TestMethod, error) {
+func (s *StandardService) GetMethodDetails(ctx context.Context, methodID string) (models.TestMethod, error) {
 	method, err := s.repo.GetMethodWithInputs(ctx, methodID)
 	if err != nil {
-		return nil, err
+		return models.TestMethod{}, err
 	}
-	if method == nil || method.ID == "" {
-		return nil, fmt.Errorf("method not found")
+	if method.ID == "" {
+		return models.TestMethod{}, fmt.Errorf("method not found")
 	}
+	s.log.Info("method loaded successfully", zap.String("id", method.ID), zap.String("name", method.Name))
 	return method, nil
 }
 
@@ -80,5 +82,6 @@ func (s *StandardService) GetMethodsByStandardID(ctx context.Context, standardID
 		return nil, err
 	}
 
+	s.log.Info("methods loaded successfully", zap.Int("count", len(methods)))
 	return methods, nil
 }

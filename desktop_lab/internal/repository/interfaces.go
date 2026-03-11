@@ -23,10 +23,10 @@ type StandardRepo interface {
 
 	// GetApplicableLimit находит подходящий лимит для метода и контекста пробы
 	// Это ключевая функция для валидации
-	GetApplicableLimit(ctx context.Context, methodID string, contextParams map[string]string) (*models.NormativeLimit, error)
+	GetApplicableLimit(ctx context.Context, methodID string, contextParams map[string]string) (models.NormativeLimit, error)
 
 	// GetMethodWithInputs загружает метод вместе с параметрами ввода
-	GetMethodWithInputs(ctx context.Context, methodID string) (*models.TestMethod, error)
+	GetMethodWithInputs(ctx context.Context, methodID string) (models.TestMethod, error)
 
 	GetMethodsByStandardID(ctx context.Context, standardID string) ([]models.TestMethod, error)
 }
@@ -41,7 +41,8 @@ type ExperimentGroupRepo interface {
 // SampleRepo управляет пробами
 type SampleRepo interface {
 	Create(ctx context.Context, s models.Sample) error
-	GetByID(ctx context.Context, id string) (*models.Sample, error)
+	GetByID(ctx context.Context, id string) (models.Sample, error)
+	GetByGroupID(ctx context.Context, groupID string) ([]models.Sample, error)
 }
 
 // ProtocolRepo управляет протоколами и результатами
@@ -50,7 +51,7 @@ type ProtocolRepo interface {
 	CreateFull(ctx context.Context, protocol models.Protocol, results []models.TestResult) error
 
 	// GetByID загружает протокол с результатами и данными пробы
-	GetByID(ctx context.Context, id string) (*models.Protocol, error)
+	GetByID(ctx context.Context, id string) (models.Protocol, error)
 
 	// GetByGroupID загружает список протоколов группы (без полных результатов, только мета)
 	GetByGroupID(ctx context.Context, groupID string) ([]models.Protocol, error)

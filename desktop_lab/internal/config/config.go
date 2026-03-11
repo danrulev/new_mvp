@@ -30,53 +30,49 @@ type Config struct {
 	Logger LoggerConfig `mapstructure:"logger"`
 }
 
-func NewConfig() (*Config, error) {
-	execPath, _ := os.Executable()
-	execDir := filepath.Dir(execPath)
+// internal/config/config.go
 
-	// Формируем абсолютный путь к БД в той же папке, где лежит exe
-	dbPath := filepath.Join(execDir, "lab_data.db")
+func NewConfig() (*Config, error) {
+	// Получаем рабочую директорию (где запущен go run / wails dev)
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	// Путь к БД в корне проекта (для dev)
+	// Для продакшена можно оставить execDir
+	dbPath := filepath.Join(wd, "lab_data.db")
+
 	// Загружаем .env файл, если он существует
 	if err := godotenv.Load(); err != nil {
 		if !os.IsNotExist(err) {
 			return nil, fmt.Errorf("error loading .env file: %w", err)
 		}
-		// Если файла нет, продолжаем работу (переменные могут быть заданы в OS env)
 	}
 
 	v := viper.New()
 	v.AutomaticEnv()
-
-	// Путь к директории с конфигами (опционально, можно убрать для десктопа)
 	v.AddConfigPath("./configs")
 
 	name := v.GetString("CONFIG_NAME")
 	if name == "" {
 		name = "default"
 	}
-
 	v.SetConfigName(name)
 
-	// Читаем конфиг файл (yaml/json/toml), если он есть
-	// Ошибка игнорируется, если мы полагаемся только на ENV переменные для десктопа
 	if err := v.ReadInConfig(); err != nil {
-		// Для десктопного приложения конфиг может отсутствовать, если все задано в ENV
-		// Но если вы хотите жестко требовать файл, раскомментируйте return:
-		return nil, fmt.Errorf("failed to read config file: %w", err)
-
-		// Если файла нет, проверяем, заданы ли обязательные переменные окружения вручную
-		// Это позволяет работать без файлов конфигов вообще
+		// Игнорируем, если файла нет — используем ENV
 	}
 
 	cfg := Config{}
-	err := v.Unmarshal(&cfg)
+	err = v.Unmarshal(&cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
+
+	// ✅ Переопределяем путь к БД на фиксированный
 	cfg.DB.Path = dbPath
 
-	// Валидация структуры
-	// Убедитесь, что в pkg/valid учтено, что DB теперь требует только Path
 	if err := valid.ValidateStruct(cfg); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}

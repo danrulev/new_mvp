@@ -63,6 +63,7 @@ func (s *MaterialService) GetOrCreate(ctx context.Context, name, code string) (s
 	// Пробуем найти
 	mat, err := s.repo.GetByName(ctx, name)
 	if err != nil {
+		s.log.Error("failed to get material", zap.Error(err))
 		return "", err
 	}
 
@@ -74,6 +75,7 @@ func (s *MaterialService) GetOrCreate(ctx context.Context, name, code string) (s
 	// Если не нашли, создаем
 	newMat, err := s.Create(ctx, name, code)
 	if err != nil {
+		s.log.Error("failed to create material", zap.Error(err))
 		return "", err
 	}
 

@@ -6,16 +6,20 @@ export function CreateGroup(arg1, arg2, arg3, arg4) {
   return window['go']['app']['App']['CreateGroup'](arg1, arg2, arg3, arg4);
 }
 
-export function CreateMaterial(arg1, arg2) {
-  return window['go']['app']['App']['CreateMaterial'](arg1, arg2);
+export function CreateProtocolWithSample(arg1) {
+  return window['go']['app']['App']['CreateProtocolWithSample'](arg1);
 }
 
-export function CreateProtocol(arg1) {
-  return window['go']['app']['App']['CreateProtocol'](arg1);
+export function GenerateGroupSummaryPDF(arg1) {
+  return window['go']['app']['App']['GenerateGroupSummaryPDF'](arg1);
 }
 
-export function GeneratePDF(arg1) {
-  return window['go']['app']['App']['GeneratePDF'](arg1);
+export function GenerateProtocolPDF(arg1) {
+  return window['go']['app']['App']['GenerateProtocolPDF'](arg1);
+}
+
+export function GetGroupByID(arg1) {
+  return window['go']['app']['App']['GetGroupByID'](arg1);
 }
 
 export function GetGroupSummary(arg1) {
@@ -26,20 +30,36 @@ export function GetGroups(arg1, arg2) {
   return window['go']['app']['App']['GetGroups'](arg1, arg2);
 }
 
+export function GetMaterialByID(arg1) {
+  return window['go']['app']['App']['GetMaterialByID'](arg1);
+}
+
 export function GetMaterials() {
   return window['go']['app']['App']['GetMaterials']();
 }
 
-export function GetMethodsByStandard(arg1) {
-  return window['go']['app']['App']['GetMethodsByStandard'](arg1);
+export function GetMethodDetails(arg1) {
+  return window['go']['app']['App']['GetMethodDetails'](arg1);
+}
+
+export function GetMethodsByStandardID(arg1) {
+  return window['go']['app']['App']['GetMethodsByStandardID'](arg1);
+}
+
+export function GetProtocolByID(arg1) {
+  return window['go']['app']['App']['GetProtocolByID'](arg1);
 }
 
 export function GetProtocols(arg1, arg2) {
   return window['go']['app']['App']['GetProtocols'](arg1, arg2);
 }
 
-export function GetStandardsByMaterial(arg1) {
-  return window['go']['app']['App']['GetStandardsByMaterial'](arg1);
+export function GetStandardsByMaterialID(arg1) {
+  return window['go']['app']['App']['GetStandardsByMaterialID'](arg1);
+}
+
+export function SaveGroupPDFWithDialog(arg1) {
+  return window['go']['app']['App']['SaveGroupPDFWithDialog'](arg1);
 }
 
 export function SaveProtocolPDFWithDialog(arg1) {

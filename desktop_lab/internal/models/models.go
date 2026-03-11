@@ -11,10 +11,10 @@ import (
 
 // Material соответствует таблице materials
 type Material struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Code      string    `json:"code,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        string    `json:"id" db:"id"`
+	Name      string    `json:"name" db:"name"`
+	Code      string    `json:"code,omitempty" db:"code"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
 }
 
 // Standard соответствует таблице standards (бывший GOST)
@@ -142,9 +142,7 @@ type Protocol struct {
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 
-	// Вложенные данные для ответов API
-	Sample  *Sample      `json:"sample,omitempty"`
-	Results []TestResult `json:"results,omitempty"`
+	Sample Sample `json:"sample,omitempty"`
 }
 
 // TestResult соответствует таблице test_results
@@ -331,4 +329,9 @@ type PaginatedMetadata struct {
 	Page       int64 `json:"page"`
 	PageSize   int64 `json:"page_size"`
 	TotalPages int64 `json:"total_pages"`
+}
+
+type GroupListResponse struct {
+	Items []ExperimentGroup `json:"items"`
+	Meta  PaginatedMetadata `json:"meta"`
 }
