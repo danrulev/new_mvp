@@ -30,7 +30,7 @@ func NewServices(
 	sample := NewSampleService(sampRepo, log)
 	group := NewExperimentGroupService(groupRepo, log)
 	protocol := NewProtocolService(protRepo, sampRepo, stdRepo, groupRepo, matRepo, log)
-	report := NewReportService(protocol, matRepo, fontDir, templatesDir, log)
+	report := NewReportService(protocol, material, fontDir, templatesDir, log)
 	return &Services{
 		Materials: material,
 		Standards: standards,

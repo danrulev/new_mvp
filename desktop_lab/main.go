@@ -2,10 +2,10 @@
 package main
 
 import (
-	"context"
 	"desktop_lab/internal/app"
 	"embed"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/wailsapp/wails/v2"
@@ -24,14 +24,13 @@ var fontFiles embed.FS
 
 func main() {
 	// 1. Инициализация бэкенда
-	backendApp, err := app.Init(fontFiles, protocolTemplates)
-	if err != nil {
-		fmt.Println("Fatal error during initialization:", err)
-		os.Exit(1)
+	app := app.New()
+	if err := app.Init(fontFiles, protocolTemplates); err != nil {
+		log.Fatal(err)
 	}
 
 	// 2. Запуск Wails приложения
-	err = wails.Run(&options.App{
+	err := wails.Run(&options.App{
 		Title:     "Лаборатория материалов",
 		Width:     1400,
 		Height:    900,
@@ -41,12 +40,12 @@ func main() {
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 248, G: 250, B: 252, A: 1},
-		OnStartup: func(ctx context.Context) {
-			// Опционально: можно сохранить контекст в бэкенд для диалогов
-			// backendApp.SetContext(ctx)
-		},
+		OnStartup:        app.Startup,
+		OnDomReady:       app.DomReady,
+		OnBeforeClose:    app.BeforeClose,
+		OnShutdown:       app.Shutdown,
 		Bind: []interface{}{
-			backendApp, // Экспортируем методы *App в JS
+			app, // Экспортируем методы *App в JS
 		},
 	})
 

@@ -15,20 +15,17 @@ type MaterialRepo interface {
 
 // StandardRepo управляет стандартами, методами и нормативами
 type StandardRepo interface {
-	// CreateFull создает стандарт со всеми вложенными сущностями (транзакция)
 	CreateFull(ctx context.Context, req models.CreateStandardRequest) (string, error)
-
-	// GetByMaterialID возвращает стандарты с загруженными методами и лимитами
 	GetByMaterialID(ctx context.Context, materialID string) ([]models.Standard, error)
-
-	// GetApplicableLimit находит подходящий лимит для метода и контекста пробы
-	// Это ключевая функция для валидации
 	GetApplicableLimit(ctx context.Context, methodID string, contextParams map[string]string) (models.NormativeLimit, error)
-
-	// GetMethodWithInputs загружает метод вместе с параметрами ввода
-	GetMethodWithInputs(ctx context.Context, methodID string) (models.TestMethod, error)
-
+	GetTestMethod(ctx context.Context, methodID string) (models.TestMethod, error)
 	GetMethodsByStandardID(ctx context.Context, standardID string) ([]models.TestMethod, error)
+	GetMethodInputs(ctx context.Context, methodID string) ([]models.MethodInput, error)
+	GetStandardDimensions(ctx context.Context, standardID string) ([]models.ContextDimension, error)
+	GetMethodsFullByStandardID(ctx context.Context, standardID string) (map[string]models.TestMethodFull, error)
+	GetStandardFull(ctx context.Context, standardID string) (*models.StandardContext, error)
+	GetMethodLimits(ctx context.Context, methodID string) ([]models.NormativeLimit, error)
+	GetLimitConditions(ctx context.Context, limitID string) ([]models.LimitCondition, error)
 }
 
 // ExperimentGroupRepo управляет группами экспериментов
@@ -47,16 +44,10 @@ type SampleRepo interface {
 
 // ProtocolRepo управляет протоколами и результатами
 type ProtocolRepo interface {
-	// CreateFull создает протокол, привязывает к пробе и сохраняет результаты (транзакция)
 	CreateFull(ctx context.Context, protocol models.Protocol, results []models.TestResult) error
-
-	// GetByID загружает протокол с результатами и данными пробы
 	GetByID(ctx context.Context, id string) (models.Protocol, error)
-
-	// GetByGroupID загружает список протоколов группы (без полных результатов, только мета)
 	GetByGroupID(ctx context.Context, groupID string) ([]models.Protocol, error)
-
-	// GetResultsByProtocolID загружает результаты конкретного протокола
 	GetResultsByProtocolID(ctx context.Context, protocolID string) ([]models.TestResult, error)
 	GetList(ctx context.Context, limit, offset int64) ([]models.Protocol, int64, error)
+	GetProtocolFull(ctx context.Context, id string) (models.ProtocolFull, error)
 }

@@ -1,5 +1,38 @@
+export namespace embed {
+	
+	export class FS {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new FS(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+
+}
+
 export namespace models {
 	
+	export class ConditionDTO {
+	    dimension_key: string;
+	    operator: string;
+	    expected_value: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConditionDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dimension_key = source["dimension_key"];
+	        this.operator = source["operator"];
+	        this.expected_value = source["expected_value"];
+	    }
+	}
 	export class ContextDimension {
 	    id: string;
 	    standard_id: string;
@@ -21,6 +54,120 @@ export namespace models {
 	        this.data_type = source["data_type"];
 	        this.possible_values = source["possible_values"];
 	    }
+	}
+	export class ContextDimensionDTO {
+	    key_name: string;
+	    label: string;
+	    data_type: string;
+	    possible_values: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ContextDimensionDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key_name = source["key_name"];
+	        this.label = source["label"];
+	        this.data_type = source["data_type"];
+	        this.possible_values = source["possible_values"];
+	    }
+	}
+	export class CreateLimitDTO {
+	    limit_type: string;
+	    min_value?: number;
+	    max_value?: number;
+	    conditions?: ConditionDTO[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateLimitDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.limit_type = source["limit_type"];
+	        this.min_value = source["min_value"];
+	        this.max_value = source["max_value"];
+	        this.conditions = this.convertValues(source["conditions"], ConditionDTO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MethodInputDTO {
+	    param_key: string;
+	    label: string;
+	    unit?: string;
+	    input_type: string;
+	    is_required: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new MethodInputDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.param_key = source["param_key"];
+	        this.label = source["label"];
+	        this.unit = source["unit"];
+	        this.input_type = source["input_type"];
+	        this.is_required = source["is_required"];
+	    }
+	}
+	export class CreateMethodDTO {
+	    code: string;
+	    name: string;
+	    formula_expr?: string;
+	    unit: string;
+	    inputs?: MethodInputDTO[];
+	    limits?: CreateLimitDTO[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateMethodDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.name = source["name"];
+	        this.formula_expr = source["formula_expr"];
+	        this.unit = source["unit"];
+	        this.inputs = this.convertValues(source["inputs"], MethodInputDTO);
+	        this.limits = this.convertValues(source["limits"], CreateLimitDTO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class CreateResultDTO {
 	    method_id: string;
@@ -117,6 +264,44 @@ export namespace models {
 	}
 	
 	
+	export class CreateStandardRequest {
+	    material_id: string;
+	    name: string;
+	    description?: string;
+	    dimensions?: ContextDimensionDTO[];
+	    methods?: CreateMethodDTO[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateStandardRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.material_id = source["material_id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.dimensions = this.convertValues(source["dimensions"], ContextDimensionDTO);
+	        this.methods = this.convertValues(source["methods"], CreateMethodDTO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ExperimentGroup {
 	    id: string;
 	    name: string;
@@ -125,8 +310,6 @@ export namespace models {
 	    location?: string;
 	    // Go type: time
 	    created_at: any;
-	    material_name?: string;
-	    sample_count?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ExperimentGroup(source);
@@ -140,8 +323,136 @@ export namespace models {
 	        this.project_name = source["project_name"];
 	        this.location = source["location"];
 	        this.created_at = this.convertValues(source["created_at"], null);
-	        this.material_name = source["material_name"];
-	        this.sample_count = source["sample_count"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class TestResult {
+	    id: string;
+	    protocol_id: string;
+	    method_id: string;
+	    input_data: Record<string, any>;
+	    calculated_value?: number;
+	    applied_limit_id?: string;
+	    is_compliant?: boolean;
+	    deviation_msg?: string;
+	    note?: string;
+	    // Go type: time
+	    created_at: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new TestResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.protocol_id = source["protocol_id"];
+	        this.method_id = source["method_id"];
+	        this.input_data = source["input_data"];
+	        this.calculated_value = source["calculated_value"];
+	        this.applied_limit_id = source["applied_limit_id"];
+	        this.is_compliant = source["is_compliant"];
+	        this.deviation_msg = source["deviation_msg"];
+	        this.note = source["note"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Protocol {
+	    id: string;
+	    sample_id: string;
+	    protocol_number?: string;
+	    lab_name?: string;
+	    operator_name?: string;
+	    // Go type: time
+	    test_date?: any;
+	    status: string;
+	    // Go type: time
+	    created_at: any;
+	    // Go type: time
+	    updated_at: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new Protocol(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.sample_id = source["sample_id"];
+	        this.protocol_number = source["protocol_number"];
+	        this.lab_name = source["lab_name"];
+	        this.operator_name = source["operator_name"];
+	        this.test_date = this.convertValues(source["test_date"], null);
+	        this.status = source["status"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.updated_at = this.convertValues(source["updated_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class GetProtocolByIDRequest {
+	    Protocol: Protocol;
+	    Results: TestResult[];
+	
+	    static createFrom(source: any = {}) {
+	        return new GetProtocolByIDRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Protocol = this.convertValues(source["Protocol"], Protocol);
+	        this.Results = this.convertValues(source["Results"], TestResult);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -236,8 +547,6 @@ export namespace models {
 	    method_id: string;
 	    method_name: string;
 	    unit: string;
-	    min_value?: number;
-	    max_value?: number;
 	    is_compliant: boolean;
 	    trials: MethodTrial[];
 	
@@ -250,8 +559,6 @@ export namespace models {
 	        this.method_id = source["method_id"];
 	        this.method_name = source["method_name"];
 	        this.unit = source["unit"];
-	        this.min_value = source["min_value"];
-	        this.max_value = source["max_value"];
 	        this.is_compliant = source["is_compliant"];
 	        this.trials = this.convertValues(source["trials"], MethodTrial);
 	    }
@@ -397,6 +704,7 @@ export namespace models {
 	}
 	
 	
+	
 	export class NormativeLimit {
 	    id: string;
 	    method_id: string;
@@ -406,7 +714,6 @@ export namespace models {
 	    discrete_values?: string[];
 	    note?: string;
 	    priority: number;
-	    conditions?: LimitCondition[];
 	
 	    static createFrom(source: any = {}) {
 	        return new NormativeLimit(source);
@@ -422,27 +729,9 @@ export namespace models {
 	        this.discrete_values = source["discrete_values"];
 	        this.note = source["note"];
 	        this.priority = source["priority"];
-	        this.conditions = this.convertValues(source["conditions"], LimitCondition);
 	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
+	
 	
 	export class Sample {
 	    id: string;
@@ -490,90 +779,22 @@ export namespace models {
 		    return a;
 		}
 	}
-	export class Protocol {
-	    id: string;
-	    sample_id: string;
-	    protocol_number?: string;
-	    lab_name?: string;
-	    operator_name?: string;
-	    // Go type: time
-	    test_date?: any;
-	    status: string;
-	    // Go type: time
-	    created_at: any;
-	    // Go type: time
-	    updated_at: any;
-	    sample?: Sample;
+	export class ProtocolFull {
+	    protocol: Protocol;
+	    sample: Sample;
+	    material: Material;
+	    results: TestResult[];
 	
 	    static createFrom(source: any = {}) {
-	        return new Protocol(source);
+	        return new ProtocolFull(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.sample_id = source["sample_id"];
-	        this.protocol_number = source["protocol_number"];
-	        this.lab_name = source["lab_name"];
-	        this.operator_name = source["operator_name"];
-	        this.test_date = this.convertValues(source["test_date"], null);
-	        this.status = source["status"];
-	        this.created_at = this.convertValues(source["created_at"], null);
-	        this.updated_at = this.convertValues(source["updated_at"], null);
+	        this.protocol = this.convertValues(source["protocol"], Protocol);
 	        this.sample = this.convertValues(source["sample"], Sample);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class ProtocolListItem {
-	    id: string;
-	    sample_id: string;
-	    protocol_number?: string;
-	    lab_name?: string;
-	    operator_name?: string;
-	    // Go type: time
-	    test_date?: any;
-	    status: string;
-	    // Go type: time
-	    created_at: any;
-	    // Go type: time
-	    updated_at: any;
-	    sample?: Sample;
-	    material_name: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new ProtocolListItem(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.sample_id = source["sample_id"];
-	        this.protocol_number = source["protocol_number"];
-	        this.lab_name = source["lab_name"];
-	        this.operator_name = source["operator_name"];
-	        this.test_date = this.convertValues(source["test_date"], null);
-	        this.status = source["status"];
-	        this.created_at = this.convertValues(source["created_at"], null);
-	        this.updated_at = this.convertValues(source["updated_at"], null);
-	        this.sample = this.convertValues(source["sample"], Sample);
-	        this.material_name = source["material_name"];
+	        this.material = this.convertValues(source["material"], Material);
+	        this.results = this.convertValues(source["results"], TestResult);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -595,7 +816,7 @@ export namespace models {
 		}
 	}
 	export class ProtocolListResponse {
-	    items: ProtocolListItem[];
+	    items: Protocol[];
 	    meta: PaginatedMetadata;
 	
 	    static createFrom(source: any = {}) {
@@ -604,7 +825,7 @@ export namespace models {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.items = this.convertValues(source["items"], ProtocolListItem);
+	        this.items = this.convertValues(source["items"], Protocol);
 	        this.meta = this.convertValues(source["meta"], PaginatedMetadata);
 	    }
 	
@@ -627,6 +848,48 @@ export namespace models {
 		}
 	}
 	
+	export class Standard {
+	    id: string;
+	    material_id: string;
+	    name: string;
+	    description?: string;
+	    // Go type: time
+	    valid_from?: any;
+	    // Go type: time
+	    valid_to?: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new Standard(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.material_id = source["material_id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.valid_from = this.convertValues(source["valid_from"], null);
+	        this.valid_to = this.convertValues(source["valid_to"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class TestMethod {
 	    id: string;
 	    standard_id: string;
@@ -637,8 +900,6 @@ export namespace models {
 	    unit: string;
 	    result_type: string;
 	    is_mandatory: boolean;
-	    inputs?: MethodInput[];
-	    limits?: NormativeLimit[];
 	
 	    static createFrom(source: any = {}) {
 	        return new TestMethod(source);
@@ -655,149 +916,22 @@ export namespace models {
 	        this.unit = source["unit"];
 	        this.result_type = source["result_type"];
 	        this.is_mandatory = source["is_mandatory"];
+	    }
+	}
+	export class TestMethodFull {
+	    method: TestMethod;
+	    inputs: MethodInput[];
+	    limits: NormativeLimit[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TestMethodFull(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.method = this.convertValues(source["method"], TestMethod);
 	        this.inputs = this.convertValues(source["inputs"], MethodInput);
 	        this.limits = this.convertValues(source["limits"], NormativeLimit);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class Standard {
-	    id: string;
-	    material_id: string;
-	    name: string;
-	    description?: string;
-	    // Go type: time
-	    valid_from?: any;
-	    // Go type: time
-	    valid_to?: any;
-	    dimensions?: ContextDimension[];
-	    methods?: TestMethod[];
-	
-	    static createFrom(source: any = {}) {
-	        return new Standard(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.material_id = source["material_id"];
-	        this.name = source["name"];
-	        this.description = source["description"];
-	        this.valid_from = this.convertValues(source["valid_from"], null);
-	        this.valid_to = this.convertValues(source["valid_to"], null);
-	        this.dimensions = this.convertValues(source["dimensions"], ContextDimension);
-	        this.methods = this.convertValues(source["methods"], TestMethod);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	
-	export class TestResult {
-	    id: string;
-	    protocol_id: string;
-	    method_id: string;
-	    input_data: Record<string, any>;
-	    calculated_value?: number;
-	    applied_limit_id?: string;
-	    is_compliant?: boolean;
-	    deviation_msg?: string;
-	    note?: string;
-	    // Go type: time
-	    created_at: any;
-	    method_name?: string;
-	    method_unit?: string;
-	    min_norm?: number;
-	    max_norm?: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new TestResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.protocol_id = source["protocol_id"];
-	        this.method_id = source["method_id"];
-	        this.input_data = source["input_data"];
-	        this.calculated_value = source["calculated_value"];
-	        this.applied_limit_id = source["applied_limit_id"];
-	        this.is_compliant = source["is_compliant"];
-	        this.deviation_msg = source["deviation_msg"];
-	        this.note = source["note"];
-	        this.created_at = this.convertValues(source["created_at"], null);
-	        this.method_name = source["method_name"];
-	        this.method_unit = source["method_unit"];
-	        this.min_norm = source["min_norm"];
-	        this.max_norm = source["max_norm"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-
-}
-
-export namespace service {
-	
-	export class GetProtocolByIDRequest {
-	    Protocol: models.Protocol;
-	    Results: models.TestResult[];
-	
-	    static createFrom(source: any = {}) {
-	        return new GetProtocolByIDRequest(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.Protocol = this.convertValues(source["Protocol"], models.Protocol);
-	        this.Results = this.convertValues(source["Results"], models.TestResult);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

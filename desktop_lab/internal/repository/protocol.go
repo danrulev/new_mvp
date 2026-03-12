@@ -6,7 +6,6 @@ import (
 	"desktop_lab/internal/models"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -97,13 +96,12 @@ func (r *protocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 // GetByID загружает протокол с данными пробы
 func (r *protocolRepo) GetByID(ctx context.Context, id string) (models.Protocol, error) {
 	p := models.Protocol{}
-
 	var testDateStr sql.NullString
+	var createdAt, updatedAt string
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, sample_id, protocol_number, lab_name, operator_name, test_date, status, created_at, updated_at 
-		 FROM protocols WHERE id = ?`,
-		id,
-	).Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.LabName, &p.OperatorName, &testDateStr, &p.Status, &p.CreatedAt, &p.UpdatedAt)
+		 FROM protocols WHERE id = ?`, id,
+	).Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.LabName, &p.OperatorName, &testDateStr, &p.Status, &createdAt, &updatedAt)
 
 	if err == sql.ErrNoRows {
 		return models.Protocol{}, nil
@@ -111,49 +109,19 @@ func (r *protocolRepo) GetByID(ctx context.Context, id string) (models.Protocol,
 	if err != nil {
 		return models.Protocol{}, err
 	}
-
 	if testDateStr.Valid {
 		t, _ := time.Parse("2006-01-02", testDateStr.String)
 		p.TestDate = &t
 	}
-
-	// Загружаем данные пробы
-	sample, err := r.getSample(ctx, p.SampleID)
+	p.CreatedAt, err = time.Parse(time.DateTime, createdAt)
 	if err != nil {
 		return models.Protocol{}, err
 	}
-	p.Sample = sample
-
-	return p, nil
-}
-
-// getSample вспомогательный метод
-func (r *protocolRepo) getSample(ctx context.Context, id string) (models.Sample, error) {
-	s := models.Sample{}
-	var collDateStr sql.NullString
-	var rawJSON string
-
-	err := r.db.QueryRowContext(ctx,
-		`SELECT id, group_id, material_id, sample_number, collection_date, context_params, note, created_at 
-		 FROM samples WHERE id = ?`,
-		id,
-	).Scan(&s.ID, &s.GroupID, &s.MaterialID, &s.SampleNumber, &collDateStr, &rawJSON, &s.Note, &s.CreatedAt)
-
+	p.UpdatedAt, err = time.Parse(time.DateTime, updatedAt)
 	if err != nil {
-		return models.Sample{}, err
+		return models.Protocol{}, err
 	}
-
-	if collDateStr.Valid {
-		t, _ := time.Parse("2006-01-02", collDateStr.String)
-		s.CollectionDate = &t
-	}
-
-	// Парсим JSON контекста
-	if err := s.FromJSON(rawJSON); err != nil {
-		return models.Sample{}, err
-	}
-
-	return s, nil
+	return p, nil
 }
 
 // GetResultsByProtocolID загружает результаты
@@ -171,10 +139,10 @@ func (r *protocolRepo) GetResultsByProtocolID(ctx context.Context, protocolID st
 	var results []models.TestResult
 	for rows.Next() {
 		var r models.TestResult
-		var rawJSON string
+		var rawJSON, createdAt string
 		var compliant *int
 
-		err := rows.Scan(&r.ID, &r.MethodID, &rawJSON, &r.CalculatedValue, &r.AppliedLimitID, &compliant, &r.DeviationMsg, &r.Note, &r.CreatedAt)
+		err := rows.Scan(&r.ID, &r.MethodID, &rawJSON, &r.CalculatedValue, &r.AppliedLimitID, &compliant, &r.DeviationMsg, &r.Note, &createdAt)
 		if err != nil {
 			return nil, err
 		}
@@ -193,7 +161,10 @@ func (r *protocolRepo) GetResultsByProtocolID(ctx context.Context, protocolID st
 			v := *compliant == 1
 			r.IsCompliant = &v
 		}
-
+		r.CreatedAt, err = time.Parse(time.DateTime, createdAt)
+		if err != nil {
+			return nil, err
+		}
 		results = append(results, r)
 	}
 
@@ -202,34 +173,15 @@ func (r *protocolRepo) GetResultsByProtocolID(ctx context.Context, protocolID st
 
 // GetByGroupID возвращает список протоколов группы (краткий)
 func (r *protocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]models.Protocol, error) {
-	// Сначала найдем все пробы этой группы
-	sampleRows, err := r.db.QueryContext(ctx, `SELECT id FROM samples WHERE group_id = ?`, groupID)
-	if err != nil {
-		return nil, err
-	}
+	query := `
+		SELECT p.id, p.sample_id, p.protocol_number, p.status, p.created_at
+		FROM protocols p
+		JOIN samples s ON p.sample_id = s.id
+		WHERE s.group_id = ?
+		ORDER BY p.created_at DESC
+	`
 
-	var sampleIDs []string
-	for sampleRows.Next() {
-		var sid string
-		sampleRows.Scan(&sid)
-		sampleIDs = append(sampleIDs, sid)
-	}
-	sampleRows.Close()
-
-	if len(sampleIDs) == 0 {
-		return []models.Protocol{}, nil
-	}
-
-	// Теперь протоколы для этих проб
-	placeholders := strings.Repeat("?,", len(sampleIDs))
-	query := fmt.Sprintf(`SELECT id, sample_id, protocol_number, status, created_at FROM protocols WHERE sample_id IN (%s)`, placeholders[:len(placeholders)-1])
-
-	args := make([]interface{}, len(sampleIDs))
-	for i, v := range sampleIDs {
-		args[i] = v
-	}
-
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.db.QueryContext(ctx, query, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -238,14 +190,18 @@ func (r *protocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]mode
 	var protocols []models.Protocol
 	for rows.Next() {
 		var p models.Protocol
-		err := rows.Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.Status, &p.CreatedAt)
+		var createdAt string
+		if err := rows.Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.Status, &createdAt); err != nil {
+			return nil, err
+		}
+		p.CreatedAt, err = time.Parse(time.DateTime, createdAt)
 		if err != nil {
 			return nil, err
 		}
 		protocols = append(protocols, p)
 	}
 
-	return protocols, nil
+	return protocols, rows.Err()
 }
 
 func (r *protocolRepo) GetList(ctx context.Context, limit, offset int64) ([]models.Protocol, int64, error) {
@@ -273,13 +229,111 @@ func (r *protocolRepo) GetList(ctx context.Context, limit, offset int64) ([]mode
 	for rows.Next() {
 		var p models.Protocol
 		var testDateStr sql.NullString
-		err := rows.Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.LabName, &p.OperatorName, &testDateStr, &p.Status, &p.CreatedAt, &p.UpdatedAt)
+		var createdAt, updatedAt string
+		err := rows.Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.LabName, &p.OperatorName, &testDateStr, &p.Status, &createdAt, &updatedAt)
 		if err != nil {
 			return nil, 0, err
 		}
-		// Парсинг даты и загрузка Sample (упрощенно)
-		// ...
+		p.CreatedAt, err = time.Parse(time.DateTime, createdAt)
+		if err != nil {
+			return nil, 0, err
+		}
+		p.UpdatedAt, err = time.Parse(time.DateTime, updatedAt)
+		if err != nil {
+			return nil, 0, err
+		}
 		protocols = append(protocols, p)
 	}
 	return protocols, total, nil
+}
+
+func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.ProtocolFull, error) {
+	var full models.ProtocolFull
+
+	// 1. Загружаем Протокол + Пробу + Материал через JOIN
+	// Это убирает 2 отдельных запроса
+	query := `
+		SELECT 
+			p.id, p.sample_id, p.protocol_number, p.lab_name, p.operator_name, p.test_date, p.status, p.created_at, p.updated_at,
+			s.id, s.group_id, s.material_id, s.sample_number, s.collection_date, s.context_params, s.note, s.created_at,
+			m.id, m.name, m.code, m.created_at
+		FROM protocols p
+		JOIN samples s ON p.sample_id = s.id
+		JOIN materials m ON s.material_id = m.id
+		WHERE p.id = ?
+	`
+
+	var testDateStr, collDateStr sql.NullString
+	var rawContext sql.NullString
+
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&full.Protocol.ID, &full.Protocol.SampleID, &full.Protocol.ProtocolNumber, &full.Protocol.LabName,
+		&full.Protocol.OperatorName, &testDateStr, &full.Protocol.Status, &full.Protocol.CreatedAt, &full.Protocol.UpdatedAt,
+
+		&full.Sample.ID, &full.Sample.GroupID, &full.Sample.MaterialID, &full.Sample.SampleNumber, &collDateStr, &rawContext, &full.Sample.Note, &full.Sample.CreatedAt,
+
+		&full.Material.ID, &full.Material.Name, &full.Material.Code, &full.Material.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return models.ProtocolFull{}, nil
+	}
+	if err != nil {
+		return models.ProtocolFull{}, err
+	}
+
+	// Парсинг дат
+	if testDateStr.Valid {
+		t, _ := time.Parse("2006-01-02", testDateStr.String) // Или полный формат, зависит от хранения
+		full.Protocol.TestDate = &t
+	}
+	if collDateStr.Valid {
+		t, _ := time.Parse("2006-01-02", collDateStr.String)
+		full.Sample.CollectionDate = &t
+	}
+
+	// Парсинг контекста пробы
+	if rawContext.Valid {
+		if err := full.Sample.FromJSON(rawContext.String); err != nil {
+			r.log.Warn("failed to parse sample context", zap.Error(err))
+			full.Sample.ContextParams = make(map[string]string)
+		}
+	} else {
+		full.Sample.ContextParams = make(map[string]string)
+	}
+
+	// 2. Загружаем Результаты (отдельный запрос, так как их много)
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, method_id, input_data, calculated_value, applied_limit_id, is_compliant, deviation_msg, note, created_at 
+		 FROM test_results WHERE protocol_id = ?`,
+		id,
+	)
+	if err != nil {
+		return models.ProtocolFull{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var res models.TestResult
+		var rawJSON string
+		var compliant *int
+
+		if err := rows.Scan(&res.ID, &res.MethodID, &rawJSON, &res.CalculatedValue, &res.AppliedLimitID, &compliant, &res.DeviationMsg, &res.Note, &res.CreatedAt); err != nil {
+			return models.ProtocolFull{}, err
+		}
+
+		if rawJSON != "" && rawJSON != "{}" {
+			json.Unmarshal([]byte(rawJSON), &res.InputData)
+		} else {
+			res.InputData = make(map[string]interface{})
+		}
+
+		if compliant != nil {
+			v := *compliant == 1
+			res.IsCompliant = &v
+		}
+
+		full.Results = append(full.Results, res)
+	}
+
+	return full, rows.Err()
 }

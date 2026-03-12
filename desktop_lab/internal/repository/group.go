@@ -73,10 +73,12 @@ func (r *experimentGroupRepo) GetList(ctx context.Context, limit, offset int64) 
 	var groups []models.ExperimentGroup
 	for rows.Next() {
 		var g models.ExperimentGroup
-		err := rows.Scan(&g.ID, &g.Name, &g.MaterialID, &g.ProjectName, &g.Location, &g.CreatedAt)
+		var createdAt string
+		err := rows.Scan(&g.ID, &g.Name, &g.MaterialID, &g.ProjectName, &g.Location, &createdAt)
 		if err != nil {
 			return nil, 0, err
 		}
+		g.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
 		groups = append(groups, g)
 	}
 

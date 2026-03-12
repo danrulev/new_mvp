@@ -5,7 +5,6 @@ import (
 	"desktop_lab/internal/models"
 	"desktop_lab/internal/repository"
 	"fmt"
-
 	"math"
 	"strconv"
 	"time"
@@ -18,7 +17,7 @@ import (
 type ProtocolService struct {
 	protocolRepo repository.ProtocolRepo
 	sampleRepo   repository.SampleRepo
-	standardRepo repository.StandardRepo // Нужен для загрузки методов и лимитов
+	standardRepo repository.StandardRepo
 	groupRepo    repository.ExperimentGroupRepo
 	materialRepo repository.MaterialRepo
 	log          *zap.Logger
@@ -42,8 +41,8 @@ func NewProtocolService(
 	}
 }
 
-// CreateProtocolWithSample - аналог старого CreateProtocolWithSample
-// Создает пробу, затем протокол с результатами, выполняя расчеты и валидацию
+// CreateProtocolWithSample создает пробу, затем протокол с результатами,
+// выполняя расчеты и валидацию с оптимизированной загрузкой методов
 func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req models.CreateProtocolRequest) (models.Protocol, error) {
 	// 1. Создаем Пробу (Sample)
 	sampleID := uuid.New().String()
@@ -53,7 +52,7 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		MaterialID:     req.Sample.MaterialID,
 		SampleNumber:   req.Sample.SampleNumber,
 		CollectionDate: req.Sample.CollectionDate,
-		ContextParams:  req.Sample.ContextParams, // Важно: контекст пробы!
+		ContextParams:  req.Sample.ContextParams,
 		Note:           req.Sample.Note,
 	}
 
@@ -69,124 +68,129 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 	protocol := models.Protocol{
 		ID:             protocolID,
 		SampleID:       sampleID,
-		ProtocolNumber: "", // Можно сгенерировать автоматически
+		ProtocolNumber: "",
 		LabName:        req.LabName,
 		OperatorName:   req.OperatorName,
 		TestDate:       &now,
-		Status:         "draft", // Или сразу "completed"
+		Status:         "draft",
 	}
 
-	// 3. Обрабатываем результаты (Расчет + Валидация)
-	finalResults := make([]models.TestResult, 0, len(req.Results))
-
-	for _, inputRes := range req.Results {
-		// Загружаем метод с формулой и входами
-		method, err := s.standardRepo.GetMethodWithInputs(ctx, inputRes.MethodID)
+	// 3. 🔥 ОПТИМИЗАЦИЯ: Предзагрузка всех методов стандарта
+	// Определяем StandardID по первому методу (или можно передавать в запросе)
+	standardID := ""
+	if len(req.Results) > 0 {
+		firstMethod, err := s.standardRepo.GetTestMethod(ctx, req.Results[0].MethodID)
 		if err != nil {
-			return models.Protocol{}, fmt.Errorf("метод %s не найден: %w", inputRes.MethodID, err)
+			return models.Protocol{}, fmt.Errorf("не удалось определить стандарт: %w", err)
 		}
+		standardID = firstMethod.StandardID
+
+		// Загружаем ВСЕ методы, инпуты и лимиты стандарта ОДИН запросом
+		methodsCache, err := s.standardRepo.GetMethodsFullByStandardID(ctx, standardID)
+		if err != nil {
+			s.log.Warn("failed to preload methods, falling back to individual queries",
+				zap.Error(err), zap.String("standard_id", standardID))
+			// Продолжаем работу, в цикле ниже будут индивидуальные запросы
+		} else {
+			// Используем кэш в цикле обработки результатов
+			return s.createProtocolWithCache(ctx, protocol, sample, req.Results, methodsCache)
+		}
+	}
+
+	// Фоллбэк: старая логика с индивидуальными запросами (если кэш не сработал)
+	return s.createProtocolLegacy(ctx, protocol, sample, req.Results)
+}
+
+// createProtocolWithCache - оптимизированная версия с использованием предзагруженных данных
+func (s *ProtocolService) createProtocolWithCache(
+	ctx context.Context,
+	protocol models.Protocol,
+	sample models.Sample,
+	results []models.CreateResultDTO,
+	methodsCache map[string]models.TestMethodFull,
+) (models.Protocol, error) {
+
+	finalResults := make([]models.TestResult, 0, len(results))
+
+	for _, inputRes := range results {
+		// Быстрый доступ из кэша
+		fullMethod, exists := methodsCache[inputRes.MethodID]
+		if !exists {
+			return models.Protocol{}, fmt.Errorf("метод %s не найден в стандарте", inputRes.MethodID)
+		}
+
+		method := fullMethod.Method
+		inputs := fullMethod.Inputs
 
 		var calculatedValue float64
 		inputDataMap := make(map[string]interface{})
 
-		// --- РАСЧЕТ ---
-		if method.FormulaExpr != "" {
-			// Парсим входные параметры
+		// --- РАСЧЕТ ФОРМУЛЫ ---
+		if method.FormulaExpr != nil {
 			params := make(map[string]interface{})
 
-			for _, inp := range method.Inputs {
+			for _, inp := range inputs {
 				valStr, exists := inputRes.RawInputs[inp.ParamKey]
-
 				if inp.IsRequired && (!exists || valStr == "") {
 					return models.Protocol{}, fmt.Errorf("требуется параметр '%s' для метода '%s'", inp.Label, method.Name)
 				}
-
 				if !exists || valStr == "" {
-					continue // Опциональный параметр не введен
+					continue
 				}
-
 				val, err := strconv.ParseFloat(valStr, 64)
 				if err != nil {
-					return models.Protocol{}, fmt.Errorf("некорректное число '%s' для параметра '%s'", valStr, inp.Label)
+					return models.Protocol{}, fmt.Errorf("некорректное число '%s' для параметра '%s': %w", valStr, inp.Label, err)
 				}
-
 				params[inp.ParamKey] = val
 				inputDataMap[inp.ParamKey] = val
 			}
 
-			// Вычисляем формулу
-			calculatedValue, err = s.calculateFormula(method.FormulaExpr, params)
+			calculatedValue, err := s.calculateFormula(*method.FormulaExpr, params)
 			if err != nil {
-				return models.Protocol{}, fmt.Errorf("ошибка расчета формулы для '%s': %w", method.Name, err)
+				return models.Protocol{}, fmt.Errorf("ошибка расчета формулы '%s': %w", method.Name, err)
 			}
+			calculatedValue = math.Round(calculatedValue*100) / 100
 		} else {
-			// Если формулы нет, ждем явное значение?
-			// В старой модели было поле Value. В новой, если нет формулы, возможно, результат вводится вручную.
-			// Для упрощения предположим, что если нет формулы, то первый ключ в RawInputs - это результат, или нужно доработать DTO.
-			// Давайте предположим, что для ручного ввода мы передаем значение в ключе "value" или используем логику legacy.
-			// Адаптация: если формулы нет, ищем ключ "result" или берем первое значение.
-			// Но лучше изменить DTO для ручного ввода. Пока заглушка:
-			if valStr, ok := inputRes.RawInputs["value"]; ok {
-				v, err := strconv.ParseFloat(valStr, 64)
-				if err != nil {
-					return models.Protocol{}, fmt.Errorf("ошибка парсинга ручного значения: %w", err)
-				}
-				calculatedValue = v
-				inputDataMap["value"] = v
-			} else if len(inputRes.RawInputs) > 0 {
-				// Берем первое попавшееся число как результат (fallback)
-				for _, v := range inputRes.RawInputs {
-					f, err := strconv.ParseFloat(v, 64)
-					if err == nil {
-						calculatedValue = f
-						break
-					}
-				}
-			}
+			// Ручной ввод значения
+			calculatedValue = s.parseManualValue(inputRes.RawInputs, &inputDataMap)
+			calculatedValue = math.Round(calculatedValue*100) / 100
 		}
 
-		// Округление (как в легаси)
-		calculatedValue = math.Round(calculatedValue*100) / 100
+		// --- ВАЛИДАЦИЯ (с использованием предзагруженных лимитов) ---
+		applicableLimit := s.findMatchingLimit(fullMethod.Limits, fullMethod.LimitConditions, sample.ContextParams)
 
-		// --- ВАЛИДАЦИЯ (Новая логика) ---
-		var isCompliant bool
+		isCompliant := true
 		var deviationMsg string
 		var appliedLimitID *string
 
-		// Находим подходящий лимит на основе контекста пробы
-		limit, err := s.standardRepo.GetApplicableLimit(ctx, method.ID, sample.ContextParams)
-		if err != nil {
-			s.log.Warn("error finding limit", zap.Error(err))
-			// Не прерываем, просто не валидируем
-		}
+		if applicableLimit.ID != "" {
+			appliedLimitID = &applicableLimit.ID
 
-		switch limit.LimitType {
-		case "min":
-			if limit.MinValue != nil && calculatedValue < *limit.MinValue {
-				isCompliant = false
-				diff := *limit.MinValue - calculatedValue
-				deviationMsg = fmt.Sprintf("Ниже нормы на %.2f %s (Мин: %.2f)", diff, method.Unit, *limit.MinValue)
-			}
-		case "max":
-			if limit.MaxValue != nil && calculatedValue > *limit.MaxValue {
-				isCompliant = false
-				diff := calculatedValue - *limit.MaxValue
-				deviationMsg = fmt.Sprintf("Выше нормы на %.2f %s (Макс: %.2f)", diff, method.Unit, *limit.MaxValue)
-			}
-		case "range":
-			if limit.MinValue != nil && limit.MaxValue != nil {
-				if calculatedValue < *limit.MinValue || calculatedValue > *limit.MaxValue {
+			switch applicableLimit.LimitType {
+			case "min":
+				if applicableLimit.MinValue != nil && calculatedValue < *applicableLimit.MinValue {
 					isCompliant = false
-					if calculatedValue < *limit.MinValue {
-						deviationMsg = fmt.Sprintf("Ниже диапазона [%.2f; %.2f]", *limit.MinValue, *limit.MaxValue)
-					} else {
-						deviationMsg = fmt.Sprintf("Выше диапазона [%.2f; %.2f]", *limit.MinValue, *limit.MaxValue)
+					deviationMsg = fmt.Sprintf("Ниже нормы на %.2f %s", *applicableLimit.MinValue-calculatedValue, method.Unit)
+				}
+			case "max":
+				if applicableLimit.MaxValue != nil && calculatedValue > *applicableLimit.MaxValue {
+					isCompliant = false
+					deviationMsg = fmt.Sprintf("Выше нормы на %.2f %s", calculatedValue-*applicableLimit.MaxValue, method.Unit)
+				}
+			case "range":
+				if applicableLimit.MinValue != nil && applicableLimit.MaxValue != nil {
+					if calculatedValue < *applicableLimit.MinValue || calculatedValue > *applicableLimit.MaxValue {
+						isCompliant = false
+						if calculatedValue < *applicableLimit.MinValue {
+							deviationMsg = fmt.Sprintf("Ниже диапазона [%.2f; %.2f]", *applicableLimit.MinValue, *applicableLimit.MaxValue)
+						} else {
+							deviationMsg = fmt.Sprintf("Выше диапазона [%.2f; %.2f]", *applicableLimit.MinValue, *applicableLimit.MaxValue)
+						}
 					}
 				}
 			}
-		default:
-			isCompliant = true
-			deviationMsg = "Норматив для данных условий не найден"
+		} else {
+			deviationMsg = "Норматив не применён (условия не найдены)"
 		}
 
 		result := models.TestResult{
@@ -197,63 +201,268 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 			IsCompliant:     &isCompliant,
 			DeviationMsg:    deviationMsg,
 			Note:            inputRes.Note,
-			// Поля для отображения заполним при чтении, либо можно заполнить тут именами
-			MethodName: method.Name,
-			MethodUnit: method.Unit,
 		}
-
-		result.MinNorm = limit.MinValue
-		result.MaxNorm = limit.MaxValue
-
 		finalResults = append(finalResults, result)
 	}
 
+	return s.saveProtocol(ctx, protocol, sample, finalResults)
+}
+
+// createProtocolLegacy - фоллбэк-логика с индивидуальными запросами к БД
+func (s *ProtocolService) createProtocolLegacy(
+	ctx context.Context,
+	protocol models.Protocol,
+	sample models.Sample,
+	results []models.CreateResultDTO,
+) (models.Protocol, error) {
+
+	finalResults := make([]models.TestResult, 0, len(results))
+
+	for _, inputRes := range results {
+		method, err := s.standardRepo.GetTestMethod(ctx, inputRes.MethodID)
+		if err != nil {
+			return models.Protocol{}, fmt.Errorf("метод %s не найден: %w", inputRes.MethodID, err)
+		}
+
+		inputs, err := s.standardRepo.GetMethodInputs(ctx, inputRes.MethodID)
+		if err != nil {
+			return models.Protocol{}, fmt.Errorf("ошибка загрузки инпутов для %s: %w", inputRes.MethodID, err)
+		}
+
+		var calculatedValue float64
+		inputDataMap := make(map[string]interface{})
+
+		if method.IsMandatory && method.FormulaExpr != nil && *method.FormulaExpr != "" {
+			params := make(map[string]interface{})
+			for _, inp := range inputs {
+				valStr, exists := inputRes.RawInputs[inp.ParamKey]
+				if inp.IsRequired && (!exists || valStr == "") {
+					return models.Protocol{}, fmt.Errorf("требуется параметр '%s' для метода '%s'", inp.Label, method.Name)
+				}
+				if !exists || valStr == "" {
+					continue
+				}
+				val, err := strconv.ParseFloat(valStr, 64)
+				if err != nil {
+					return models.Protocol{}, fmt.Errorf("некорректное число '%s': %w", valStr, err)
+				}
+				params[inp.ParamKey] = val
+				inputDataMap[inp.ParamKey] = val
+			}
+			calculatedValue, err = s.calculateFormula(*method.FormulaExpr, params)
+			if err != nil {
+				return models.Protocol{}, fmt.Errorf("ошибка расчета формулы '%s': %w", method.Name, err)
+			}
+			calculatedValue = math.Round(calculatedValue*100) / 100
+		} else {
+			calculatedValue = s.parseManualValue(inputRes.RawInputs, &inputDataMap)
+			calculatedValue = math.Round(calculatedValue*100) / 100
+		}
+
+		// Валидация через запрос к БД
+		limit, err := s.standardRepo.GetApplicableLimit(ctx, method.ID, sample.ContextParams)
+		if err != nil {
+			s.log.Warn("error finding limit", zap.Error(err))
+		}
+
+		isCompliant := true
+		var deviationMsg string
+		var appliedLimitID *string
+
+		if limit.ID != "" {
+			appliedLimitID = &limit.ID
+			switch limit.LimitType {
+			case "min":
+				if limit.MinValue != nil && calculatedValue < *limit.MinValue {
+					isCompliant = false
+					deviationMsg = fmt.Sprintf("Ниже нормы на %.2f %s", *limit.MinValue-calculatedValue, method.Unit)
+				}
+			case "max":
+				if limit.MaxValue != nil && calculatedValue > *limit.MaxValue {
+					isCompliant = false
+					deviationMsg = fmt.Sprintf("Выше нормы на %.2f %s", calculatedValue-*limit.MaxValue, method.Unit)
+				}
+			case "range":
+				if limit.MinValue != nil && limit.MaxValue != nil {
+					if calculatedValue < *limit.MinValue || calculatedValue > *limit.MaxValue {
+						isCompliant = false
+						deviationMsg = fmt.Sprintf("Вне диапазона [%.2f; %.2f]", *limit.MinValue, *limit.MaxValue)
+					}
+				}
+			}
+		} else {
+			deviationMsg = "Норматив не применён"
+		}
+
+		result := models.TestResult{
+			MethodID:        method.ID,
+			InputData:       inputDataMap,
+			CalculatedValue: &calculatedValue,
+			AppliedLimitID:  appliedLimitID,
+			IsCompliant:     &isCompliant,
+			DeviationMsg:    deviationMsg,
+			Note:            inputRes.Note,
+		}
+		finalResults = append(finalResults, result)
+	}
+
+	return s.saveProtocol(ctx, protocol, sample, finalResults)
+}
+
+// findMatchingLimit ищет подходящий лимит в предзагруженных данных (работает в памяти)
+func (s *ProtocolService) findMatchingLimit(
+	limits []models.NormativeLimit,
+	conditionsMap map[string][]models.LimitCondition,
+	contextParams map[string]string,
+) models.NormativeLimit {
+
+	var defaultLimit *models.NormativeLimit
+
+	for i := range limits {
+		limit := limits[i]
+		conds := conditionsMap[limit.ID]
+
+		if len(conds) == 0 {
+			if defaultLimit == nil {
+				defaultLimit = &limit
+			}
+			continue
+		}
+
+		match := true
+		for _, cond := range conds {
+			actualVal, exists := contextParams[cond.DimensionKey]
+			if !exists {
+				match = false
+				break
+			}
+			switch cond.ConditionOperator {
+			case "=":
+				if actualVal != cond.ExpectedValue {
+					match = false
+				}
+			case "!=":
+				if actualVal == cond.ExpectedValue {
+					match = false
+				}
+			case "IN":
+				// Простая реализация: ожидаемое значение - список через запятую
+				// Можно улучшить парсингом JSON-массива
+				if !containsValue(cond.ExpectedValue, actualVal) {
+					match = false
+				}
+			}
+			if !match {
+				break
+			}
+		}
+
+		if match {
+			return limit
+		}
+	}
+
+	if defaultLimit != nil {
+		return *defaultLimit
+	}
+
+	return models.NormativeLimit{}
+}
+
+// containsValue проверяет наличие значения в строке "val1,val2,val3"
+func containsValue(csv, target string) bool {
+	for _, v := range splitCSV(csv) {
+		if v == target {
+			return true
+		}
+	}
+	return false
+}
+
+// splitCSV простая реализация разделения строки по запятым
+func splitCSV(s string) []string {
+	var result []string
+	var current string
+	for _, r := range s {
+		if r == ',' {
+			result = append(result, current)
+			current = ""
+		} else {
+			current += string(r)
+		}
+	}
+	if current != "" {
+		result = append(result, current)
+	}
+	return result
+}
+
+// parseManualValue парсит ручное значение из RawInputs
+func (s *ProtocolService) parseManualValue(rawInputs map[string]string, outMap *map[string]interface{}) float64 {
+	if valStr, ok := rawInputs["value"]; ok {
+		if v, err := strconv.ParseFloat(valStr, 64); err == nil {
+			(*outMap)["value"] = v
+			return v
+		}
+	}
+	// Fallback: берем первое валидное число
+	for k, v := range rawInputs {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			(*outMap)[k] = f
+			return f
+		}
+	}
+	return 0
+}
+
+// saveProtocol сериализует и сохраняет протокол с результатами
+func (s *ProtocolService) saveProtocol(
+	ctx context.Context,
+	protocol models.Protocol,
+	sample models.Sample,
+	results []models.TestResult,
+) (models.Protocol, error) {
+
+	// Сериализация контекста пробы
 	rawJSON, err := sample.ToJSON()
 	if err != nil {
 		return models.Protocol{}, fmt.Errorf("failed to marshal context: %w", err)
 	}
-	sample.RawContext = rawJSON // ✅ Заполняем сырой JSON
+	sample.RawContext = rawJSON
 
-	// Аналогично для результатов:
-	for i := range finalResults {
-		rawInputs, err := finalResults[i].InputsToJSON()
+	// Сериализация входных данных результатов
+	for i := range results {
+		rawInputs, err := results[i].InputsToJSON()
 		if err != nil {
 			return models.Protocol{}, fmt.Errorf("failed to marshal inputs: %w", err)
 		}
-		finalResults[i].RawInputData = rawInputs
+		results[i].RawInputData = rawInputs
 	}
 
-	// 4. Сохраняем Протокол и Результаты одной транзакцией
-	if err := s.protocolRepo.CreateFull(ctx, protocol, finalResults); err != nil {
+	// Сохранение в транзакции
+	if err := s.protocolRepo.CreateFull(ctx, protocol, results); err != nil {
 		s.log.Error("failed to create protocol transaction", zap.Error(err))
 		return models.Protocol{}, fmt.Errorf("ошибка сохранения протокола: %w", err)
 	}
 
-	s.log.Info("protocol created with sample", zap.String("protocol_id", protocolID), zap.String("sample_id", sampleID))
+	s.log.Info("protocol created successfully",
+		zap.String("protocol_id", protocol.ID),
+		zap.String("sample_id", sample.ID))
 
-	protocol.Sample = sample
 	return protocol, nil
 }
 
-// calculateFormula использует govaluate (как в легаси)
+// calculateFormula вычисляет выражение через govaluate
 func (s *ProtocolService) calculateFormula(exprStr string, params map[string]interface{}) (float64, error) {
 	expr, err := govaluate.NewEvaluableExpression(exprStr)
 	if err != nil {
 		return 0, fmt.Errorf("синтаксическая ошибка формулы: %w", err)
 	}
 
-	// Добавляем математические функции
 	funcs := map[string]interface{}{
-		"abs":   math.Abs,
-		"sqrt":  math.Sqrt,
-		"log":   math.Log,
-		"ln":    math.Log,
-		"log10": math.Log10,
-		"sin":   math.Sin,
-		"cos":   math.Cos,
-		"tan":   math.Tan,
-		"pi":    math.Pi,
-		"pow":   math.Pow,
+		"abs": math.Abs, "sqrt": math.Sqrt, "log": math.Log, "ln": math.Log,
+		"log10": math.Log10, "sin": math.Sin, "cos": math.Cos, "tan": math.Tan,
+		"pi": math.Pi, "pow": math.Pow,
 		"min": func(a, b float64) float64 {
 			if a < b {
 				return a
@@ -268,8 +477,7 @@ func (s *ProtocolService) calculateFormula(exprStr string, params map[string]int
 		},
 	}
 
-	// Мерджим параметры и функции
-	allParams := make(map[string]interface{})
+	allParams := make(map[string]interface{}, len(params)+len(funcs))
 	for k, v := range params {
 		allParams[k] = v
 	}
@@ -294,73 +502,61 @@ func (s *ProtocolService) calculateFormula(exprStr string, params map[string]int
 	}
 }
 
-// GetProtocolByID загружает протокол с результатами и данными пробы
-
-type GetProtocolByIDRequest struct {
-	Protocol models.Protocol
-	Results  []models.TestResult
+// GetProtocolFull загружает полный протокол с пробой, материалом и результатами (ОПТИМИЗИРОВАНО)
+func (s *ProtocolService) GetProtocolFull(ctx context.Context, id string) (models.ProtocolFull, error) {
+	full, err := s.protocolRepo.GetProtocolFull(ctx, id)
+	if err != nil {
+		return models.ProtocolFull{}, err
+	}
+	if full.IsEmpty() {
+		return models.ProtocolFull{}, fmt.Errorf("protocol not found")
+	}
+	return full, nil
 }
 
-func (s *ProtocolService) GetProtocolByID(ctx context.Context, id string) (GetProtocolByIDRequest, error) {
-	p, err := s.protocolRepo.GetByID(ctx, id)
+// GetProtocolByID - устаревший метод, использует новый GetProtocolFull для обратной совместимости
+// Рекомендуется использовать GetProtocolFull напрямую
+
+func (s *ProtocolService) GetProtocolByID(ctx context.Context, id string) (models.GetProtocolByIDRequest, error) {
+	full, err := s.GetProtocolFull(ctx, id)
 	if err != nil {
-		return GetProtocolByIDRequest{}, err
+		return models.GetProtocolByIDRequest{}, err
 	}
-	if p.ID == "" {
-		return GetProtocolByIDRequest{}, fmt.Errorf("protocol not found")
-	}
-
-	results, err := s.protocolRepo.GetResultsByProtocolID(ctx, id)
-	if err != nil {
-		return GetProtocolByIDRequest{}, err
-	}
-
-	for i := range results {
-		if results[i].MethodName == "" {
-			m, err := s.standardRepo.GetMethodWithInputs(ctx, results[i].MethodID)
-			if err == nil {
-				results[i].MethodName = m.Name
-				results[i].MethodUnit = m.Unit
-			}
-		}
-	}
-
-	out := GetProtocolByIDRequest{Protocol: p, Results: results}
-
-	return out, nil
+	return models.GetProtocolByIDRequest{
+		Protocol: full.Protocol,
+		Results:  full.Results,
+	}, nil
 }
 
-// GetProtocolsByGroupID - аналог получения списка для сводки
+// GetProtocolsByGroupID возвращает список протоколов группы
 func (s *ProtocolService) GetProtocolsByGroupID(ctx context.Context, groupID string) ([]models.Protocol, error) {
 	return s.protocolRepo.GetByGroupID(ctx, groupID)
 }
 
+// GetList возвращает список протоколов с пагинацией
 func (s *ProtocolService) GetList(ctx context.Context, limit, offset int64) ([]models.Protocol, int64, error) {
 	return s.protocolRepo.GetList(ctx, limit, offset)
 }
 
-// GetGroupSummary нужно реализовать аналогично старому коду, но с новой схемой
-// internal/service/protocol.go
-
-func (s *ProtocolService) GetGroupSummary(ctx context.Context, groupID string) (*models.GroupSummary, error) {
+// GetGroupSummary формирует сводный отчет по группе испытаний (ОПТИМИЗИРОВАНО)
+func (s *ProtocolService) GetGroupSummary(ctx context.Context, groupID string) (models.GroupSummary, error) {
 	// 1. Получаем группу
 	group, err := s.groupRepo.GetByID(ctx, groupID)
 	if err != nil {
-		return nil, err
+		return models.GroupSummary{}, fmt.Errorf("failed to get group: %w", err)
 	}
 	if group.ID == "" {
-		return nil, fmt.Errorf("group not found")
+		return models.GroupSummary{}, fmt.Errorf("group not found")
 	}
 
-	// 2. Получаем все протоколы группы
-	// Примечание: нужен метод в репозитории, возвращающий только ID или краткие данные
+	// 2. Получаем протоколы группы (оптимизированный запрос с JOIN)
 	protocols, err := s.protocolRepo.GetByGroupID(ctx, groupID)
 	if err != nil {
-		return nil, err
+		return models.GroupSummary{}, fmt.Errorf("failed to get protocols: %w", err)
 	}
 
 	if len(protocols) == 0 {
-		return &models.GroupSummary{
+		return models.GroupSummary{
 			GroupID:       group.ID,
 			GroupName:     group.Name,
 			MaterialID:    group.MaterialID,
@@ -370,61 +566,65 @@ func (s *ProtocolService) GetGroupSummary(ctx context.Context, groupID string) (
 		}, nil
 	}
 
-	// 3. Агрегация результатов
-	// Map: MethodID -> Summary
-	methodMap := make(map[string]*models.MethodResultSummary)
+	// 3. 🔥 ПРЕДЗАГРУЗКА: Все пробы группы для быстрого маппинга
+	samples, err := s.sampleRepo.GetByGroupID(ctx, groupID)
+	if err != nil {
+		s.log.Warn("failed to load samples for summary", zap.Error(err))
+	}
+	sampleMap := make(map[string]string, len(samples))
+	for _, samp := range samples {
+		sampleMap[samp.ID] = samp.SampleNumber
+	}
+
+	// 4. Агрегация результатов
+	methodMap := make(map[string]*models.MethodResultSummary) // pointer для мутаций
 	totalTests := 0
 	compliantTests := 0
 
+	// Кэш методов, чтобы не грузить одно и то же много раз
+	methodCache := make(map[string]models.TestMethod)
+
 	for _, proto := range protocols {
-		// Загружаем результаты конкретного протокола
-		results, err := s.protocolRepo.GetResultsByProtocolID(ctx, proto.ID) // Нужен такой метод в репо
+		results, err := s.protocolRepo.GetResultsByProtocolID(ctx, proto.ID)
 		if err != nil {
-			s.log.Warn("failed to load results", zap.String("protocol", proto.ID), zap.Error(err))
+			s.log.Warn("failed to load results", zap.String("protocol_id", proto.ID), zap.Error(err))
 			continue
 		}
 
 		for _, res := range results {
-			// Загружаем детали метода (имя, единицы)
-			method, err := s.standardRepo.GetMethodWithInputs(ctx, res.MethodID)
-			if err != nil {
-				continue
+			// Получаем метод из кэша или БД
+			method, exists := methodCache[res.MethodID]
+			if !exists {
+				method, err = s.standardRepo.GetTestMethod(ctx, res.MethodID)
+				if err != nil {
+					s.log.Warn("failed to load method", zap.String("method_id", res.MethodID), zap.Error(err))
+					continue
+				}
+				methodCache[res.MethodID] = method
 			}
 
-			if _, exists := methodMap[method.ID]; !exists {
-				// Инициализируем сводку по методу
-				// Нормы берем из результата (если мы их сохранили денормализованно) или ищем лимит снова
-				methodMap[method.ID] = &models.MethodResultSummary{
+			// Инициализируем сводку по методу при первом появлении
+			summary, exists := methodMap[method.ID]
+			if !exists {
+				summary = &models.MethodResultSummary{
 					MethodID:    method.ID,
 					MethodName:  method.Name,
 					Unit:        method.Unit,
-					MinValue:    res.MinNorm, // Предполагаем, что в TestResult есть поля MinNorm/MaxNorm
-					MaxValue:    res.MaxNorm,
 					IsCompliant: true,
-					Trials:      []models.MethodTrial{},
+					Trials:      make([]models.MethodTrial, 0),
 				}
+				methodMap[method.ID] = summary
 			}
 
-			entry := methodMap[method.ID]
-
+			// Формируем запись испытания
 			isComp := false
 			if res.IsCompliant != nil {
 				isComp = *res.IsCompliant
 			}
 
-			samples, err := s.sampleRepo.GetByGroupID(ctx, groupID)
-			if err != nil {
-				s.log.Warn("failed to load samples for summary", zap.Error(err))
-			}
-			sampleMap := make(map[string]string) // ID -> SampleNumber
-			for _, samp := range samples {
-				sampleMap[samp.ID] = samp.SampleNumber
-			}
-
 			trial := models.MethodTrial{
 				ProtocolID:   proto.ID,
-				SampleNumber: "", // Нужно подгрузить номер пробы из Proto.Sample
-				Value:        0.0,
+				SampleNumber: sampleMap[proto.SampleID], // ✅ Быстрый доступ из предзагруженной мапы
 				IsCompliant:  isComp,
 			}
 
@@ -435,31 +635,30 @@ func (s *ProtocolService) GetGroupSummary(ctx context.Context, groupID string) (
 				trial.Deviation = &res.DeviationMsg
 			}
 
-			// TODO: Подгрузить SampleNumber из протокола или кэша, чтобы не делать лишний запрос в цикле
-
-			entry.Trials = append(entry.Trials, trial)
+			summary.Trials = append(summary.Trials, trial)
 
 			totalTests++
 			if isComp {
 				compliantTests++
 			} else {
-				entry.IsCompliant = false
+				summary.IsCompliant = false
 			}
 		}
 	}
 
-	// Преобразуем мапу в слайс
-	var summaries []models.MethodResultSummary
+	// Преобразуем мапу в слайс для ответа
+	summaries := make([]models.MethodResultSummary, 0, len(methodMap))
 	for _, v := range methodMap {
 		summaries = append(summaries, *v)
 	}
 
-	rate := 0.0
+	// Расчет процента соответствия
+	rate := 100.0
 	if totalTests > 0 {
 		rate = float64(compliantTests) / float64(totalTests) * 100.0
 	}
 
-	return &models.GroupSummary{
+	return models.GroupSummary{
 		GroupID:       group.ID,
 		GroupName:     group.Name,
 		MaterialID:    group.MaterialID,

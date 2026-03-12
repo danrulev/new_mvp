@@ -122,7 +122,8 @@ CREATE TABLE IF NOT EXISTS experiment_groups (
 -- Здесь фиксируется КОНТЕКСТ пробы, необходимый для подбора норм
 CREATE TABLE IF NOT EXISTS samples (
     id TEXT PRIMARY KEY,
-    group_id TEXT NOT NULL,
+    group_id TEXT,
+    material_id TEXT NOT NULL,
     sample_number TEXT NOT NULL, -- Номер пробы в журнале
     collection_date DATE,
     
@@ -131,9 +132,7 @@ CREATE TABLE IF NOT EXISTS samples (
     context_params TEXT NOT NULL DEFAULT '{}', 
     
     note TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
-    
-    FOREIGN KEY (group_id) REFERENCES experiment_groups(id) ON DELETE CASCADE
+    created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_samples_group ON samples(group_id);
 -- Индекс для поиска проб по параметрам (потребуется функциональный индекс или поиск по JSON в коде)

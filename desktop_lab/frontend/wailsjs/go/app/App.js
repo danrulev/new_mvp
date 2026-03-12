@@ -6,8 +6,20 @@ export function CreateGroup(arg1, arg2, arg3, arg4) {
   return window['go']['app']['App']['CreateGroup'](arg1, arg2, arg3, arg4);
 }
 
+export function CreateMaterial(arg1, arg2) {
+  return window['go']['app']['App']['CreateMaterial'](arg1, arg2);
+}
+
 export function CreateProtocolWithSample(arg1) {
   return window['go']['app']['App']['CreateProtocolWithSample'](arg1);
+}
+
+export function CreateStandard(arg1) {
+  return window['go']['app']['App']['CreateStandard'](arg1);
+}
+
+export function EmitEvent(arg1, arg2) {
+  return window['go']['app']['App']['EmitEvent'](arg1, arg2);
 }
 
 export function GenerateGroupSummaryPDF(arg1) {
@@ -50,12 +62,36 @@ export function GetProtocolByID(arg1) {
   return window['go']['app']['App']['GetProtocolByID'](arg1);
 }
 
+export function GetProtocolFull(arg1) {
+  return window['go']['app']['App']['GetProtocolFull'](arg1);
+}
+
 export function GetProtocols(arg1, arg2) {
   return window['go']['app']['App']['GetProtocols'](arg1, arg2);
 }
 
+export function GetProtocolsByGroupID(arg1) {
+  return window['go']['app']['App']['GetProtocolsByGroupID'](arg1);
+}
+
+export function GetStandardDimensions(arg1) {
+  return window['go']['app']['App']['GetStandardDimensions'](arg1);
+}
+
 export function GetStandardsByMaterialID(arg1) {
   return window['go']['app']['App']['GetStandardsByMaterialID'](arg1);
+}
+
+export function Init(arg1, arg2) {
+  return window['go']['app']['App']['Init'](arg1, arg2);
+}
+
+export function InvalidateStandardCache(arg1) {
+  return window['go']['app']['App']['InvalidateStandardCache'](arg1);
+}
+
+export function LogFrontendEvent(arg1, arg2, arg3) {
+  return window['go']['app']['App']['LogFrontendEvent'](arg1, arg2, arg3);
 }
 
 export function SaveGroupPDFWithDialog(arg1) {
