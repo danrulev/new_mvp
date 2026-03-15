@@ -23,7 +23,7 @@ type StandardRepo interface {
 	GetMethodInputs(ctx context.Context, methodID string) ([]models.MethodInput, error)
 	GetStandardDimensions(ctx context.Context, standardID string) ([]models.ContextDimension, error)
 	GetMethodsFullByStandardID(ctx context.Context, standardID string) (map[string]models.TestMethodFull, error)
-	GetStandardFull(ctx context.Context, standardID string) (*models.StandardContext, error)
+	GetStandardFull(ctx context.Context, standardID string) (models.StandardContext, error)
 	GetMethodLimits(ctx context.Context, methodID string) ([]models.NormativeLimit, error)
 	GetLimitConditions(ctx context.Context, limitID string) ([]models.LimitCondition, error)
 }

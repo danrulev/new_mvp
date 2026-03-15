@@ -699,7 +699,7 @@ func (a *App) SaveProtocolPDFWithDialog(protocolID string) (string, error) {
 		Filters: []runtime.FileFilter{
 			{Pattern: "*.pdf", DisplayName: "PDF Files"},
 		},
-		DefaultFilename: "protocol.pdf",
+		DefaultFilename: protocolID + "_protocol.pdf",
 	})
 	if err != nil {
 		return "", a.wrapError("SaveProtocolPDFWithDialog: dialog", err)
@@ -740,7 +740,7 @@ func (a *App) SaveGroupPDFWithDialog(groupID string) (string, error) {
 		Filters: []runtime.FileFilter{
 			{Pattern: "*.pdf", DisplayName: "PDF Files"},
 		},
-		DefaultFilename: "group_summary.pdf",
+		DefaultFilename: groupID + "_group_summary.pdf",
 	})
 	if err != nil || filePath == "" {
 		return "", err

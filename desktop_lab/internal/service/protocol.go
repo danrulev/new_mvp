@@ -109,7 +109,6 @@ func (s *ProtocolService) createProtocolWithCache(
 	results []models.CreateResultDTO,
 	methodsCache map[string]models.TestMethodFull,
 ) (models.Protocol, error) {
-
 	finalResults := make([]models.TestResult, 0, len(results))
 
 	for _, inputRes := range results {
@@ -122,36 +121,61 @@ func (s *ProtocolService) createProtocolWithCache(
 		method := fullMethod.Method
 		inputs := fullMethod.Inputs
 
+		s.log.Debug("Processing method",
+			zap.String("method_id", method.ID),
+			zap.String("formula", method.FormulaExpr),
+			zap.Any("raw_inputs", inputRes.RawInputs),
+			zap.Bool("is_mandatory", method.IsMandatory))
+
 		var calculatedValue float64
 		inputDataMap := make(map[string]interface{})
 
-		// --- РАСЧЕТ ФОРМУЛЫ ---
-		if method.FormulaExpr != nil {
+		// Проверка: есть ли формула?
+		hasFormula := method.FormulaExpr != ""
+
+		if hasFormula {
 			params := make(map[string]interface{})
 
 			for _, inp := range inputs {
 				valStr, exists := inputRes.RawInputs[inp.ParamKey]
+
+				s.log.Debug("Checking input param",
+					zap.String("key", inp.ParamKey),
+					zap.String("found_value", valStr),
+					zap.Bool("exists", exists))
+
 				if inp.IsRequired && (!exists || valStr == "") {
-					return models.Protocol{}, fmt.Errorf("требуется параметр '%s' для метода '%s'", inp.Label, method.Name)
+					return models.Protocol{}, fmt.Errorf("требуется параметр '%s' (%s) для метода '%s'", inp.Label, inp.ParamKey, method.Name)
 				}
 				if !exists || valStr == "" {
 					continue
 				}
+
 				val, err := strconv.ParseFloat(valStr, 64)
 				if err != nil {
 					return models.Protocol{}, fmt.Errorf("некорректное число '%s' для параметра '%s': %w", valStr, inp.Label, err)
 				}
+
 				params[inp.ParamKey] = val
 				inputDataMap[inp.ParamKey] = val
 			}
 
-			calculatedValue, err := s.calculateFormula(*method.FormulaExpr, params)
+			s.log.Debug("Calling calculateFormula",
+				zap.String("expr", method.FormulaExpr),
+				zap.Any("params", params))
+
+			calcVal, err := s.calculateFormula(method.FormulaExpr, params)
 			if err != nil {
+				s.log.Error("Formula calculation failed", zap.Error(err), zap.String("method", method.Name))
 				return models.Protocol{}, fmt.Errorf("ошибка расчета формулы '%s': %w", method.Name, err)
 			}
-			calculatedValue = math.Round(calculatedValue*100) / 100
+
+			calculatedValue = math.Round(calcVal*100) / 100
+			s.log.Debug("Calculation result", zap.Float64("value", calculatedValue))
+
 		} else {
-			// Ручной ввод значения
+			// Ветка ручного ввода
+			s.log.Debug("No formula found, using manual value")
 			calculatedValue = s.parseManualValue(inputRes.RawInputs, &inputDataMap)
 			calculatedValue = math.Round(calculatedValue*100) / 100
 		}
@@ -215,7 +239,6 @@ func (s *ProtocolService) createProtocolLegacy(
 	sample models.Sample,
 	results []models.CreateResultDTO,
 ) (models.Protocol, error) {
-
 	finalResults := make([]models.TestResult, 0, len(results))
 
 	for _, inputRes := range results {
@@ -232,7 +255,7 @@ func (s *ProtocolService) createProtocolLegacy(
 		var calculatedValue float64
 		inputDataMap := make(map[string]interface{})
 
-		if method.IsMandatory && method.FormulaExpr != nil && *method.FormulaExpr != "" {
+		if method.FormulaExpr != "" {
 			params := make(map[string]interface{})
 			for _, inp := range inputs {
 				valStr, exists := inputRes.RawInputs[inp.ParamKey]
@@ -249,7 +272,7 @@ func (s *ProtocolService) createProtocolLegacy(
 				params[inp.ParamKey] = val
 				inputDataMap[inp.ParamKey] = val
 			}
-			calculatedValue, err = s.calculateFormula(*method.FormulaExpr, params)
+			calculatedValue, err = s.calculateFormula(method.FormulaExpr, params)
 			if err != nil {
 				return models.Protocol{}, fmt.Errorf("ошибка расчета формулы '%s': %w", method.Name, err)
 			}
@@ -315,7 +338,6 @@ func (s *ProtocolService) findMatchingLimit(
 	conditionsMap map[string][]models.LimitCondition,
 	contextParams map[string]string,
 ) models.NormativeLimit {
-
 	var defaultLimit *models.NormativeLimit
 
 	for i := range limits {
@@ -422,7 +444,6 @@ func (s *ProtocolService) saveProtocol(
 	sample models.Sample,
 	results []models.TestResult,
 ) (models.Protocol, error) {
-
 	// Сериализация контекста пробы
 	rawJSON, err := sample.ToJSON()
 	if err != nil {

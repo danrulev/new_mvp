@@ -2,9 +2,9 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Сводный протокол испытаний</title>
+    <title>Протокол испытаний № {{.Protocol.Number}}</title>
     <style>
-        /* --- ВСТАВИТЬ ЭТОТ БЛОК ВНАЧАЛО --- */
+        /* --- Подключение шрифтов (если указан путь) --- */
         {{if .FontPath}}
         @font-face {
             font-family: 'DejaVu Sans';
@@ -24,93 +24,185 @@
             font-weight: normal;
             font-style: italic;
         }
-        @font-face {
-            font-family: 'DejaVu Serif';
-            src: url('file://{{.FontPath}}/DejaVuSerif.ttf');
-        }
         {{end}}
-        /* ---------------------------------- */
 
         body {
-            font-family: "DejaVu Sans", sans-serif; /* Теперь этот шрифт найдется */
-            font-size: 11px;
-            margin: 20mm;
-            line-height: 1.4;
+            font-family: "DejaVu Sans", sans-serif;
+            font-size: 12px;
+            margin: 15mm;
+            line-height: 1.5;
+            color: #333;
         }
-        /* Остальные стили без изменений... */
+
         h1 {
             text-align: center;
             font-size: 18px;
             margin-bottom: 20px;
+            text-transform: uppercase;
         }
-        .header-line {
+
+        .header-block {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+
+        .header-row {
+            margin-bottom: 6px;
+            display: flex;
+        }
+
+        .header-label {
             font-weight: bold;
-            margin-bottom: 4px;
+            width: 140px;
+            flex-shrink: 0;
         }
+
         .section-title {
             font-weight: bold;
             font-size: 14px;
-            margin: 15px 0 8px 0;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            background-color: #f0f0f0;
+            padding: 5px;
+            border-left: 4px solid #333;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-bottom: 15px;
+            font-size: 11px;
         }
+
         th, td {
             border: 1px solid #000;
-            padding: 6px 4px;
+            padding: 6px;
             text-align: left;
-            vertical-align: top;
+            vertical-align: middle;
         }
+
         th {
-            background-color: #f5f5f5;
+            background-color: #eaeaea;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .compliance-ok {
+            color: green;
             font-weight: bold;
         }
-        .signature {
-            margin-top: 30px;
+
+        .compliance-fail {
+            color: red;
+            font-weight: bold;
+        }
+
+        .footer-signature {
+            margin-top: 40px;
+            page-break-inside: avoid;
+        }
+
+        .sign-line {
+            margin-top: 20px;
+            border-top: 1px solid #000;
+            width: 200px;
+            text-align: center;
+            padding-top: 5px;
             font-style: italic;
+            font-size: 10px;
         }
     </style>
 </head>
 <body>
+
     <h1>Протокол испытаний</h1>
 
-    <div class="header-line">Протокол № {{.Protocol.ID}}</div>
-    <div>Дата: {{.FormattedDate}}</div>
-    <div>Лаборатория: {{.Protocol.LabName}}</div>
-    <div>Оператор: {{.Protocol.Operator}}</div>
-    <div>Проект: {{.Protocol.Project}}</div>
+    <div class="header-block">
+        <div class="header-row">
+            <span class="header-label">Протокол №:</span>
+            <span>{{.Protocol.Number}}</span>
+        </div>
+        <div class="header-row">
+            <span class="header-label">Дата:</span>
+            <span>{{.Protocol.Date}}</span>
+        </div>
+        <div class="header-row">
+            <span class="header-label">Лаборатория:</span>
+            <span>{{.Protocol.LabName}}</span>
+        </div>
+        <div class="header-row">
+            <span class="header-label">Оператор:</span>
+            <span>{{.Protocol.Operator}}</span>
+        </div>
+        <div class="header-row">
+            <span class="header-label">Проект / Группа:</span>
+            <span>{{.Protocol.Project}}</span>
+        </div>
+    </div>
 
     <div class="section-title">Информация о пробе</div>
-    <div>Материал: {{.Material.Name}}</div>
-    <div>Номер пробы: {{.Sample.Number}}</div>
-    <div>Место отбора: {{.Sample.CollectionPlace}}</div>
+    <div class="header-row">
+        <span class="header-label">Материал:</span>
+        <span>{{.Material.Name}} ({{.Material.Code}})</span>
+    </div>
+    <div class="header-row">
+        <span class="header-label">Номер пробы:</span>
+        <span>{{.Sample.Number}}</span>
+    </div>
+    <div class="header-row">
+        <span class="header-label">Место отбора:</span>
+        <span>{{.Sample.CollectionPlace}}</span>
+    </div>
+    {{if .Sample.Note}}
+    <div class="header-row">
+        <span class="header-label">Примечание:</span>
+        <span>{{.Sample.Note}}</span>
+    </div>
+    {{end}}
 
     <div class="section-title">Результаты испытаний</div>
+    
+    {{if .Results}}
     <table>
         <thead>
             <tr>
-                <th>Метод</th>
-                <th>Значение</th>
-                <th>Норма</th>
-                <th>Соответствие</th>
-                <th>Отклонение</th>
+                <th style="width: 30%;">Метод</th>
+                <th style="width: 15%;">Значение</th>
+                <th style="width: 20%;">Норма</th>
+                <th style="width: 15%;">Соответствие</th>
+                <th style="width: 20%;">Отклонение</th>
             </tr>
         </thead>
         <tbody>
             {{range .Results}}
             <tr>
                 <td>{{.MethodName}}</td>
-                <td>{{printf "%.2f %s" .Value .Unit}}</td>
+                <td>{{printf "%.3f %s" .Value .Unit}}</td>
                 <td>{{.Norm}}</td>
-                <td>{{.Compliance}}</td>
+                <td>
+                    {{if eq .Compliance "Соответствует"}}
+                        <span class="compliance-ok">{{.Compliance}}</span>
+                    {{else}}
+                        <span class="compliance-fail">{{.Compliance}}</span>
+                    {{end}}
+                </td>
                 <td>{{.Deviation}}</td>
             </tr>
             {{end}}
         </tbody>
     </table>
+    {{else}}
+    <p>Результаты испытаний отсутствуют.</p>
+    {{end}}
 
-    <div class="signature">Подпись оператора: ___________________</div>
+    <div class="footer-signature">
+        <div>Ответственное лицо:</div>
+        <div class="sign-line">Подпись оператора</div>
+        <div style="margin-top: 10px; font-size: 10px; color: #777;">
+            Дата формирования отчета: {{.FormattedDate}}
+        </div>
+    </div>
+
 </body>
 </html>

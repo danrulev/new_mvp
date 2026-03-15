@@ -132,6 +132,7 @@ export namespace models {
 	export class CreateMethodDTO {
 	    code: string;
 	    name: string;
+	    is_mandatory: boolean;
 	    formula_expr?: string;
 	    unit: string;
 	    inputs?: MethodInputDTO[];
@@ -145,6 +146,7 @@ export namespace models {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.code = source["code"];
 	        this.name = source["name"];
+	        this.is_mandatory = source["is_mandatory"];
 	        this.formula_expr = source["formula_expr"];
 	        this.unit = source["unit"];
 	        this.inputs = this.convertValues(source["inputs"], MethodInputDTO);

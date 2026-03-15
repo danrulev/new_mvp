@@ -23,7 +23,6 @@ func NewStandardRepo(db *sqlx.DB, log *zap.Logger) StandardRepo {
 }
 
 // CreateFull - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ
-// Использует подготовленные statements для ускорения массовых вставок
 func (r *standardRepo) CreateFull(ctx context.Context, req models.CreateStandardRequest) (string, error) {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
@@ -46,9 +45,8 @@ func (r *standardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 		return "", fmt.Errorf("failed to insert standard: %w", err)
 	}
 
-	// 2. Создаем Dimensions (пакетная вставка)
+	// 2. Создаем Dimensions
 	if len(req.Dimensions) > 0 {
-		// Подготавливаем statement один раз
 		stmt, err := tx.PreparexContext(ctx,
 			`INSERT INTO context_dimensions (id, standard_id, key_name, label, data_type, possible_values) 
 			 VALUES (?, ?, ?, ?, ?, ?)`,
@@ -75,7 +73,6 @@ func (r *standardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 	}
 
 	// 3. Создаем Методы и вложенные сущности
-	// Подготавливаем statements заранее
 	stmtMethod, err := tx.PreparexContext(ctx,
 		`INSERT INTO test_methods (id, standard_id, code, name, formula_expr, unit, result_type, is_mandatory)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -114,7 +111,10 @@ func (r *standardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 
 	for _, mReq := range req.Methods {
 		methodID := uuid.New().String()
-		isMandatory := 1
+		isMandatory := 0
+		if mReq.IsMandatory {
+			isMandatory = 1
+		}
 
 		_, err = stmtMethod.ExecContext(ctx,
 			methodID, stdID, mReq.Code, mReq.Name, mReq.FormulaExpr, mReq.Unit, "scalar", isMandatory,
@@ -171,10 +171,7 @@ func (r *standardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 }
 
 // GetApplicableLimit - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ
-// Один JOIN-запрос вместо N+1, фильтрация в памяти
 func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, contextParams map[string]string) (models.NormativeLimit, error) {
-	// Один запрос с получением лимитов и их условий
-	// Используем LEFT JOIN, чтобы получить даже лимиты без условий
 	query := `
 		SELECT 
 			nl.id, nl.method_id, nl.limit_type, nl.min_value, nl.max_value, nl.priority,
@@ -191,7 +188,6 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 	}
 	defer rows.Close()
 
-	// Группируем лимиты и их условия в памяти
 	limitsMap := make(map[string]*struct {
 		Limit      models.NormativeLimit
 		Conditions []models.LimitCondition
@@ -211,7 +207,6 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 			return models.NormativeLimit{}, err
 		}
 
-		// Инициализируем лимит, если видим впервые
 		_, exists := limitsMap[limitID]
 		if !exists {
 			limit := models.NormativeLimit{
@@ -232,7 +227,6 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 			}{Limit: limit, Conditions: []models.LimitCondition{}}
 		}
 
-		// Добавляем условие, если есть
 		if dimKey.Valid {
 			cond := models.LimitCondition{
 				LimitID:           limitID,
@@ -251,15 +245,12 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 		return models.NormativeLimit{}, err
 	}
 
-	// Преобразуем мапу в слайс и сортируем по приоритету (если нужно)
-	// Но так как в запросе уже есть ORDER BY, просто ищем первое совпадение
 	var defaultLimit *models.NormativeLimit
 
 	for _, entry := range limitsMap {
 		limit := entry.Limit
 		conds := entry.Conditions
 
-		// Лимит без условий — кандидат на дефолтный
 		if len(conds) == 0 {
 			if defaultLimit == nil {
 				defaultLimit = &limit
@@ -267,7 +258,6 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 			continue
 		}
 
-		// Проверяем все условия
 		match := true
 		for _, cond := range conds {
 			actualVal, exists := contextParams[cond.DimensionKey]
@@ -299,7 +289,6 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 		}
 	}
 
-	// Возвращаем дефолтный лимит (без условий), если специфичный не найден
 	if defaultLimit != nil {
 		return *defaultLimit, nil
 	}
@@ -307,7 +296,6 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 	return models.NormativeLimit{}, nil
 }
 
-// containsCSV проверяет наличие значения в строке "val1,val2,val3"
 func containsCSV(csv, target string) bool {
 	for _, v := range strings.Split(csv, ",") {
 		if strings.TrimSpace(v) == target {
@@ -317,7 +305,6 @@ func containsCSV(csv, target string) bool {
 	return false
 }
 
-// GetTestMethod - без изменений, запрос простой и эффективный
 func (r *standardRepo) GetTestMethod(ctx context.Context, methodID string) (models.TestMethod, error) {
 	method := models.TestMethod{}
 	err := r.db.QueryRowxContext(ctx,
@@ -336,7 +323,6 @@ func (r *standardRepo) GetTestMethod(ctx context.Context, methodID string) (mode
 	return method, nil
 }
 
-// GetByMaterialID - без изменений
 func (r *standardRepo) GetByMaterialID(ctx context.Context, materialID string) ([]models.Standard, error) {
 	var standards []models.Standard
 	err := r.db.SelectContext(ctx, &standards,
@@ -347,14 +333,12 @@ func (r *standardRepo) GetByMaterialID(ctx context.Context, materialID string) (
 	if err != nil {
 		return nil, err
 	}
-	// Устанавливаем MaterialID для каждого (если не загружается автоматически)
 	for i := range standards {
 		standards[i].MaterialID = materialID
 	}
 	return standards, nil
 }
 
-// GetMethodsByStandardID - используем sqlx.Select для чистоты кода
 func (r *standardRepo) GetMethodsByStandardID(ctx context.Context, standardID string) ([]models.TestMethod, error) {
 	var methods []models.TestMethod
 	err := r.db.SelectContext(ctx, &methods,
@@ -370,7 +354,6 @@ func (r *standardRepo) GetMethodsByStandardID(ctx context.Context, standardID st
 	return methods, nil
 }
 
-// GetMethodInputs - используем sqlx.Select
 func (r *standardRepo) GetMethodInputs(ctx context.Context, methodID string) ([]models.MethodInput, error) {
 	var inputs []models.MethodInput
 	err := r.db.SelectContext(ctx, &inputs,
@@ -386,34 +369,35 @@ func (r *standardRepo) GetMethodInputs(ctx context.Context, methodID string) ([]
 	return inputs, nil
 }
 
-type NormativeLimit struct {
-	ID             string                 `db:"id" json:"id"`
-	MethodID       string                 `db:"method_id" json:"method_id"`
-	LimitType      string                 `db:"limit_type" json:"limit_type"`
-	MinValue       *float64               `db:"min_value" json:"min_value,omitempty"`
-	MaxValue       *float64               `db:"max_value" json:"max_value,omitempty"`
-	DiscreteValues models.JSONStringSlice `db:"discrete_values" json:"discrete_values,omitempty"`
-	Note           *string                `db:"note" json:"note,omitempty"`
-	Priority       int                    `db:"priority" json:"priority"`
+// Вспомогательная структура для маппинга (локальная)
+type NormativeLimitDB struct {
+	ID             string                 `db:"id"`
+	MethodID       string                 `db:"method_id"`
+	LimitType      string                 `db:"limit_type"`
+	MinValue       *float64               `db:"min_value"`
+	MaxValue       *float64               `db:"max_value"`
+	DiscreteValues models.JSONStringSlice `db:"discrete_values"`
+	Note           *string                `db:"note"`
+	Priority       int                    `db:"priority"`
 }
 
 func (r *standardRepo) GetMethodLimits(ctx context.Context, methodID string) ([]models.NormativeLimit, error) {
+	// 🔥 ИСПРАВЛЕНО: $? заменен на ? для MySQL
 	query := `SELECT id, method_id, limit_type, min_value, max_value, discrete_values, note, priority 
 			  FROM normative_limits 
-			  WHERE method_id = $1 
+			  WHERE method_id = ? 
 			  ORDER BY priority`
 
-	var limits []NormativeLimit
-	// Используем SelectContext для выполнения запроса
+	var limits []NormativeLimitDB
 	err := r.db.SelectContext(ctx, &limits, query, methodID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch limits: %w", err)
 	}
 
-	// Возвращаем пустой слайс вместо nil, если ничего не найдено
 	if limits == nil {
 		return []models.NormativeLimit{}, nil
 	}
+
 	out := make([]models.NormativeLimit, len(limits))
 	for i, limit := range limits {
 		out[i] = limit.toModel()
@@ -422,22 +406,23 @@ func (r *standardRepo) GetMethodLimits(ctx context.Context, methodID string) ([]
 	return out, nil
 }
 
-func (nl NormativeLimit) toModel() models.NormativeLimit {
+func (nl NormativeLimitDB) toModel() models.NormativeLimit {
 	return models.NormativeLimit{
 		ID:             nl.ID,
 		MethodID:       nl.MethodID,
 		LimitType:      nl.LimitType,
 		MinValue:       nl.MinValue,
 		MaxValue:       nl.MaxValue,
-		DiscreteValues: []string(nl.DiscreteValues), // Явное приведение типа
+		DiscreteValues: []string(nl.DiscreteValues),
 		Note:           nl.Note,
 		Priority:       nl.Priority,
 	}
 }
 
 func (r *standardRepo) GetLimitConditions(ctx context.Context, limitID string) ([]models.LimitCondition, error) {
+	// 🔥 ИСПРАВЛЕНО: $1 заменен на ? для MySQL
 	query := `SELECT id, limit_id, dimension_key, condition_operator, expected_value 
-			  FROM limit_conditions WHERE limit_id = $1`
+			  FROM limit_conditions WHERE limit_id = ?`
 
 	var conditions []models.LimitCondition
 	err := r.db.SelectContext(ctx, &conditions, query, limitID)
@@ -452,7 +437,6 @@ func (r *standardRepo) GetLimitConditions(ctx context.Context, limitID string) (
 	return conditions, nil
 }
 
-// GetStandardDimensions - 🔥 ИСПРАВЛЕНО: context_dimensions вместо standard_dimensions
 func (r *standardRepo) GetStandardDimensions(ctx context.Context, standardID string) ([]models.ContextDimension, error) {
 	query := `SELECT id, standard_id, key_name, label, data_type, possible_values 
 			  FROM context_dimensions 
@@ -478,12 +462,10 @@ func (r *standardRepo) GetStandardDimensions(ctx context.Context, standardID str
 			return nil, err
 		}
 
-		// Парсим JSON только если поле не NULL и не пустое
 		if possibleValuesRaw.Valid && possibleValuesRaw.String != "" && possibleValuesRaw.String != "null" {
 			if err := json.Unmarshal([]byte(possibleValuesRaw.String), &dim.PossibleValues); err != nil {
 				r.log.Warn("failed to parse possible_values",
 					zap.String("dimension", dim.KeyName), zap.Error(err))
-				// Не прерываем, возвращаем пустой слайс
 				dim.PossibleValues = []string{}
 			}
 		} else {
@@ -496,8 +478,7 @@ func (r *standardRepo) GetStandardDimensions(ctx context.Context, standardID str
 	return dimensions, rows.Err()
 }
 
-// GetMethodsFullByStandardID - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ с sqlx
-// Загружает методы, инпуты, лимиты и условия одним запросом
+// GetMethodsFullByStandardID - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ
 func (r *standardRepo) GetMethodsFullByStandardID(ctx context.Context, standardID string) (map[string]models.TestMethodFull, error) {
 	query := `
 		SELECT 
@@ -533,7 +514,7 @@ func (r *standardRepo) GetMethodsFullByStandardID(ctx context.Context, standardI
 			ResultType  string         `db:"result_type"`
 			IsMandatory int            `db:"is_mandatory"`
 
-			// Input (nullable)
+			// Input
 			InputID    sql.NullString `db:"input_id"`
 			ParamKey   sql.NullString `db:"param_key"`
 			InputLabel sql.NullString `db:"input_label"`
@@ -541,14 +522,14 @@ func (r *standardRepo) GetMethodsFullByStandardID(ctx context.Context, standardI
 			InputType  sql.NullString `db:"input_type"`
 			InputIsReq sql.NullInt64  `db:"input_is_req"`
 
-			// Limit (nullable)
+			// Limit
 			LimitID   sql.NullString  `db:"limit_id"`
 			LimitType sql.NullString  `db:"limit_type"`
 			MinValue  sql.NullFloat64 `db:"min_value"`
 			MaxValue  sql.NullFloat64 `db:"max_value"`
 			Priority  sql.NullInt64   `db:"priority"`
 
-			// Condition (nullable)
+			// Condition
 			DimKey      sql.NullString `db:"dimension_key"`
 			CondOp      sql.NullString `db:"condition_operator"`
 			ExpectedVal sql.NullString `db:"expected_value"`
@@ -558,7 +539,6 @@ func (r *standardRepo) GetMethodsFullByStandardID(ctx context.Context, standardI
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
-		// Инициализация метода
 		fullMethod, exists := resultMap[row.MethodID]
 		if !exists {
 			fullMethod = models.TestMethodFull{
@@ -579,11 +559,10 @@ func (r *standardRepo) GetMethodsFullByStandardID(ctx context.Context, standardI
 				fullMethod.Method.Description = &row.Description.String
 			}
 			if row.FormulaExpr.Valid {
-				fullMethod.Method.FormulaExpr = &row.FormulaExpr.String
+				fullMethod.Method.FormulaExpr = row.FormulaExpr.String
 			}
 		}
 
-		// Добавляем Input
 		if row.InputID.Valid {
 			input := models.MethodInput{
 				ID:        row.InputID.String,
@@ -601,9 +580,7 @@ func (r *standardRepo) GetMethodsFullByStandardID(ctx context.Context, standardI
 			fullMethod.Inputs = append(fullMethod.Inputs, input)
 		}
 
-		// Добавляем Limit
 		if row.LimitID.Valid {
-			// Проверяем, не добавлен ли уже этот лимит
 			var currentLimit *models.NormativeLimit
 			for i := range fullMethod.Limits {
 				if fullMethod.Limits[i].ID == row.LimitID.String {
@@ -634,7 +611,6 @@ func (r *standardRepo) GetMethodsFullByStandardID(ctx context.Context, standardI
 				fullMethod.LimitConditions[currentLimit.ID] = []models.LimitCondition{}
 			}
 
-			// Добавляем Condition
 			if row.DimKey.Valid {
 				cond := models.LimitCondition{
 					LimitID:       currentLimit.ID,
@@ -655,24 +631,19 @@ func (r *standardRepo) GetMethodsFullByStandardID(ctx context.Context, standardI
 	return resultMap, rows.Err()
 }
 
-// GetStandardFull - НОВЫЙ МЕТОД для эффективной загрузки всего стандарта для UI
-// Возвращает стандарт с измерениями и методами (без глубокой вложенности лимитов для списка)
-func (r *standardRepo) GetStandardFull(ctx context.Context, standardID string) (*models.StandardContext, error) {
-	ctxData := &models.StandardContext{
+func (r *standardRepo) GetStandardFull(ctx context.Context, standardID string) (models.StandardContext, error) {
+	ctxData := models.StandardContext{
 		StandardID: standardID,
 		Dimensions: []models.ContextDimension{},
 		Methods:    make(map[string]models.TestMethodFull),
 	}
 
-	// 1. Загружаем измерения (параллельно можно, но для простоты последовательно)
 	dims, err := r.GetStandardDimensions(ctx, standardID)
 	if err != nil {
-		return nil, err
+		return models.StandardContext{}, err
 	}
 	ctxData.Dimensions = dims
 
-	// 2. Загружаем методы с инпутами (лимиты не грузим для списка — только при валидации)
-	// Отдельный запрос без условий лимитов для скорости
 	query := `
 		SELECT 
 			tm.id, tm.code, tm.name, tm.description, tm.formula_expr, tm.unit, tm.result_type, tm.is_mandatory,
@@ -685,13 +656,12 @@ func (r *standardRepo) GetStandardFull(ctx context.Context, standardID string) (
 
 	rows, err := r.db.QueryxContext(ctx, query, standardID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query methods for standard: %w", err)
+		return models.StandardContext{}, fmt.Errorf("failed to query methods for standard: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var row struct {
-			// Method
 			MethodID    string         `db:"id"`
 			Code        string         `db:"code"`
 			Name        string         `db:"name"`
@@ -700,17 +670,16 @@ func (r *standardRepo) GetStandardFull(ctx context.Context, standardID string) (
 			Unit        string         `db:"unit"`
 			ResultType  string         `db:"result_type"`
 			IsMandatory int            `db:"is_mandatory"`
-			// Input
-			InputID    sql.NullString `db:"input_id"`
-			ParamKey   sql.NullString `db:"param_key"`
-			InputLabel sql.NullString `db:"input_label"`
-			InputUnit  sql.NullString `db:"input_unit"`
-			InputType  sql.NullString `db:"input_type"`
-			InputIsReq sql.NullInt64  `db:"input_is_req"`
+			InputID     sql.NullString `db:"input_id"`
+			ParamKey    sql.NullString `db:"param_key"`
+			InputLabel  sql.NullString `db:"input_label"`
+			InputUnit   sql.NullString `db:"input_unit"`
+			InputType   sql.NullString `db:"input_type"`
+			InputIsReq  sql.NullInt64  `db:"input_is_req"`
 		}
 
 		if err := rows.StructScan(&row); err != nil {
-			return nil, err
+			return models.StandardContext{}, err
 		}
 
 		fullMethod, exists := ctxData.Methods[row.MethodID]
@@ -726,7 +695,7 @@ func (r *standardRepo) GetStandardFull(ctx context.Context, standardID string) (
 				fullMethod.Method.Description = &row.Description.String
 			}
 			if row.FormulaExpr.Valid {
-				fullMethod.Method.FormulaExpr = &row.FormulaExpr.String
+				fullMethod.Method.FormulaExpr = row.FormulaExpr.String
 			}
 		}
 

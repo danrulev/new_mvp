@@ -83,7 +83,7 @@ type TestMethod struct {
 	Code        string  `json:"code,omitempty" db:"code"`
 	Name        string  `json:"name" db:"name"`
 	Description *string `json:"description,omitempty" db:"description"`
-	FormulaExpr *string `json:"formula_expr,omitempty" db:"formula_expr"`
+	FormulaExpr string  `json:"formula_expr,omitempty" db:"formula_expr"`
 	Unit        string  `json:"unit" db:"unit"`
 	ResultType  string  `json:"result_type" db:"result_type"`
 	IsMandatory bool    `json:"is_mandatory" db:"is_mandatory"`
@@ -198,6 +198,7 @@ type ContextDimensionDTO struct {
 type CreateMethodDTO struct {
 	Code        string           `json:"code"`
 	Name        string           `json:"name"`
+	IsMandatory bool             `json:"is_mandatory"`
 	FormulaExpr string           `json:"formula_expr,omitempty"`
 	Unit        string           `json:"unit"`
 	Inputs      []MethodInputDTO `json:"inputs,omitempty"`

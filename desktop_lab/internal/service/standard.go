@@ -196,7 +196,7 @@ func (s *StandardService) GetStandardDimensions(ctx context.Context, standardID 
 
 // GetStandardFull - НОВЫЙ МЕТОД для эффективной загрузки всего контекста стандарта
 // Идеально для инициализации формы создания протокола
-func (s *StandardService) GetStandardFull(ctx context.Context, standardID string) (*models.StandardContext, error) {
+func (s *StandardService) GetStandardFull(ctx context.Context, standardID string) (models.StandardContext, error) {
 	// Можно добавить кэширование всей структуры, если нужно
 	return s.repo.GetStandardFull(ctx, standardID)
 }

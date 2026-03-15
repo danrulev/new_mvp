@@ -2,102 +2,118 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Сводный протокол испытаний</title>
+    <title>Сводный протокол группы</title>
     <style>
-        /* --- ВСТАВИТЬ ЭТОТ БЛОК ВНАЧАЛО --- */
         {{if .FontPath}}
         @font-face {
             font-family: 'DejaVu Sans';
             src: url('file://{{.FontPath}}/DejaVuSans.ttf');
-            font-weight: normal;
-            font-style: normal;
         }
         @font-face {
             font-family: 'DejaVu Sans';
             src: url('file://{{.FontPath}}/DejaVuSans-Bold.ttf');
             font-weight: bold;
-            font-style: normal;
-        }
-        @font-face {
-            font-family: 'DejaVu Sans';
-            src: url('file://{{.FontPath}}/DejaVuSans-Oblique.ttf');
-            font-weight: normal;
-            font-style: italic;
-        }
-        @font-face {
-            font-family: 'DejaVu Serif';
-            src: url('file://{{.FontPath}}/DejaVuSerif.ttf');
         }
         {{end}}
-        /* ---------------------------------- */
 
         body {
-            font-family: "DejaVu Sans", sans-serif; /* Теперь этот шрифт найдется */
+            font-family: "DejaVu Sans", sans-serif;
             font-size: 11px;
-            margin: 20mm;
+            margin: 15mm;
             line-height: 1.4;
         }
-        /* Остальные стили без изменений... */
+
         h1 {
             text-align: center;
             font-size: 16px;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
-        .header {
-            margin-bottom: 12px;
+
+        .info-block {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
         }
-        .header div {
-            margin-bottom: 4px;
+
+        .info-row {
+            margin-bottom: 5px;
         }
-        .method-block {
-            margin-top: 16px;
-            page-break-inside: avoid;
-        }
-        .method-title {
+        
+        .info-label {
             font-weight: bold;
-            font-size: 12px;
-            margin-bottom: 6px;
+            margin-right: 10px;
         }
-        .norm {
-            margin-bottom: 8px;
+
+        .method-block {
+            margin-top: 20px;
+            page-break-inside: avoid;
+            border: 1px solid #eee;
+        }
+
+        .method-header {
+            background-color: #eaeaea;
+            padding: 8px;
+            font-weight: bold;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .norm-info {
             font-style: italic;
+            font-size: 10px;
+            padding: 4px 8px;
+            background: #fff;
+            border-bottom: 1px solid #eee;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 12px;
         }
+
         th, td {
-            border: 1px solid #000;
-            padding: 5px;
+            border: 1px solid #ccc;
+            padding: 4px 6px;
             text-align: left;
-            vertical-align: top;
         }
+
         th {
             background-color: #f5f5f5;
-            font-weight: bold;
+            font-size: 10px;
             text-align: center;
         }
-        .signature {
+
+        .status-pass { color: green; font-weight: bold; }
+        .status-fail { color: red; font-weight: bold; }
+
+        .footer {
             margin-top: 30px;
             font-style: italic;
+            font-size: 10px;
+            text-align: right;
         }
     </style>
 </head>
 <body>
+
     <h1>Сводный протокол испытаний</h1>
 
-    <div class="header">
-        <div><strong>Группа:</strong> {{.GroupName}}</div>
-        <div><strong>Материал:</strong> {{.MaterialName}}</div>
-        <div><strong>Количество проб:</strong> {{.TotalSamples}}</div>
-        <div><strong>Доля соответствующих методов:</strong> {{printf "%.2f" .CompliantRate}}%</div>
+    <div class="info-block">
+        <div class="info-row"><span class="info-label">Группа:</span> {{.GroupName}}</div>
+        <div class="info-row"><span class="info-label">Материал:</span> {{.MaterialName}}</div>
+        <div class="info-row"><span class="info-label">Всего проб:</span> {{.TotalSamples}}</div>
+        <div class="info-row"><span class="info-label">Доля соответствия:</span> {{printf "%.1f" .CompliantRate}}%</div>
     </div>
 
     {{range .Results}}
     <div class="method-block">
-        <div class="method-title">{{.MethodName}} — {{.Status}}</div>
-        <div class="norm">Норма: {{.Norm}}</div>
+        <div class="method-header">
+            <span>{{.MethodName}}</span>
+            <span class="{{if eq .Status "Соответствует"}}status-pass{{else}}status-fail{{end}}">{{.Status}}</span>
+        </div>
+        <div class="norm-info">Норма: {{.Norm}}</div>
 
         <table>
             <thead>
@@ -113,7 +129,7 @@
                 <tr>
                     <td>{{.SampleNumber}}</td>
                     <td>{{printf "%.3f" .Value}}</td>
-                    <td>{{.Compliance}}</td>
+                    <td class="{{if eq .Compliance "Соответствует"}}status-pass{{else}}status-fail{{end}}">{{.Compliance}}</td>
                     <td>{{.Deviation}}</td>
                 </tr>
                 {{end}}
@@ -122,6 +138,10 @@
     </div>
     {{end}}
 
-    <div class="signature">Подпись ответственного: ___________________</div>
+    <div class="footer">
+        Сформировано: {{.GeneratedDate}}<br>
+        Подпись ответственного: ___________________
+    </div>
+
 </body>
 </html>

@@ -22,6 +22,9 @@ func NewProtocolRepo(db *sqlx.DB, log *zap.Logger) ProtocolRepo {
 	return &protocolRepo{db: db, log: log}
 }
 
+// Константа формата времени
+const timeLayout = "2006-01-02 15:04:05"
+
 // CreateFull создает протокол и результаты в одной транзакции
 func (r *protocolRepo) CreateFull(ctx context.Context, protocol models.Protocol, results []models.TestResult) error {
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -34,18 +37,20 @@ func (r *protocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 		}
 	}()
 
-	now := time.Now().Format("2006-01-02 15:04:05")
+	// 🔥 ИСПРАВЛЕНИЕ: Используем UTC для хранения в БД
+	nowUTC := time.Now().UTC()
+	nowStr := nowUTC.Format(timeLayout)
 
-	// Обновляем временные метки
-	protocol.CreatedAt = time.Now()
-	protocol.UpdatedAt = time.Now()
+	// Обновляем временные метки в структуре (тоже в UTC для консистентности внутри сессии)
+	protocol.CreatedAt = nowUTC
+	protocol.UpdatedAt = nowUTC
 
 	// 1. Создаем Протокол
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO protocols (id, sample_id, protocol_number, lab_name, operator_name, test_date, status, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		protocol.ID, protocol.SampleID, protocol.ProtocolNumber, protocol.LabName,
-		protocol.OperatorName, protocol.TestDate, protocol.Status, now, now,
+		protocol.OperatorName, protocol.TestDate, protocol.Status, nowStr, nowStr,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert protocol: %w", err)
@@ -55,7 +60,7 @@ func (r *protocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 	for _, res := range results {
 		res.ID = uuid.New().String()
 		res.ProtocolID = protocol.ID
-		res.CreatedAt = time.Now()
+		res.CreatedAt = nowUTC
 
 		// Сериализуем InputData в JSON
 		inputJSON := "{}"
@@ -83,7 +88,7 @@ func (r *protocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 			 (id, protocol_id, method_id, input_data, calculated_value, applied_limit_id, is_compliant, deviation_msg, note, created_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			res.ID, res.ProtocolID, res.MethodID, inputJSON, calcVal,
-			res.AppliedLimitID, compliant, res.DeviationMsg, res.Note, now,
+			res.AppliedLimitID, compliant, res.DeviationMsg, res.Note, nowStr,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to insert result for method %s: %w", res.MethodID, err)
@@ -98,6 +103,7 @@ func (r *protocolRepo) GetByID(ctx context.Context, id string) (models.Protocol,
 	p := models.Protocol{}
 	var testDateStr sql.NullString
 	var createdAt, updatedAt string
+
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, sample_id, protocol_number, lab_name, operator_name, test_date, status, created_at, updated_at 
 		 FROM protocols WHERE id = ?`, id,
@@ -109,18 +115,34 @@ func (r *protocolRepo) GetByID(ctx context.Context, id string) (models.Protocol,
 	if err != nil {
 		return models.Protocol{}, err
 	}
+
 	if testDateStr.Valid {
-		t, _ := time.Parse("2006-01-02", testDateStr.String)
-		p.TestDate = &t
+		// Для test_date формат может быть просто датой, проверим длину или попробуем полный парсинг
+		if len(testDateStr.String) > 10 {
+			t, err := helperParseTime(testDateStr.String)
+			if err == nil {
+				p.TestDate = &t
+			}
+		} else {
+			t, err := time.ParseInLocation("2006-01-02", testDateStr.String, time.UTC)
+			if err == nil {
+				p.TestDate = &t
+			}
+		}
 	}
-	p.CreatedAt, err = time.Parse(time.DateTime, createdAt)
+
+	p.CreatedAt, err = helperParseTime(createdAt)
 	if err != nil {
-		return models.Protocol{}, err
+		r.log.Warn("failed to parse created_at", zap.String("val", createdAt), zap.Error(err))
+		p.CreatedAt = time.Now() // Fallback
 	}
-	p.UpdatedAt, err = time.Parse(time.DateTime, updatedAt)
+
+	p.UpdatedAt, err = helperParseTime(updatedAt)
 	if err != nil {
-		return models.Protocol{}, err
+		r.log.Warn("failed to parse updated_at", zap.String("val", updatedAt), zap.Error(err))
+		p.UpdatedAt = time.Now() // Fallback
 	}
+
 	return p, nil
 }
 
@@ -147,10 +169,8 @@ func (r *protocolRepo) GetResultsByProtocolID(ctx context.Context, protocolID st
 			return nil, err
 		}
 
-		// Парсим входные данные
 		if rawJSON != "" && rawJSON != "{}" {
 			if err := json.Unmarshal([]byte(rawJSON), &r.InputData); err != nil {
-				// Логгируем ошибку, но не прерываем, чтобы показать хоть что-то
 				r.InputData = make(map[string]interface{})
 			}
 		} else {
@@ -161,17 +181,19 @@ func (r *protocolRepo) GetResultsByProtocolID(ctx context.Context, protocolID st
 			v := *compliant == 1
 			r.IsCompliant = &v
 		}
-		r.CreatedAt, err = time.Parse(time.DateTime, createdAt)
+
+		r.CreatedAt, err = helperParseTime(createdAt)
 		if err != nil {
-			return nil, err
+			r.CreatedAt = time.Now()
 		}
+
 		results = append(results, r)
 	}
 
 	return results, nil
 }
 
-// GetByGroupID возвращает список протоколов группы (краткий)
+// GetByGroupID возвращает список протоколов группы
 func (r *protocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]models.Protocol, error) {
 	query := `
 		SELECT p.id, p.sample_id, p.protocol_number, p.status, p.created_at
@@ -194,9 +216,10 @@ func (r *protocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]mode
 		if err := rows.Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.Status, &createdAt); err != nil {
 			return nil, err
 		}
-		p.CreatedAt, err = time.Parse(time.DateTime, createdAt)
+
+		p.CreatedAt, err = helperParseTime(createdAt)
 		if err != nil {
-			return nil, err
+			p.CreatedAt = time.Now()
 		}
 		protocols = append(protocols, p)
 	}
@@ -205,14 +228,12 @@ func (r *protocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]mode
 }
 
 func (r *protocolRepo) GetList(ctx context.Context, limit, offset int64) ([]models.Protocol, int64, error) {
-	// 1. Считаем общее количество
 	var total int64
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM protocols`).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// 2. Получаем данные с пагинацией
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, sample_id, protocol_number, lab_name, operator_name, test_date, status, created_at, updated_at 
          FROM protocols 
@@ -230,18 +251,36 @@ func (r *protocolRepo) GetList(ctx context.Context, limit, offset int64) ([]mode
 		var p models.Protocol
 		var testDateStr sql.NullString
 		var createdAt, updatedAt string
+
 		err := rows.Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.LabName, &p.OperatorName, &testDateStr, &p.Status, &createdAt, &updatedAt)
 		if err != nil {
 			return nil, 0, err
 		}
-		p.CreatedAt, err = time.Parse(time.DateTime, createdAt)
+
+		p.CreatedAt, err = helperParseTime(createdAt)
 		if err != nil {
-			return nil, 0, err
+			p.CreatedAt = time.Now()
 		}
-		p.UpdatedAt, err = time.Parse(time.DateTime, updatedAt)
+		p.UpdatedAt, err = helperParseTime(updatedAt)
 		if err != nil {
-			return nil, 0, err
+			p.UpdatedAt = time.Now()
 		}
+
+		// Обработка test_date аналогично GetByID
+		if testDateStr.Valid {
+			if len(testDateStr.String) > 10 {
+				t, err := helperParseTime(testDateStr.String)
+				if err == nil {
+					p.TestDate = &t
+				}
+			} else {
+				t, err := time.ParseInLocation("2006-01-02", testDateStr.String, time.UTC)
+				if err == nil {
+					p.TestDate = &t
+				}
+			}
+		}
+
 		protocols = append(protocols, p)
 	}
 	return protocols, total, nil
@@ -250,8 +289,6 @@ func (r *protocolRepo) GetList(ctx context.Context, limit, offset int64) ([]mode
 func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.ProtocolFull, error) {
 	var full models.ProtocolFull
 
-	// 1. Загружаем Протокол + Пробу + Материал через JOIN
-	// Это убирает 2 отдельных запроса
 	query := `
 		SELECT 
 			p.id, p.sample_id, p.protocol_number, p.lab_name, p.operator_name, p.test_date, p.status, p.created_at, p.updated_at,
@@ -265,14 +302,15 @@ func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 
 	var testDateStr, collDateStr sql.NullString
 	var rawContext sql.NullString
+	var protCreatedAt, protUpdatedAt, sampCreatedAt, matCreatedAt string
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&full.Protocol.ID, &full.Protocol.SampleID, &full.Protocol.ProtocolNumber, &full.Protocol.LabName,
-		&full.Protocol.OperatorName, &testDateStr, &full.Protocol.Status, &full.Protocol.CreatedAt, &full.Protocol.UpdatedAt,
+		&full.Protocol.OperatorName, &testDateStr, &full.Protocol.Status, &protCreatedAt, &protUpdatedAt,
 
-		&full.Sample.ID, &full.Sample.GroupID, &full.Sample.MaterialID, &full.Sample.SampleNumber, &collDateStr, &rawContext, &full.Sample.Note, &full.Sample.CreatedAt,
+		&full.Sample.ID, &full.Sample.GroupID, &full.Sample.MaterialID, &full.Sample.SampleNumber, &collDateStr, &rawContext, &full.Sample.Note, &sampCreatedAt,
 
-		&full.Material.ID, &full.Material.Name, &full.Material.Code, &full.Material.CreatedAt,
+		&full.Material.ID, &full.Material.Name, &full.Material.Code, &matCreatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return models.ProtocolFull{}, nil
@@ -281,15 +319,31 @@ func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		return models.ProtocolFull{}, err
 	}
 
-	// Парсинг дат
+	// Парсинг дат с использованием хелпера
 	if testDateStr.Valid {
-		t, _ := time.Parse("2006-01-02", testDateStr.String) // Или полный формат, зависит от хранения
-		full.Protocol.TestDate = &t
+		if len(testDateStr.String) > 10 {
+			t, _ := helperParseTime(testDateStr.String)
+			full.Protocol.TestDate = &t
+		} else {
+			t, _ := time.ParseInLocation("2006-01-02", testDateStr.String, time.UTC)
+			full.Protocol.TestDate = &t
+		}
 	}
+
 	if collDateStr.Valid {
-		t, _ := time.Parse("2006-01-02", collDateStr.String)
-		full.Sample.CollectionDate = &t
+		if len(collDateStr.String) > 10 {
+			t, _ := helperParseTime(collDateStr.String)
+			full.Sample.CollectionDate = &t
+		} else {
+			t, _ := time.ParseInLocation("2006-01-02", collDateStr.String, time.UTC)
+			full.Sample.CollectionDate = &t
+		}
 	}
+
+	full.Protocol.CreatedAt, _ = helperParseTime(protCreatedAt)
+	full.Protocol.UpdatedAt, _ = helperParseTime(protUpdatedAt)
+	full.Sample.CreatedAt, _ = helperParseTime(sampCreatedAt)
+	full.Material.CreatedAt, _ = helperParseTime(matCreatedAt)
 
 	// Парсинг контекста пробы
 	if rawContext.Valid {
@@ -301,7 +355,7 @@ func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		full.Sample.ContextParams = make(map[string]string)
 	}
 
-	// 2. Загружаем Результаты (отдельный запрос, так как их много)
+	// Загрузка результатов
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, method_id, input_data, calculated_value, applied_limit_id, is_compliant, deviation_msg, note, created_at 
 		 FROM test_results WHERE protocol_id = ?`,
@@ -314,10 +368,10 @@ func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 
 	for rows.Next() {
 		var res models.TestResult
-		var rawJSON string
+		var rawJSON, createdAt string
 		var compliant *int
 
-		if err := rows.Scan(&res.ID, &res.MethodID, &rawJSON, &res.CalculatedValue, &res.AppliedLimitID, &compliant, &res.DeviationMsg, &res.Note, &res.CreatedAt); err != nil {
+		if err := rows.Scan(&res.ID, &res.MethodID, &rawJSON, &res.CalculatedValue, &res.AppliedLimitID, &compliant, &res.DeviationMsg, &res.Note, &createdAt); err != nil {
 			return models.ProtocolFull{}, err
 		}
 
@@ -326,6 +380,8 @@ func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		} else {
 			res.InputData = make(map[string]interface{})
 		}
+
+		res.CreatedAt, _ = helperParseTime(createdAt)
 
 		if compliant != nil {
 			v := *compliant == 1

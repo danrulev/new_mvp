@@ -21,10 +21,14 @@ func NewExperimentGroupRepo(db *sqlx.DB, log *zap.Logger) ExperimentGroupRepo {
 }
 
 func (r *experimentGroupRepo) Create(ctx context.Context, g models.ExperimentGroup) error {
+	// 🔥 ИСПРАВЛЕНИЕ: Используем UTC для записи
+	nowUTC := time.Now().UTC()
+	nowStr := nowUTC.Format(timeLayout)
+
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO experiment_groups (id, name, material_id, project_name, location, created_at) 
 		 VALUES (?, ?, ?, ?, ?, ?)`,
-		g.ID, g.Name, g.MaterialID, g.ProjectName, g.Location, time.Now().Format("2006-01-02 15:04:05"),
+		g.ID, g.Name, g.MaterialID, g.ProjectName, g.Location, nowStr,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create experiment group: %w", err)
@@ -34,11 +38,12 @@ func (r *experimentGroupRepo) Create(ctx context.Context, g models.ExperimentGro
 }
 
 func (r *experimentGroupRepo) GetByID(ctx context.Context, id string) (models.ExperimentGroup, error) {
+	var createdAt string
 	var g models.ExperimentGroup
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, name, material_id, project_name, location, created_at 
 		 FROM experiment_groups WHERE id = ?`, id,
-	).Scan(&g.ID, &g.Name, &g.MaterialID, &g.ProjectName, &g.Location, &g.CreatedAt)
+	).Scan(&g.ID, &g.Name, &g.MaterialID, &g.ProjectName, &g.Location, &createdAt)
 
 	if err == sql.ErrNoRows {
 		return models.ExperimentGroup{}, nil
@@ -46,6 +51,14 @@ func (r *experimentGroupRepo) GetByID(ctx context.Context, id string) (models.Ex
 	if err != nil {
 		return models.ExperimentGroup{}, err
 	}
+
+	// 🔥 ИСПРАВЛЕНИЕ: Парсинг с учетом часовых поясов
+	g.CreatedAt, err = helperParseTime(createdAt)
+	if err != nil {
+		r.log.Warn("failed to parse created_at for group", zap.String("id", id), zap.Error(err))
+		g.CreatedAt = time.Now() // Fallback
+	}
+
 	return g, nil
 }
 
@@ -78,16 +91,22 @@ func (r *experimentGroupRepo) GetList(ctx context.Context, limit, offset int64) 
 		if err != nil {
 			return nil, 0, err
 		}
-		g.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+
+		// 🔥 ИСПРАВЛЕНИЕ: Парсинг с учетом часовых поясов
+		parsedTime, err := helperParseTime(createdAt)
+		if err != nil {
+			r.log.Warn("failed to parse created_at in list", zap.Error(err))
+			parsedTime = time.Now()
+		}
+		g.CreatedAt = parsedTime
+
 		groups = append(groups, g)
 	}
 
 	return groups, total, nil
 }
 
-// AddSampleToGroup в нашей схеме - это UPDATE таблицы samples
-// Но обычно группу привязывают при создании Sample.
-// Этот метод полезен, если нужно перенести пробу из одной группы в другую.
+// AddSampleToGroup обновляет группу у пробы
 func (r *experimentGroupRepo) AddSampleToGroup(ctx context.Context, sampleID, groupID string) error {
 	// Сначала проверим существование группы
 	var exists int

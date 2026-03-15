@@ -26,7 +26,7 @@
           "code": "9128-P-01",
           "name": "Плотность образца",
           "unit": "г/см³",
-          "formula_expr": "",
+          "formula_expr": "weight_air / (weight_air - weight_water)",
           "is_mandatory": true,
           "inputs": [
             {

@@ -20,8 +20,24 @@ func NewSampleRepo(db *sqlx.DB, log *zap.Logger) SampleRepo {
 	return &sampleRepo{db: db, log: log}
 }
 
+// Константа формата времени для БД
+const (
+	dateLayout = "2006-01-02"
+)
+
+// helperParseDate парсит дату (без времени)
+func helperParseDate(dateStr string) (time.Time, error) {
+	if dateStr == "" {
+		return time.Time{}, fmt.Errorf("empty date string")
+	}
+	t, err := time.ParseInLocation(dateLayout, dateStr, time.UTC)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return t.Local(), nil
+}
+
 func (r *sampleRepo) Create(ctx context.Context, s models.Sample) error {
-	// Сериализуем ContextParams в JSON строку
 	jsonData, err := s.ToJSON()
 	if err != nil {
 		return fmt.Errorf("failed to marshal context params: %w", err)
@@ -29,17 +45,21 @@ func (r *sampleRepo) Create(ctx context.Context, s models.Sample) error {
 
 	var collDateStr interface{}
 	if s.CollectionDate != nil {
-		collDateStr = s.CollectionDate.Format("2006-01-02")
+		// Сохраняем дату в UTC строке
+		collDateStr = s.CollectionDate.UTC().Format(dateLayout)
 	} else {
 		collDateStr = nil
 	}
 
+	// 🔥 ИСПРАВЛЕНИЕ: Используем UTC для created_at
+	nowUTC := time.Now().UTC()
+	nowStr := nowUTC.Format(timeLayout)
+
 	_, err = r.db.ExecContext(ctx,
 		`INSERT INTO samples (id, group_id, material_id, sample_number, collection_date, context_params, note, created_at) 
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		s.ID, s.GroupID, s.MaterialID, s.SampleNumber, collDateStr, jsonData, s.Note, time.Now().Format("2006-01-02 15:04:05"),
+		s.ID, s.GroupID, s.MaterialID, s.SampleNumber, collDateStr, jsonData, s.Note, nowStr,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to create sample: %w", err)
 	}
@@ -51,13 +71,13 @@ func (r *sampleRepo) Create(ctx context.Context, s models.Sample) error {
 func (r *sampleRepo) GetByID(ctx context.Context, id string) (models.Sample, error) {
 	s := models.Sample{}
 	var collDateStr sql.NullString
-	var rawJSON string
+	var rawJSON, createdAt string
 
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, group_id, material_id, sample_number, collection_date, context_params, note, created_at 
 		 FROM samples WHERE id = ?`,
 		id,
-	).Scan(&s.ID, &s.GroupID, &s.MaterialID, &s.SampleNumber, &collDateStr, &rawJSON, &s.Note, &s.CreatedAt)
+	).Scan(&s.ID, &s.GroupID, &s.MaterialID, &s.SampleNumber, &collDateStr, &rawJSON, &s.Note, &createdAt)
 
 	if err == sql.ErrNoRows {
 		return models.Sample{}, nil
@@ -66,17 +86,24 @@ func (r *sampleRepo) GetByID(ctx context.Context, id string) (models.Sample, err
 		return models.Sample{}, err
 	}
 
+	// 🔥 ИСПРАВЛЕНИЕ: Парсинг с учетом часовых поясов
+	s.CreatedAt, err = helperParseTime(createdAt)
+	if err != nil {
+		r.log.Warn("failed parse created at date", zap.Error(err), zap.String("val", createdAt))
+		s.CreatedAt = time.Now()
+	}
+
 	if collDateStr.Valid {
-		t, err := time.Parse("2006-01-02", collDateStr.String)
+		t, err := helperParseDate(collDateStr.String)
 		if err == nil {
 			s.CollectionDate = &t
+		} else {
+			r.log.Warn("failed parse collection date", zap.Error(err))
 		}
 	}
 
-	// Парсим JSON обратно в мапу
 	if err := s.FromJSON(rawJSON); err != nil {
 		r.log.Warn("Failed to unmarshal sample context", zap.Error(err), zap.String("id", id))
-		// Не прерываем работу, просто контекст будет пустым
 		s.ContextParams = make(map[string]string)
 	}
 
@@ -89,7 +116,6 @@ func (r *sampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 		 FROM samples WHERE group_id = ?`,
 		groupID,
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to get samples by group id: %w", err)
 	}
@@ -101,7 +127,7 @@ func (r *sampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 			ContextParams: make(map[string]string),
 		}
 		var collDateStr sql.NullString
-		var rawJSON string
+		var rawJSON, createdAt string
 
 		err := rows.Scan(
 			&s.ID,
@@ -111,38 +137,40 @@ func (r *sampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 			&collDateStr,
 			&rawJSON,
 			&s.Note,
-			&s.CreatedAt,
+			&createdAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan sample: %w", err)
 		}
 
-		// 📅 Парсим дату отбора
+		// 🔥 ИСПРАВЛЕНИЕ: Парсинг с учетом часовых поясов
+		s.CreatedAt, err = helperParseTime(createdAt)
+		if err != nil {
+			r.log.Warn("failed parse created at date", zap.Error(err))
+			s.CreatedAt = time.Now()
+		}
+
 		if collDateStr.Valid {
-			t, err := time.Parse("2006-01-02", collDateStr.String)
+			t, err := helperParseDate(collDateStr.String)
 			if err == nil {
 				s.CollectionDate = &t
 			}
 		}
 
-		// 🗂️ Парсим JSON контекста в мапу
 		if err := s.FromJSON(rawJSON); err != nil {
 			r.log.Warn("Failed to unmarshal sample context",
 				zap.Error(err),
 				zap.String("sample_id", s.ID))
-			// Не прерываем работу — просто контекст будет пустым
 			s.ContextParams = make(map[string]string)
 		}
 
 		samples = append(samples, s)
 	}
 
-	// 🔍 Проверяем ошибки итерации
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating samples: %w", err)
 	}
 
-	// 🛡️ Возвращаем пустой слайс вместо nil для удобства на фронтенде
 	if samples == nil {
 		return []models.Sample{}, nil
 	}

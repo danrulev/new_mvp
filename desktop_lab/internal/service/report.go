@@ -139,9 +139,12 @@ type ProtocolTemplateData struct {
 }
 
 type ProtocolView struct {
-	Number string
-	Date   string
-	ID     string
+	Number   string
+	Date     string
+	ID       string
+	LabName  string
+	Operator string
+	Project  string
 }
 
 type SampleView struct {
@@ -177,7 +180,6 @@ func (s *ReportService) prepareProtocolTemplateData(
 	full models.ProtocolFull,
 	methodsCache map[string]models.TestMethodFull, // 🔥 Кэш для ускорения
 ) (ProtocolTemplateData, error) {
-
 	// Форматирование даты
 	dateStr := ""
 	if full.Protocol.TestDate != nil {
@@ -194,9 +196,12 @@ func (s *ReportService) prepareProtocolTemplateData(
 
 	data := ProtocolTemplateData{
 		Protocol: ProtocolView{
-			Number: full.Protocol.ProtocolNumber,
-			Date:   dateStr,
-			ID:     full.Protocol.ID,
+			Number:   full.Protocol.ProtocolNumber,
+			Date:     dateStr,
+			ID:       full.Protocol.ID,
+			LabName:  full.Protocol.LabName,
+			Operator: full.Protocol.OperatorName,
+			Project:  full.Sample.GroupID,
 		},
 		Sample: SampleView{
 			Number:          full.Sample.SampleNumber,
@@ -290,7 +295,6 @@ func (s *ReportService) findMatchingLimitInMemory(
 	conditionsMap map[string][]models.LimitCondition,
 	contextParams map[string]string,
 ) models.NormativeLimit {
-
 	var defaultLimit *models.NormativeLimit
 
 	for i := range limits {
