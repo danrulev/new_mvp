@@ -37,20 +37,12 @@ type CreateProtocolRequest = models.CreateProtocolRequest;
 type CreateSampleDTO = models.CreateSampleDTO;
 type CreateResultDTO = models.CreateResultDTO;
 
-// Расширяем TestMethod для полей, которые могут прийти с бэкенда
 interface TestMethodWithInputs extends TestMethod {
   inputs?: MethodInput[];
   limits?: any[];
   min_value?: number;
   max_value?: number;
 }
-
-type CompliancePreview = {
-  calculatedValue?: number;
-  isCompliant: boolean | null;
-  norm: string;
-  deviation?: string;
-};
 
 // ============================================================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -159,7 +151,7 @@ const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; chi
           padding: 24,
           borderRadius: 8,
           width: '90%',
-          maxWidth: 600,
+          maxWidth: 700, // Увеличили ширину для большего кол-ва инфо
           boxShadow: '0 20px 25px rgba(0, 0, 0, 0.1)',
           maxHeight: '90vh',
           overflowY: 'auto',
@@ -187,7 +179,7 @@ export default function LabDashboard() {
   const [contextDimensions, setContextDimensions] = useState<ContextDimension[]>([]);
 
   // === STATE: Форма ===
-  const [labName, setLabName] = useState('БГТУ им. В.Г. Шухова, Кафедра материаловедения');
+  const [labName, setLabName] = useState('');
   const [operator, setOperator] = useState('');
   const [sampleNumber, setSampleNumber] = useState('');
   const [samplePlace, setSamplePlace] = useState('');
@@ -293,35 +285,28 @@ export default function LabDashboard() {
     setLoading((p) => ({ ...p, methods: false }));
   };
 
-  // КЛЮЧЕВАЯ ФУНКЦИЯ: Загрузка деталей метода с inputs
   const loadMethodDetails = async (methodId: string) => {
     if (!methodId) return;
     setSelectedMethodId(methodId);
     setRawInputs({});
     setSimpleValue('');
-    
-    // GetMethodDetails возвращает TestMethodFull
     const details = await safeCall(() => GetMethodDetails(methodId), 'Ошибка загрузки деталей метода');
-    
     if (details) {
-      // ✅ Доступ через .method для свойств TestMethod
       const extended: TestMethodWithInputs = {
-        id: details.method.id,                    // ← через .method
-        standard_id: details.method.standard_id,  // ← через .method
-        name: details.method.name,                // ← через .method
-        unit: details.method.unit,                // ← через .method
+        id: details.method.id,
+        standard_id: details.method.standard_id,
+        name: details.method.name,
+        unit: details.method.unit,
         result_type: details.method.result_type,
         is_mandatory: details.method.is_mandatory,
         code: details.method.code,
         description: details.method.description,
         formula_expr: details.method.formula_expr,
-        // Дополнительные поля из TestMethodFull
-        inputs: details.inputs ?? [],             // ← прямо, т.к. это поле TestMethodFull
+        inputs: details.inputs ?? [],
         limits: details.limits,
         min_value: (details as any).min_value,
         max_value: (details as any).max_value,
       };
-      
       setMethods((prev) => prev.map((m) => (m.id === methodId ? { ...m, ...extended } : m)));
     }
   };
@@ -329,12 +314,10 @@ export default function LabDashboard() {
   // === COMPUTED ===
   const currentMethod = useMemo(() => methods.find((m) => m.id === selectedMethodId), [methods, selectedMethodId]);
 
-  // Определяем тип метода: расчётный (с inputs) или простой
   const isCalculated = useMemo(() => {
     return !!(currentMethod?.inputs && currentMethod.inputs.length > 0);
   }, [currentMethod]);
 
-  // Проверка заполнения всех обязательных полей
   const allInputsFilled = useMemo(() => {
     if (!currentMethod) return false;
     if (isCalculated) {
@@ -349,7 +332,17 @@ export default function LabDashboard() {
     }
   }, [currentMethod, isCalculated, rawInputs, simpleValue]);
 
-  // Расчёт значения по формуле (превью)
+  // 🔥 НОВАЯ ПРОВЕРКА: Лаборатория и Оператор обязательны
+  const canSave = !!(
+    sampleNumber && 
+    samplePlace && 
+    selectedMaterialId && 
+    selectedMethodId && 
+    allInputsFilled &&
+    labName.trim() !== '' &&
+    operator.trim() !== ''
+  );
+
   const calculatedPreview = useMemo(() => {
     if (!currentMethod || !isCalculated || !currentMethod.formula_expr) return undefined;
     const inputs: Record<string, number> = {};
@@ -372,8 +365,6 @@ export default function LabDashboard() {
     return undefined;
   }, [currentMethod, isCalculated, rawInputs]);
 
-  const canSave = !!(sampleNumber && samplePlace && selectedMaterialId && selectedMethodId && allInputsFilled);
-
   // === HANDLERS ===
   const showToast = (msg: string, error = false) => {
     setToast({ msg, error });
@@ -393,15 +384,20 @@ export default function LabDashboard() {
     }
   };
 
-  // ГЛАВНАЯ ФУНКЦИЯ: СОХРАНЕНИЕ ПРОТОКОЛА
   const handleSaveProtocol = async () => {
-    if (!canSave) { showToast('Заполните все обязательные поля', true); return; }
+    if (!canSave) { 
+      // Детальная проверка для подсказки
+      if (!labName.trim()) { showToast('Укажите название лаборатории', true); return; }
+      if (!operator.trim()) { showToast('Укажите оператора', true); return; }
+      showToast('Заполните все обязательные поля', true); 
+      return; 
+    }
+
     const method = methods.find((m) => m.id === selectedMethodId);
     if (!method) { showToast('Метод не найден', true); return; }
 
     let resultsInput: CreateResultDTO[] = [];
     if (isCalculated) {
-      // Расчётный метод: отправляем raw_inputs
       for (const p of currentMethod?.inputs ?? []) {
         const valStr = rawInputs[p.param_key];
         if (p.is_required && (!valStr || valStr.trim() === '')) {
@@ -419,7 +415,6 @@ export default function LabDashboard() {
         note: undefined,
       } as CreateResultDTO];
     } else {
-      // Простой метод: отправляем готовое значение
       const val = parseFloat(simpleValue);
       if (isNaN(val)) { showToast('Введите корректное число', true); return; }
       resultsInput = [{
@@ -433,7 +428,7 @@ export default function LabDashboard() {
       sample_number: sampleNumber,
       material_id: selectedMaterialId,
       collection_date: undefined,
-      context_params: undefined,
+      context_params: samplePlace ? { "place": samplePlace } : undefined, // Сохраняем место в контекст
       note: sampleNote || undefined,
     });
 
@@ -449,6 +444,7 @@ export default function LabDashboard() {
       setLoading((p) => ({ ...p, save: true }));
       await CreateProtocolWithSample(reqData);
       showToast('Протокол сохранён');
+      
       // Сброс формы
       setRawInputs({});
       setSimpleValue('');
@@ -457,6 +453,10 @@ export default function LabDashboard() {
       setSampleNumber('');
       setSamplePlace('');
       setSampleNote('');
+      // Лабораторию и оператора можно не сбрасывать, если они постоянные, но по ТЗ оставим как есть или сбросим при необходимости
+      // setLabName(''); 
+      // setOperator('');
+      
       loadProtocolsList(1);
     } catch (e: any) {
       showToast('Ошибка: ' + (e.message || String(e)), true);
@@ -507,6 +507,10 @@ export default function LabDashboard() {
     required: { color: '#dc2626', marginLeft: 4 },
     methodBox: { background: '#f9fafb', padding: 12, borderRadius: 6, border: '1px solid #e5e7eb', marginBottom: 16 },
     formula: { fontSize: 11, color: '#6b7280', marginTop: 8, fontFamily: 'monospace', background: '#f3f4f6', padding: '4px 8px', borderRadius: 4, display: 'inline-block' },
+    infoGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px', background: '#f9fafb', padding: '12px', borderRadius: '6px' },
+    infoItem: { fontSize: '13px' },
+    infoLabel: { color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: '2px' },
+    infoValue: { color: '#111827', fontWeight: 600 },
   };
 
   // ============================================================================
@@ -557,15 +561,25 @@ export default function LabDashboard() {
               </select>
             </label>
             <button style={styles.btnSecondary} onClick={() => setIsGroupModalOpen(true)}>+ Создать группу</button>
-
+            
             <div style={{ marginTop: 20, borderTop: '1px solid #e5e7eb', paddingTop: 16 }}>
               <label style={styles.label}>
-                <span style={styles.labelText}>Лаборатория</span>
-                <input style={styles.input} value={labName} onChange={e => setLabName(e.target.value)} />
+                <span style={styles.labelText}>Лаборатория *</span>
+                <input 
+                  style={{...styles.input, borderColor: labName.trim() === '' && sampleNumber ? '#ef4444' : '#d1d5db'}} 
+                  value={labName} 
+                  onChange={e => setLabName(e.target.value)} 
+                  placeholder="Например: Лаборатория №1"
+                />
               </label>
               <label style={styles.label}>
-                <span style={styles.labelText}>Оператор</span>
-                <input style={styles.input} value={operator} onChange={e => setOperator(e.target.value)} />
+                <span style={styles.labelText}>Оператор *</span>
+                <input 
+                  style={{...styles.input, borderColor: operator.trim() === '' && sampleNumber ? '#ef4444' : '#d1d5db'}} 
+                  value={operator} 
+                  onChange={e => setOperator(e.target.value)} 
+                  placeholder="ФИО сотрудника"
+                />
               </label>
             </div>
           </section>
@@ -606,7 +620,6 @@ export default function LabDashboard() {
                   {isCalculated && <span style={{ marginLeft: 8, fontSize: 11, color: '#6b7280' }}>(Расчётный)</span>}
                 </div>
                 {isCalculated ? (
-                  // РАСЧЁТНЫЙ МЕТОД: показываем все inputs
                   <>
                     {currentMethod.inputs && currentMethod.inputs.length > 0 ? (
                       currentMethod.inputs.map((input: MethodInput) => (
@@ -640,7 +653,6 @@ export default function LabDashboard() {
                     )}
                   </>
                 ) : (
-                  // ПРОСТОЙ МЕТОД: одно поле
                   <label style={styles.label}>
                     <span style={styles.labelText}>
                       Результат {currentMethod.unit && <span style={{ color: '#6b7280' }}>({currentMethod.unit})</span>}
@@ -699,7 +711,7 @@ export default function LabDashboard() {
                   <tr>
                     <th style={styles.th}>Дата</th>
                     <th style={styles.th}>Лаборатория</th>
-                    <th style={styles.th}>Статус</th>
+                    <th style={styles.th}>Оператор</th>
                     <th style={styles.th}>Действия</th>
                   </tr>
                 </thead>
@@ -710,7 +722,7 @@ export default function LabDashboard() {
                     <tr key={p.id}>
                       <td style={styles.td}>{formatDate(p.created_at)}</td>
                       <td style={styles.td}>{p.lab_name || '—'}</td>
-                      <td style={styles.td}><span style={styles.badge}>{p.status}</span></td>
+                      <td style={styles.td}>{p.operator_name || '—'}</td>
                       <td style={styles.td}>
                         <button style={styles.btnSmall} onClick={() => handleViewProtocol(p.id)}>Просмотр</button>
                         <button style={{...styles.btnSmall, marginLeft: 8}} onClick={() => handleDownloadProtocolPDF(p.id)}>PDF</button>
@@ -744,31 +756,75 @@ export default function LabDashboard() {
       </Modal>
 
       {viewingProtocol && (
-        <Modal isOpen={true} onClose={() => setViewingProtocol(null)} title="Протокол">
-          <div style={{ marginBottom: 16, fontSize: 13 }}>
-            <div><strong>ID:</strong> {viewingProtocol.Protocol.id}</div>
-            <div><strong>Дата:</strong> {formatDate(viewingProtocol.Protocol.created_at)}</div>
-            <div><strong>Статус:</strong> {viewingProtocol.Protocol.status}</div>
+        <Modal isOpen={true} onClose={() => setViewingProtocol(null)} title="Просмотр протокола">
+          {/* Расширенная информация о протоколе */}
+          <div style={styles.infoGrid}>
+            <div style={styles.infoItem}>
+              <span style={styles.infoLabel}>ID Протокола</span>
+              <span style={styles.infoValue}>{viewingProtocol.Protocol.id}</span>
+            </div>
+            <div style={styles.infoItem}>
+              <span style={styles.infoLabel}>Дата проведения</span>
+              <span style={styles.infoValue}>{formatDate(viewingProtocol.Protocol.created_at)}</span>
+            </div>
+            <div style={styles.infoItem}>
+              <span style={styles.infoLabel}>Лаборатория</span>
+              <span style={styles.infoValue}>{viewingProtocol.Protocol.lab_name || '—'}</span>
+            </div>
+            <div style={styles.infoItem}>
+              <span style={styles.infoLabel}>Оператор</span>
+              <span style={styles.infoValue}>{viewingProtocol.Protocol.operator_name || '—'}</span>
+            </div>
+            {/* Данные пробы (если доступны в структуре, иначе берем из контекста/заметок) */}
+            <div style={styles.infoItem}>
+              <span style={styles.infoLabel}>Номер пробы</span>
+              <span style={styles.infoValue}>{viewingProtocol.Protocol.sample_id ? viewingProtocol.Protocol.sample_id.substring(0, 8) + '...' : '—'}</span>
+            </div>
+             <div style={styles.infoItem}>
+              <span style={styles.infoLabel}>Место отбора</span>
+              <span style={styles.infoValue}>{viewingProtocol.Results[0]?.input_data?.place || samplePlace || '—'}</span>
+            </div>
           </div>
+
+          {/* Таблица результатов с соответствием */}
           {viewingProtocol.Results?.length ? (
             <table style={styles.table}>
               <thead>
-                <tr><th style={styles.th}>Метод</th><th style={styles.th}>Значение</th><th style={styles.th}>Статус</th></tr>
+                <tr>
+                  <th style={styles.th}>Метод</th>
+                  <th style={styles.th}>Значение</th>
+                  <th style={styles.th}>Соответствие</th>
+                  <th style={styles.th}>Отклонение</th>
+                </tr>
               </thead>
               <tbody>
-                {viewingProtocol.Results.map(r => (
-                  <tr key={r.id}>
-                    <td style={styles.td}>{r.method_id}</td>
-                    <td style={styles.td}>{formatNumber(r.calculated_value)}</td>
-                    <td style={styles.td}>
-                      {r.is_compliant === true ? <span style={{color: '#166534'}}>Да</span> :
-                       r.is_compliant === false ? <span style={{color: '#991b1b'}}>Нет</span> : '—'}
-                    </td>
-                  </tr>
-                ))}
+                {viewingProtocol.Results.map(r => {
+                  const isCompliant = r.is_compliant === true;
+                  const isNonCompliant = r.is_compliant === false;
+                  
+                  return (
+                    <tr key={r.id}>
+                      <td style={styles.td}>{r.method_id}</td>
+                      <td style={styles.td}>{formatNumber(r.calculated_value)}</td>
+                      <td style={styles.td}>
+                        {r.is_compliant === undefined ? (
+                          <span style={{color: '#6b7280'}}>—</span>
+                        ) : isCompliant ? (
+                          <span style={{...styles.badge, ...styles.badgeSuccess}}>Да</span>
+                        ) : (
+                          <span style={{...styles.badge, ...styles.badgeDanger}}>Нет</span>
+                        )}
+                      </td>
+                      <td style={{...styles.td, color: isNonCompliant ? '#dc2626' : '#6b7280', fontSize: '12px'}}>
+                        {isNonCompliant ? r.deviation_msg : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           ) : <div style={{padding: 20, textAlign: 'center', color: '#6b7280'}}>Нет данных</div>}
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
             <button style={styles.btnPrimary} onClick={() => handleDownloadProtocolPDF(viewingProtocol.Protocol.id)}>Скачать PDF</button>
           </div>
