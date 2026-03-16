@@ -58,8 +58,8 @@ export function GetMethodsByStandardID(arg1) {
   return window['go']['app']['App']['GetMethodsByStandardID'](arg1);
 }
 
-export function GetProtocolByID(arg1) {
-  return window['go']['app']['App']['GetProtocolByID'](arg1);
+export function GetMethodsFullByStandardID(arg1, arg2) {
+  return window['go']['app']['App']['GetMethodsFullByStandardID'](arg1, arg2);
 }
 
 export function GetProtocolFull(arg1) {

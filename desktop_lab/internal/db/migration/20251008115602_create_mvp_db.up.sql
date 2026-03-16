@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS samples (
     material_id TEXT NOT NULL,
     sample_number TEXT NOT NULL, -- Номер пробы в журнале
     collection_date DATE,
-    
+    collection_place TEXT,
     -- Контекстные параметры пробы (значения Dimensions)
     -- Хранятся как JSON для гибкости: {"climate_zone": "II", "mix_grade": "I", "layer": "upper"}
     context_params TEXT NOT NULL DEFAULT '{}', 

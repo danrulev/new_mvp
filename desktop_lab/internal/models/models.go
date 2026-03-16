@@ -137,15 +137,16 @@ type ExperimentGroup struct {
 
 // Sample соответствует таблице samples
 type Sample struct {
-	ID             string            `json:"id" db:"id"`
-	GroupID        string            `json:"group_id" db:"group_id"`
-	MaterialID     string            `json:"material_id" db:"material_id"`
-	SampleNumber   string            `json:"sample_number" db:"sample_number"`
-	CollectionDate *time.Time        `json:"collection_date,omitempty" db:"collection_date"`
-	ContextParams  map[string]string `json:"context_params" db:"context_params"`
-	RawContext     string            `json:"-" db:"-"`
-	Note           string            `json:"note,omitempty" db:"note"`
-	CreatedAt      time.Time         `json:"created_at" db:"created_at"`
+	ID              string            `json:"id" db:"id"`
+	GroupID         string            `json:"group_id" db:"group_id"`
+	MaterialID      string            `json:"material_id" db:"material_id"`
+	SampleNumber    string            `json:"sample_number" db:"sample_number"`
+	CollectionPlace string            `json:"collection_place" db:"collection_place"`
+	CollectionDate  *time.Time        `json:"collection_date,omitempty" db:"collection_date"`
+	ContextParams   map[string]string `json:"context_params" db:"context_params"`
+	RawContext      string            `json:"-" db:"-"`
+	Note            string            `json:"note,omitempty" db:"note"`
+	CreatedAt       time.Time         `json:"created_at" db:"created_at"`
 }
 
 // Protocol соответствует таблице protocols
@@ -235,11 +236,12 @@ type CreateProtocolRequest struct {
 }
 
 type CreateSampleDTO struct {
-	SampleNumber   string            `json:"sample_number"`
-	MaterialID     string            `json:"material_id"`
-	CollectionDate *time.Time        `json:"collection_date,omitempty"`
-	ContextParams  map[string]string `json:"context_params"`
-	Note           string            `json:"note,omitempty"`
+	SampleNumber    string            `json:"sample_number"`
+	MaterialID      string            `json:"material_id"`
+	CollectionDate  *time.Time        `json:"collection_date,omitempty"`
+	CollectionPlace string            `json:"collection_place,omitempty"`
+	ContextParams   map[string]string `json:"context_params"`
+	Note            string            `json:"note,omitempty"`
 }
 
 type CreateResultDTO struct {

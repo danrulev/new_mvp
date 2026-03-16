@@ -47,13 +47,14 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 	// 1. Создаем Пробу (Sample)
 	sampleID := uuid.New().String()
 	sample := models.Sample{
-		ID:             sampleID,
-		GroupID:        req.GroupID,
-		MaterialID:     req.Sample.MaterialID,
-		SampleNumber:   req.Sample.SampleNumber,
-		CollectionDate: req.Sample.CollectionDate,
-		ContextParams:  req.Sample.ContextParams,
-		Note:           req.Sample.Note,
+		ID:              sampleID,
+		GroupID:         req.GroupID,
+		MaterialID:      req.Sample.MaterialID,
+		CollectionPlace: req.Sample.CollectionPlace,
+		SampleNumber:    req.Sample.SampleNumber,
+		CollectionDate:  req.Sample.CollectionDate,
+		ContextParams:   req.Sample.ContextParams,
+		Note:            req.Sample.Note,
 	}
 
 	if err := s.sampleRepo.Create(ctx, sample); err != nil {
@@ -64,18 +65,23 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 	// 2. Подготавливаем Протокол
 	protocolID := uuid.New().String()
 	now := time.Now()
+	protocolNumber, err := s.generateProtocolNumber(ctx, protocolID, req.Sample.MaterialID, req.GroupID, sampleID, now)
+	if err != nil {
+		s.log.Error("failed to generate protocol number", zap.Error(err))
+		return models.Protocol{}, fmt.Errorf("ошибка генерации номера протокола: %w", err)
+	}
 
 	protocol := models.Protocol{
 		ID:             protocolID,
 		SampleID:       sampleID,
-		ProtocolNumber: "",
+		ProtocolNumber: protocolNumber,
 		LabName:        req.LabName,
 		OperatorName:   req.OperatorName,
 		TestDate:       &now,
 		Status:         "draft",
 	}
 
-	// 3. 🔥 ОПТИМИЗАЦИЯ: Предзагрузка всех методов стандарта
+	// Предзагрузка всех методов стандарта
 	// Определяем StandardID по первому методу (или можно передавать в запросе)
 	standardID := ""
 	if len(req.Results) > 0 {
@@ -535,20 +541,6 @@ func (s *ProtocolService) GetProtocolFull(ctx context.Context, id string) (model
 	return full, nil
 }
 
-// GetProtocolByID - устаревший метод, использует новый GetProtocolFull для обратной совместимости
-// Рекомендуется использовать GetProtocolFull напрямую
-
-func (s *ProtocolService) GetProtocolByID(ctx context.Context, id string) (models.GetProtocolByIDRequest, error) {
-	full, err := s.GetProtocolFull(ctx, id)
-	if err != nil {
-		return models.GetProtocolByIDRequest{}, err
-	}
-	return models.GetProtocolByIDRequest{
-		Protocol: full.Protocol,
-		Results:  full.Results,
-	}, nil
-}
-
 // GetProtocolsByGroupID возвращает список протоколов группы
 func (s *ProtocolService) GetProtocolsByGroupID(ctx context.Context, groupID string) ([]models.Protocol, error) {
 	return s.protocolRepo.GetByGroupID(ctx, groupID)
@@ -687,4 +679,16 @@ func (s *ProtocolService) GetGroupSummary(ctx context.Context, groupID string) (
 		CompliantRate: rate,
 		Results:       summaries,
 	}, nil
+}
+
+func (s *ProtocolService) generateProtocolNumber(ctx context.Context, protocolID, materialID, groupID, sampleID string, createdAt time.Time) (string, error) {
+	mat, err := s.materialRepo.GetByID(ctx, materialID)
+	if err != nil {
+		return "", err
+	}
+	isGroup := ""
+	if groupID != "" {
+		isGroup = "G"
+	}
+	return fmt.Sprintf("%s%s-%s-%s-%s", isGroup, mat.Code[:8], sampleID[:8], protocolID[:8], createdAt.Format("20060102")), nil
 }

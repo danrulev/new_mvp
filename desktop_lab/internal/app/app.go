@@ -521,28 +521,6 @@ func (a *App) CreateProtocolWithSample(req models.CreateProtocolRequest) (models
 	return protocol, nil
 }
 
-// GetProtocolByID возвращает протокол с результатами
-// @param {string} id - UUID протокола
-// @returns {Promise<GetProtocolByIDRequest>}
-func (a *App) GetProtocolByID(id string) (models.GetProtocolByIDRequest, error) {
-	if err := a.isReady(); err != nil {
-		return models.GetProtocolByIDRequest{}, a.wrapError("GetProtocolByID", err)
-	}
-	if id == "" {
-		return models.GetProtocolByIDRequest{}, fmt.Errorf("protocol ID is required")
-	}
-
-	result, err := a.services.Protocols.GetProtocolByID(a.wailsCtx, id)
-	if err != nil {
-		return models.GetProtocolByIDRequest{}, a.wrapError("GetProtocolByID", err)
-	}
-	if result.Protocol.ID == "" {
-		return models.GetProtocolByIDRequest{}, fmt.Errorf("protocol not found: %s", id)
-	}
-
-	return result, nil
-}
-
 // GetProtocolFull возвращает полный протокол с пробой и материалом (для отчетов)
 // @param {string} id - UUID протокола
 // @returns {Promise<ProtocolFull>}
@@ -793,5 +771,6 @@ func (a *App) EmitEvent(eventName string, payload interface{}) {
 	a.log.Debug("Event emitted", zap.String("event", eventName))
 }
 
-// SubscribeToEvents (опционально) - можно реализовать механизм подписки фронтенда
-// на определённые события, если нужна сложная логика подписок.
+func (a *App) GetMethodsFullByStandardID(ctx context.Context, standardID string) (map[string]models.TestMethodFull, error) {
+	return a.services.Standards.GetMethodsFullByStandardIDWithCache(ctx, standardID)
+}

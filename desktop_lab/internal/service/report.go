@@ -181,18 +181,18 @@ func (s *ReportService) prepareProtocolTemplateData(
 	methodsCache map[string]models.TestMethodFull, // 🔥 Кэш для ускорения
 ) (ProtocolTemplateData, error) {
 	// Форматирование даты
-	dateStr := ""
-	if full.Protocol.TestDate != nil {
-		dateStr = full.Protocol.TestDate.Format("02.01.2006")
+	var reportTime time.Time
+
+	if full.Protocol.TestDate != nil && !full.Protocol.TestDate.IsZero() {
+		reportTime = full.Protocol.TestDate.Local()
 	} else if !full.Protocol.CreatedAt.IsZero() {
-		dateStr = full.Protocol.CreatedAt.Format("02.01.2006")
+		reportTime = full.Protocol.CreatedAt.Local()
+	} else {
+		reportTime = time.Now()
 	}
 
-	// Извлечение места отбора из контекста или заметок
-	samplePlace := full.Sample.Note
-	if val, ok := full.Sample.ContextParams["location"]; ok {
-		samplePlace = val
-	}
+	dateStr := reportTime.Format("02.01.2006")
+	formattedFullDate := reportTime.Format("02.01.2006 15:04")
 
 	data := ProtocolTemplateData{
 		Protocol: ProtocolView{
@@ -205,7 +205,7 @@ func (s *ReportService) prepareProtocolTemplateData(
 		},
 		Sample: SampleView{
 			Number:          full.Sample.SampleNumber,
-			CollectionPlace: samplePlace,
+			CollectionPlace: full.Sample.CollectionPlace,
 			Note:            full.Sample.Note,
 			MaterialName:    full.Material.Name, // ✅ Уже загружено в full.Material
 		},
@@ -215,12 +215,12 @@ func (s *ReportService) prepareProtocolTemplateData(
 		},
 		LabName:       full.Protocol.LabName,
 		Operator:      full.Protocol.OperatorName,
-		FormattedDate: time.Now().Format("02.01.2006"),
+		FormattedDate: formattedFullDate,
 		QRCodeData:    full.Protocol.ID,
 		// FontPath можно передать, если wkhtmltopdf требует локальный путь
 	}
 
-	// 🔥 ОБРАБОТКА РЕЗУЛЬТАТОВ БЕЗ N+1 ЗАПРОСОВ
+	// ОБРАБОТКА РЕЗУЛЬТАТОВ
 	for _, res := range full.Results {
 		var method models.TestMethod
 		var applicableLimit models.NormativeLimit

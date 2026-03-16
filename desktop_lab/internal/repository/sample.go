@@ -56,9 +56,9 @@ func (r *sampleRepo) Create(ctx context.Context, s models.Sample) error {
 	nowStr := nowUTC.Format(timeLayout)
 
 	_, err = r.db.ExecContext(ctx,
-		`INSERT INTO samples (id, group_id, material_id, sample_number, collection_date, context_params, note, created_at) 
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		s.ID, s.GroupID, s.MaterialID, s.SampleNumber, collDateStr, jsonData, s.Note, nowStr,
+		`INSERT INTO samples (id, group_id, material_id, sample_number, collection_place, collection_date, context_params, note, created_at) 
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.ID, s.GroupID, s.MaterialID, s.SampleNumber, s.CollectionPlace, collDateStr, jsonData, s.Note, nowStr,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create sample: %w", err)
@@ -74,10 +74,10 @@ func (r *sampleRepo) GetByID(ctx context.Context, id string) (models.Sample, err
 	var rawJSON, createdAt string
 
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, group_id, material_id, sample_number, collection_date, context_params, note, created_at 
+		`SELECT id, group_id, material_id, sample_number, collection_place, collection_date, context_params, note, created_at 
 		 FROM samples WHERE id = ?`,
 		id,
-	).Scan(&s.ID, &s.GroupID, &s.MaterialID, &s.SampleNumber, &collDateStr, &rawJSON, &s.Note, &createdAt)
+	).Scan(&s.ID, &s.GroupID, &s.MaterialID, &s.SampleNumber, &s.CollectionPlace, &collDateStr, &rawJSON, &s.Note, &createdAt)
 
 	if err == sql.ErrNoRows {
 		return models.Sample{}, nil
@@ -112,7 +112,7 @@ func (r *sampleRepo) GetByID(ctx context.Context, id string) (models.Sample, err
 
 func (r *sampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models.Sample, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, group_id, material_id, sample_number, collection_date, context_params, note, created_at 
+		`SELECT id, group_id, material_id, sample_number, collection_place, collection_date, context_params, note, created_at 
 		 FROM samples WHERE group_id = ?`,
 		groupID,
 	)
@@ -134,6 +134,7 @@ func (r *sampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 			&s.GroupID,
 			&s.MaterialID,
 			&s.SampleNumber,
+			&s.CollectionPlace,
 			&collDateStr,
 			&rawJSON,
 			&s.Note,

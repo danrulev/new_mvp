@@ -192,6 +192,7 @@ export namespace models {
 	    material_id: string;
 	    // Go type: time
 	    collection_date?: any;
+	    collection_place?: string;
 	    context_params: Record<string, string>;
 	    note?: string;
 	
@@ -204,6 +205,7 @@ export namespace models {
 	        this.sample_number = source["sample_number"];
 	        this.material_id = source["material_id"];
 	        this.collection_date = this.convertValues(source["collection_date"], null);
+	        this.collection_place = source["collection_place"];
 	        this.context_params = source["context_params"];
 	        this.note = source["note"];
 	    }
@@ -325,136 +327,6 @@ export namespace models {
 	        this.project_name = source["project_name"];
 	        this.location = source["location"];
 	        this.created_at = this.convertValues(source["created_at"], null);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class TestResult {
-	    id: string;
-	    protocol_id: string;
-	    method_id: string;
-	    input_data: Record<string, any>;
-	    calculated_value?: number;
-	    applied_limit_id?: string;
-	    is_compliant?: boolean;
-	    deviation_msg?: string;
-	    note?: string;
-	    // Go type: time
-	    created_at: any;
-	
-	    static createFrom(source: any = {}) {
-	        return new TestResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.protocol_id = source["protocol_id"];
-	        this.method_id = source["method_id"];
-	        this.input_data = source["input_data"];
-	        this.calculated_value = source["calculated_value"];
-	        this.applied_limit_id = source["applied_limit_id"];
-	        this.is_compliant = source["is_compliant"];
-	        this.deviation_msg = source["deviation_msg"];
-	        this.note = source["note"];
-	        this.created_at = this.convertValues(source["created_at"], null);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class Protocol {
-	    id: string;
-	    sample_id: string;
-	    protocol_number?: string;
-	    lab_name?: string;
-	    operator_name?: string;
-	    // Go type: time
-	    test_date?: any;
-	    status: string;
-	    // Go type: time
-	    created_at: any;
-	    // Go type: time
-	    updated_at: any;
-	
-	    static createFrom(source: any = {}) {
-	        return new Protocol(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.sample_id = source["sample_id"];
-	        this.protocol_number = source["protocol_number"];
-	        this.lab_name = source["lab_name"];
-	        this.operator_name = source["operator_name"];
-	        this.test_date = this.convertValues(source["test_date"], null);
-	        this.status = source["status"];
-	        this.created_at = this.convertValues(source["created_at"], null);
-	        this.updated_at = this.convertValues(source["updated_at"], null);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class GetProtocolByIDRequest {
-	    Protocol: Protocol;
-	    Results: TestResult[];
-	
-	    static createFrom(source: any = {}) {
-	        return new GetProtocolByIDRequest(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.Protocol = this.convertValues(source["Protocol"], Protocol);
-	        this.Results = this.convertValues(source["Results"], TestResult);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -734,12 +606,110 @@ export namespace models {
 	    }
 	}
 	
+	export class Protocol {
+	    id: string;
+	    sample_id: string;
+	    protocol_number?: string;
+	    lab_name?: string;
+	    operator_name?: string;
+	    // Go type: time
+	    test_date?: any;
+	    status: string;
+	    // Go type: time
+	    created_at: any;
+	    // Go type: time
+	    updated_at: any;
 	
+	    static createFrom(source: any = {}) {
+	        return new Protocol(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.sample_id = source["sample_id"];
+	        this.protocol_number = source["protocol_number"];
+	        this.lab_name = source["lab_name"];
+	        this.operator_name = source["operator_name"];
+	        this.test_date = this.convertValues(source["test_date"], null);
+	        this.status = source["status"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.updated_at = this.convertValues(source["updated_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class TestResult {
+	    id: string;
+	    protocol_id: string;
+	    method_id: string;
+	    input_data: Record<string, any>;
+	    calculated_value?: number;
+	    applied_limit_id?: string;
+	    is_compliant?: boolean;
+	    deviation_msg?: string;
+	    note?: string;
+	    // Go type: time
+	    created_at: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new TestResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.protocol_id = source["protocol_id"];
+	        this.method_id = source["method_id"];
+	        this.input_data = source["input_data"];
+	        this.calculated_value = source["calculated_value"];
+	        this.applied_limit_id = source["applied_limit_id"];
+	        this.is_compliant = source["is_compliant"];
+	        this.deviation_msg = source["deviation_msg"];
+	        this.note = source["note"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class Sample {
 	    id: string;
 	    group_id: string;
 	    material_id: string;
 	    sample_number: string;
+	    collection_place: string;
 	    // Go type: time
 	    collection_date?: any;
 	    context_params: Record<string, string>;
@@ -757,6 +727,7 @@ export namespace models {
 	        this.group_id = source["group_id"];
 	        this.material_id = source["material_id"];
 	        this.sample_number = source["sample_number"];
+	        this.collection_place = source["collection_place"];
 	        this.collection_date = this.convertValues(source["collection_date"], null);
 	        this.context_params = source["context_params"];
 	        this.note = source["note"];

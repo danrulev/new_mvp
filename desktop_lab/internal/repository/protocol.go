@@ -292,7 +292,7 @@ func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 	query := `
 		SELECT 
 			p.id, p.sample_id, p.protocol_number, p.lab_name, p.operator_name, p.test_date, p.status, p.created_at, p.updated_at,
-			s.id, s.group_id, s.material_id, s.sample_number, s.collection_date, s.context_params, s.note, s.created_at,
+			s.id, s.group_id, s.material_id, s.sample_number, s.collection_place, s.collection_date, s.context_params, s.note, s.created_at,
 			m.id, m.name, m.code, m.created_at
 		FROM protocols p
 		JOIN samples s ON p.sample_id = s.id
@@ -308,7 +308,7 @@ func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		&full.Protocol.ID, &full.Protocol.SampleID, &full.Protocol.ProtocolNumber, &full.Protocol.LabName,
 		&full.Protocol.OperatorName, &testDateStr, &full.Protocol.Status, &protCreatedAt, &protUpdatedAt,
 
-		&full.Sample.ID, &full.Sample.GroupID, &full.Sample.MaterialID, &full.Sample.SampleNumber, &collDateStr, &rawContext, &full.Sample.Note, &sampCreatedAt,
+		&full.Sample.ID, &full.Sample.GroupID, &full.Sample.MaterialID, &full.Sample.SampleNumber, &full.Sample.CollectionPlace, &collDateStr, &rawContext, &full.Sample.Note, &sampCreatedAt,
 
 		&full.Material.ID, &full.Material.Name, &full.Material.Code, &matCreatedAt,
 	)
@@ -322,11 +322,16 @@ func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 	// Парсинг дат с использованием хелпера
 	if testDateStr.Valid {
 		if len(testDateStr.String) > 10 {
-			t, _ := helperParseTime(testDateStr.String)
-			full.Protocol.TestDate = &t
+			t, err := helperParseTime(testDateStr.String)
+			if err == nil {
+				full.Protocol.TestDate = &t
+			}
 		} else {
-			t, _ := time.ParseInLocation("2006-01-02", testDateStr.String, time.UTC)
-			full.Protocol.TestDate = &t
+			t, err := time.ParseInLocation("2006-01-02", testDateStr.String, time.UTC)
+			if err == nil {
+				localT := t.Local() // 🔥 Конвертация в локальное время
+				full.Protocol.TestDate = &localT
+			}
 		}
 	}
 
