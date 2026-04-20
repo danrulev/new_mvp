@@ -2,6 +2,8 @@ package data
 
 import (
 	"context"
+	"desktop_lab/internal/models"
+	"desktop_lab/internal/service"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -9,24 +11,16 @@ import (
 	"path/filepath"
 	"strings"
 
-	"desktop_lab/internal/models"
-	"desktop_lab/internal/service"
-
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
-// SeedData загружает справочники из JSON файлов в базу данных
 func SeedData(svc *service.Services, log *zap.Logger) error {
 	ctx := context.Background()
 
-	// Путь к папке с данными (относительно корня проекта или exe)
-	// При разработке: ./data/standards
-	// При продакшене: нужно использовать embed или путь рядом с exe
 	dataDir := filepath.Join("data", "standards")
 
-	// Проверка существования папки
 	if _, err := os.Stat(dataDir); os.IsNotExist(err) {
-		// Попытка найти относительно exe (для сбилженного приложения)
 		execPath, _ := os.Executable()
 		execDir := filepath.Dir(execPath)
 		dataDir = filepath.Join(execDir, "data", "standards")
@@ -40,6 +34,7 @@ func SeedData(svc *service.Services, log *zap.Logger) error {
 	log.Info("Starting data seeding...", zap.String("path", dataDir))
 
 	count := 0
+
 	err := filepath.WalkDir(dataDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -61,12 +56,39 @@ func SeedData(svc *service.Services, log *zap.Logger) error {
 		}
 
 		// 1. Создаем или находим Материал
-		matID, err := svc.Materials.GetOrCreate(ctx, payload.Material.Name, payload.Material.Code)
+		matID, err := getOrCreateMaterial(ctx, svc, payload.Material, log)
 		if err != nil {
 			return fmt.Errorf("failed to get/create material: %w", err)
 		}
 
-		// 2. Создаем Стандарты и Методы
+		// 2. Регистрируем глобальные измерения и привязываем их к материалу
+		dimMap := make(map[string]string)
+
+		// Собираем все уникальные измерения из всех стандартов в файле, чтобы не дублировать
+		allDims := make(map[string]DimSeedItem)
+		for _, stdJson := range payload.Standards {
+			for _, dimJson := range stdJson.Dimensions {
+				allDims[dimJson.KeyName] = dimJson
+			}
+		}
+
+		for keyName, dimJson := range allDims {
+			dimID, err := getOrCreateDimension(ctx, svc, dimJson, log)
+			if err != nil {
+				return fmt.Errorf("failed to get/create dimension %s: %w", keyName, err)
+			}
+			if dimID == "" {
+				return fmt.Errorf("dimension ID is empty for %s", keyName)
+			}
+			dimMap[keyName] = dimID
+
+			// Привязываем измерение к материалу через сервис
+			if err := linkDimensionToMaterial(ctx, svc, matID, dimID, true, log); err != nil {
+				return fmt.Errorf("failed to link dimension %s to material: %w", keyName, err)
+			}
+		}
+
+		// 3. Создаем Стандарты и Методы
 		for _, stdJson := range payload.Standards {
 			req := models.CreateStandardRequest{
 				MaterialID:  matID,
@@ -76,7 +98,7 @@ func SeedData(svc *service.Services, log *zap.Logger) error {
 				Methods:     make([]models.CreateMethodDTO, len(stdJson.Methods)),
 			}
 
-			// Маппинг Dimensions
+			// Маппинг Dimensions (передаем key_name, сервис сам найдет ID и создаст связь)
 			for i, dim := range stdJson.Dimensions {
 				req.Dimensions[i] = models.ContextDimensionDTO{
 					KeyName:        dim.KeyName,
@@ -93,11 +115,11 @@ func SeedData(svc *service.Services, log *zap.Logger) error {
 					Name:        m.Name,
 					Unit:        m.Unit,
 					FormulaExpr: m.FormulaExpr,
+					IsMandatory: m.IsMandatory,
 					Inputs:      make([]models.MethodInputDTO, len(m.Inputs)),
 					Limits:      make([]models.CreateLimitDTO, len(m.Limits)),
 				}
 
-				// Inputs
 				for j, inp := range m.Inputs {
 					req.Methods[i].Inputs[j] = models.MethodInputDTO{
 						ParamKey:   inp.ParamKey,
@@ -108,7 +130,6 @@ func SeedData(svc *service.Services, log *zap.Logger) error {
 					}
 				}
 
-				// Limits
 				for k, lim := range m.Limits {
 					req.Methods[i].Limits[k] = models.CreateLimitDTO{
 						LimitType:  lim.LimitType,
@@ -127,10 +148,9 @@ func SeedData(svc *service.Services, log *zap.Logger) error {
 				}
 			}
 
-			// Вызов сервиса создания
+			// Вызов сервиса создания стандарта
 			_, err := svc.Standards.CreateStandard(ctx, req)
 			if err != nil {
-				// Игнорируем ошибку уникальности, если стандарт уже есть
 				if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 					log.Debug("Standard already exists", zap.String("name", stdJson.Name))
 					continue
@@ -143,7 +163,6 @@ func SeedData(svc *service.Services, log *zap.Logger) error {
 		count++
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
@@ -152,8 +171,93 @@ func SeedData(svc *service.Services, log *zap.Logger) error {
 	return nil
 }
 
-// --- Вспомогательные структуры для JSON ---
+// --- Helper Functions (Только через сервисы) ---
 
+func getOrCreateMaterial(ctx context.Context, svc *service.Services, item MaterialSeedItem, log *zap.Logger) (string, error) {
+	// Пытаемся найти существующий
+	allMats, err := svc.Materials.GetAll(ctx)
+	if err != nil {
+		return "", err
+	}
+	for _, m := range allMats {
+		if m.Name == item.Name {
+			log.Debug("Material exists", zap.String("name", item.Name))
+			return m.ID, nil
+		}
+	}
+
+	// Создаем новый через сервис
+	newMat, err := svc.Materials.Create(ctx, item.Name, item.Code)
+	if err != nil {
+		return "", err
+	}
+
+	log.Debug("Material created", zap.String("name", item.Name), zap.String("id", newMat.ID))
+	return newMat.ID, nil
+}
+
+func getOrCreateDimension(ctx context.Context, svc *service.Services, dim DimSeedItem, log *zap.Logger) (string, error) {
+	// 1. Пытаемся найти через сервис
+	existing, err := svc.Dimensions.GetDimensionByKey(ctx, dim.KeyName)
+	if err == nil && existing.ID != "" {
+		log.Debug("Dimension exists", zap.String("key", dim.KeyName))
+		return existing.ID, nil
+	}
+
+	// 2. Создаем через сервис
+	newDim := models.ContextDimension{
+		ID:             uuid.New().String(),
+		KeyName:        dim.KeyName,
+		Label:          dim.Label,
+		DataType:       dim.DataType,
+		PossibleValues: dim.PossibleValues,
+	}
+
+	err = svc.Dimensions.AddDimension(ctx, newDim)
+	if err != nil {
+		// Если ошибка уникальности (кто-то создал параллельно), пробуем найти снова
+		if strings.Contains(err.Error(), "UNIQUE") {
+			existing, err = svc.Dimensions.GetDimensionByKey(ctx, dim.KeyName)
+			if err == nil && existing.ID != "" {
+				return existing.ID, nil
+			}
+		}
+		return "", fmt.Errorf("failed to add dimension: %w", err)
+	}
+
+	// 3. Находим созданное, чтобы получить ID (если AddDimension не вернул его явно)
+	existing, err = svc.Dimensions.GetDimensionByKey(ctx, dim.KeyName)
+	if err != nil || existing.ID == "" {
+		return "", fmt.Errorf("dimension created but not found: %w", err)
+	}
+
+	log.Debug("Dimension created", zap.String("key", dim.KeyName), zap.String("id", existing.ID))
+	return existing.ID, nil
+}
+
+func linkDimensionToMaterial(ctx context.Context, svc *service.Services, matID, dimID string, isRequired bool, log *zap.Logger) error {
+	if dimID == "" {
+		return fmt.Errorf("cannot link empty dimension ID")
+	}
+
+	// Вызываем метод сервиса для связи
+	err := svc.Materials.AddContextDimensionToMaterial(ctx, matID, dimID, isRequired)
+	if err != nil {
+		// Игнорируем ошибку уникальности, если связь уже есть
+		if strings.Contains(err.Error(), "UNIQUE") {
+			return nil
+		}
+		// Логируем ошибку FK, если она возникнет (значит измерения нет в БД)
+		if strings.Contains(err.Error(), "FOREIGN KEY") {
+			return fmt.Errorf("FK constraint failed: dimension %s does not exist", dimID)
+		}
+		return err
+	}
+	log.Debug("Dimension linked to material", zap.String("mat", matID), zap.String("dim", dimID))
+	return nil
+}
+
+// --- Structs ---
 type StandardSeedPayload struct {
 	Material  MaterialSeedItem   `json:"material"`
 	Standards []StandardSeedItem `json:"standards"`
@@ -206,37 +310,6 @@ type LimitSeedItem struct {
 
 type ConditionSeedItem struct {
 	DimensionKey  string `json:"dimension_key"`
-	Operator      string `json:"operator"` // "=", "IN", "!="
+	Operator      string `json:"operator"`
 	ExpectedValue string `json:"expected_value"`
-}
-
-// --- Helper Functions ---
-
-func getOrCreateMaterial(ctx context.Context, svc *service.Services, item MaterialSeedItem, log *zap.Logger) (string, error) {
-	// Сначала пробуем найти (если бы был метод GetByName, но его нет в интерфейсе, поэтому создаем с обработкой ошибки)
-	// Или просто создаем, ловя ошибку уникальности
-
-	// Генерируем детерминированный ID на основе имени, чтобы не дублировать при перезапуске
-	// Это простой хак, лучше делать SELECT сначала
-
-	mat, err := svc.Materials.Create(ctx, item.Name, item.Code)
-	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			// Материал уже есть, нужно найти его ID
-			// В текущем интерфейсе Service нет метода GetAll с фильтром,
-			// поэтому придется получить все и найти нужный (для сида это ок)
-			allMats, err := svc.Materials.GetAll(ctx)
-			if err != nil {
-				return "", err
-			}
-			for _, m := range allMats {
-				if m.Name == item.Name {
-					log.Debug("Material exists", zap.String("name", item.Name))
-					return m.ID, nil
-				}
-			}
-		}
-		return "", err
-	}
-	return mat.ID, nil
 }

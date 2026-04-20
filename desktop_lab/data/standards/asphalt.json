@@ -109,7 +109,7 @@
           "code": "9128-P-03",
           "name": "Предел прочности при сжатии",
           "unit": "МПа",
-          "formula_expr": "F / A",
+          "formula_expr": "(F / A) / 10",
           "is_mandatory": true,
           "inputs": [
             {

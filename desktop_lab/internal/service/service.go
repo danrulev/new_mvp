@@ -7,12 +7,13 @@ import (
 )
 
 type Services struct {
-	Materials *MaterialService
-	Standards *StandardService
-	Protocols *ProtocolService
-	Groups    *ExperimentGroupService
-	Samples   *SampleService
-	Reports   *ReportService
+	Materials  *MaterialService
+	Standards  *StandardService
+	Protocols  *ProtocolService
+	Groups     *ExperimentGroupService
+	Samples    *SampleService
+	Reports    *ReportService
+	Dimensions *DimensionService
 }
 
 func NewServices(
@@ -21,6 +22,7 @@ func NewServices(
 	protRepo repository.ProtocolRepo,
 	sampRepo repository.SampleRepo,
 	groupRepo repository.ExperimentGroupRepo,
+	dimRepo repository.DimensionRepo,
 	fontDir string,
 	templatesDir string,
 	log *zap.Logger,
@@ -31,12 +33,14 @@ func NewServices(
 	group := NewExperimentGroupService(groupRepo, log)
 	protocol := NewProtocolService(protRepo, sampRepo, stdRepo, groupRepo, matRepo, log)
 	report := NewReportService(protocol, material, fontDir, templatesDir, log)
+	dimension := NewDimensionService(dimRepo, log)
 	return &Services{
-		Materials: material,
-		Standards: standards,
-		Protocols: protocol,
-		Groups:    group,
-		Samples:   sample,
-		Reports:   report,
+		Materials:  material,
+		Standards:  standards,
+		Protocols:  protocol,
+		Groups:     group,
+		Samples:    sample,
+		Reports:    report,
+		Dimensions: dimension,
 	}
 }

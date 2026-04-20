@@ -8,7 +8,7 @@ import {
   GetMaterials,
   GetMethodDetails,
   GetMethodsByStandardID,
-  GetProtocolFull, // 🔥 Импортируем GetProtocolFull
+  GetProtocolFull, // Используем полный метод для просмотра
   GetProtocols,
   GetStandardsByMaterialID,
   SaveProtocolPDFWithDialog,
@@ -410,6 +410,7 @@ export default function LabDashboard() {
       resultsInput = [{ method_id: method.id, raw_inputs: { value: val.toString() } } as CreateResultDTO];
     }
 
+    // 🔥 ИСПРАВЛЕНИЕ: Передаем collection_place явно
     const sampleData = models.CreateSampleDTO.createFrom({
       sample_number: sampleNumber,
       material_id: selectedMaterialId,
@@ -453,7 +454,7 @@ export default function LabDashboard() {
     const handleViewProtocol = async (id: string) => {
     setLoading((p) => ({ ...p, save: true }));
     
-    // 1. Загружаем полный протокол
+    // 1. Загружаем полный протокол (включая Sample и Material)
     const fullData = await safeCall(() => GetProtocolFull(id), 'Ошибка загрузки протокола');
     
     if (!fullData || !fullData.results || fullData.results.length === 0) {
@@ -474,11 +475,10 @@ export default function LabDashboard() {
     if (firstMethodBasic && firstMethodBasic.method && firstMethodBasic.method.standard_id) {
         const standardId = firstMethodBasic.method.standard_id;
 
-        // 3. Загружаем ВСЕ методы и лимиты этого стандарта
-        // Примечание: Убедитесь, что вы добавили этот метод в app.go и сделали wails build
-        // Если метода нет, норма останется прочерком.
+        // 3. Загружаем ВСЕ методы и лимиты этого стандарта для расчета норм
+        // Примечание: Убедитесь, что вы добавили метод GetMethodsFullByStandardID в app.go
         const methodsFullMap = await safeCall(() => 
-            // @ts-ignore - если метод еще не сгенерирован, игнорируем ошибку типа временно
+            // @ts-ignore - если метод еще не сгенерирован в bindings, игнорируем ошибку типа временно
             window.app.GetMethodsFullByStandardID(standardId) 
         , 'Ошибка загрузки методов стандарта');
 
@@ -510,12 +510,13 @@ export default function LabDashboard() {
                 }
             }
 
-            // ✅ Явно создаем объект, копируя нужные поля из res (класса) в наш интерфейс
+            // ✅ ИСПРАВЛЕНИЕ: Явно создаем объект, копируя нужные поля из res (класса) в наш интерфейс
+            // Обратите внимание на правильное имя поля: input_data
             return {
                 id: res.id,
                 protocol_id: res.protocol_id,
                 method_id: res.method_id,
-                input_data: res.input_data,
+                input_data: res.input_data, // <-- Исправлено с input_ на input_data
                 calculated_value: res.calculated_value,
                 applied_limit_id: res.applied_limit_id,
                 is_compliant: res.is_compliant,
@@ -535,7 +536,7 @@ export default function LabDashboard() {
             id: r.id,
             protocol_id: r.protocol_id,
             method_id: r.method_id,
-            input_data: r.input_data,
+            input_data: r.input_data, // <-- Исправлено здесь тоже
             calculated_value: r.calculated_value,
             applied_limit_id: r.applied_limit_id,
             is_compliant: r.is_compliant,
@@ -802,6 +803,7 @@ export default function LabDashboard() {
             </div>
             <div style={styles.infoItem}>
               <span style={styles.infoLabel}>Место отбора</span>
+              {/* Читаем из нового поля collection_place */}
               <span style={styles.infoValue}>{viewingData.sample.collection_place || '—'}</span>
             </div>
             <div style={styles.infoItem}>

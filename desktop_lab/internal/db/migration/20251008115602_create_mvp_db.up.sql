@@ -28,17 +28,39 @@ CREATE INDEX IF NOT EXISTS idx_standards_material ON standards(material_id);
 
 -- Измерения контекста (Dimensions)
 -- Описывает, от чего зависят нормы: "Климатическая зона", "Марка смеси", "Тип слоя"
+-- Словарь типов контекстных параметров (Измерения)
+-- Пример записей: "climate_zone", "layer_type", "temperature"
 CREATE TABLE IF NOT EXISTS context_dimensions (
-    id TEXT PRIMARY KEY, -- UUID
-    standard_id TEXT NOT NULL,
-    key_name TEXT NOT NULL, -- Например: 'climate_zone', 'mix_grade', 'layer_type'
-    label TEXT NOT NULL, -- Человекочитаемое: "Дорожно-климатическая зона"
-    data_type TEXT NOT NULL DEFAULT 'enum', -- 'enum', 'number', 'text'
-    possible_values TEXT, -- JSON массив допустимых значений: ["I", "II", "III"] или null
-    FOREIGN KEY (standard_id) REFERENCES standards(id) ON DELETE CASCADE,
-    UNIQUE (standard_id, key_name)
+    id TEXT PRIMARY KEY,
+    key_name TEXT NOT NULL UNIQUE, -- Уникальный ключ: 'climate_zone'
+    label TEXT NOT NULL,           -- Читаемое имя: 'Климатическая зона'
+    data_type TEXT NOT NULL DEFAULT 'enum',
+    possible_values TEXT,          -- JSON: ["I", "II", "III"]
+    description TEXT               -- Описание параметра
 );
-CREATE INDEX IF NOT EXISTS idx_dims_standard ON context_dimensions(standard_id);
+
+CREATE TABLE IF NOT EXISTS material_context_dims (
+    id TEXT PRIMARY KEY,
+    material_id TEXT NOT NULL,
+    dimension_id TEXT NOT NULL,
+    is_required INTEGER DEFAULT 1, -- Обязательно ли заполнять это поле для пробы?
+    
+    FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE,
+    FOREIGN KEY (dimension_id) REFERENCES context_dimensions(id) ON DELETE CASCADE,
+    UNIQUE (material_id, dimension_id)
+);
+CREATE INDEX IF NOT EXISTS idx_mat_ctx_mat ON material_context_dims(material_id);
+
+CREATE TABLE IF NOT EXISTS standard_context_dims (
+    id TEXT PRIMARY KEY,
+    standard_id TEXT NOT NULL,
+    dimension_id TEXT NOT NULL,
+    
+    FOREIGN KEY (standard_id) REFERENCES standards(id) ON DELETE CASCADE,
+    FOREIGN KEY (dimension_id) REFERENCES context_dimensions(id) ON DELETE CASCADE,
+    UNIQUE (standard_id, dimension_id)
+);
+CREATE INDEX IF NOT EXISTS idx_std_ctx_std ON standard_context_dims(standard_id);
 
 -- ============================================================================
 -- 2. МЕТОДЫ И НОРМАТИВЫ

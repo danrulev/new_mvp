@@ -32,7 +32,6 @@ type Standard struct {
 // ContextDimension соответствует таблице context_dimensions
 type ContextDimension struct {
 	ID             string   `json:"id" db:"id"`
-	StandardID     string   `json:"standard_id" db:"standard_id"`
 	KeyName        string   `json:"key_name" db:"key_name"`
 	Label          string   `json:"label" db:"label"`
 	DataType       string   `json:"data_type" db:"data_type"`
@@ -66,6 +65,11 @@ type StandardContext struct {
 	StandardID string                    `json:"standard_id" db:"-"`
 	Dimensions []ContextDimension        `json:"dimensions" db:"-"`
 	Methods    map[string]TestMethodFull `json:"methods" db:"-"`
+}
+
+type MaterialContext struct {
+	MaterialID string
+	Dimensions []ContextDimension `json:"dimensions" db:"-"`
 }
 
 func (p *ProtocolFull) IsEmpty() bool {
@@ -185,7 +189,7 @@ type CreateStandardRequest struct {
 	MaterialID  string                `json:"material_id"`
 	Name        string                `json:"name"`
 	Description string                `json:"description,omitempty"`
-	Dimensions  []ContextDimensionDTO `json:"dimensions,omitempty"`
+	Dimensions  []ContextDimensionDTO `json:"dimension_ids,omitempty"`
 	Methods     []CreateMethodDTO     `json:"methods,omitempty"`
 }
 

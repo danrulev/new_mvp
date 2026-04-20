@@ -207,3 +207,7 @@ func (s *StandardService) InvalidateStandardCache(standardID string) {
 	s.invalidateCache(standardID)
 	s.log.Info("standard cache invalidated", zap.String("standard_id", standardID))
 }
+
+func (s *StandardService) LinkDimensionToStandard(ctx context.Context, standardID, dimensionID string) error {
+	return s.repo.LinkDimensionToStandard(ctx, standardID, dimensionID)
+}

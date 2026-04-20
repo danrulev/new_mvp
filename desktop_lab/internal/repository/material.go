@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"desktop_lab/internal/models"
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
@@ -140,6 +142,66 @@ func (r *materialRepo) GetByName(ctx context.Context, name string) (models.Mater
 	}
 
 	return m, nil
+}
+
+func (r *materialRepo) GetContextDimensionsByMaterialID(ctx context.Context, materialID string) ([]models.ContextDimension, error) {
+	query := `
+		SELECT cd.id, cd.key_name, cd.label, cd.data_type, cd.possible_values, cd.description
+		FROM context_dimensions cd
+		JOIN material_context_dims mcd ON cd.id = mcd.dimension_id
+		WHERE mcd.material_id = ?
+		ORDER BY cd.label
+	`
+	rows, err := r.db.QueryContext(ctx, query, materialID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var dims []models.ContextDimension
+	for rows.Next() {
+		var d models.ContextDimension
+		var possibleValuesRaw sql.NullString
+		var description sql.NullString
+
+		// В новой модели у ContextDimension нет standard_id при глобальном поиске, но в структуре он есть.
+		// Заполняем его пустым или игнорируем, так как связь идет через таблицу связей.
+		err := rows.Scan(&d.ID, &d.KeyName, &d.Label, &d.DataType, &possibleValuesRaw, &description)
+		if err != nil {
+			return nil, err
+		}
+
+		if possibleValuesRaw.Valid && possibleValuesRaw.String != "" && possibleValuesRaw.String != "null" {
+			json.Unmarshal([]byte(possibleValuesRaw.String), &d.PossibleValues)
+		} else {
+			d.PossibleValues = []string{}
+		}
+
+		dims = append(dims, d)
+	}
+	return dims, rows.Err()
+}
+
+func (r *materialRepo) AddContextDimensionToMaterial(ctx context.Context, materialID, dimensionID string, isRequired bool) error {
+	id := uuid.New().String()
+	isReqInt := 0
+	if isRequired {
+		isReqInt = 1
+	}
+
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO material_context_dims (id, material_id, dimension_id, is_required) VALUES (?, ?, ?, ?)`,
+		id, materialID, dimensionID, isReqInt,
+	)
+	return err
+}
+
+func (r *materialRepo) DeleteContextDimensionFromMaterial(ctx context.Context, materialID, dimensionID string) error {
+	_, err := r.db.ExecContext(ctx,
+		`DELETE FROM material_context_dims WHERE material_id = ? AND dimension_id = ?`,
+		materialID, dimensionID,
+	)
+	return err
 }
 
 // helperParseTime вспомогательная функция для парсинга даты из SQLite

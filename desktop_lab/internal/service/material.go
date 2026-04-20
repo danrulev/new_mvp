@@ -81,3 +81,15 @@ func (s *MaterialService) GetOrCreate(ctx context.Context, name, code string) (s
 
 	return newMat.ID, nil
 }
+
+func (s *MaterialService) GetContextDimensionsByMaterialID(ctx context.Context, materialID string) ([]models.ContextDimension, error) {
+	return s.repo.GetContextDimensionsByMaterialID(ctx, materialID)
+}
+
+func (s *MaterialService) AddContextDimensionToMaterial(ctx context.Context, materialID, dimensionID string, isRequired bool) error {
+	return s.repo.AddContextDimensionToMaterial(ctx, materialID, dimensionID, isRequired)
+}
+
+func (s *MaterialService) DeleteContextDimensionFromMaterial(ctx context.Context, materialID, dimensionID string) error {
+	return s.repo.DeleteContextDimensionFromMaterial(ctx, materialID, dimensionID)
+}

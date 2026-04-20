@@ -35,7 +35,6 @@ export namespace models {
 	}
 	export class ContextDimension {
 	    id: string;
-	    standard_id: string;
 	    key_name: string;
 	    label: string;
 	    data_type: string;
@@ -48,7 +47,6 @@ export namespace models {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
-	        this.standard_id = source["standard_id"];
 	        this.key_name = source["key_name"];
 	        this.label = source["label"];
 	        this.data_type = source["data_type"];
@@ -272,7 +270,7 @@ export namespace models {
 	    material_id: string;
 	    name: string;
 	    description?: string;
-	    dimensions?: ContextDimensionDTO[];
+	    dimension_ids?: ContextDimensionDTO[];
 	    methods?: CreateMethodDTO[];
 	
 	    static createFrom(source: any = {}) {
@@ -284,7 +282,7 @@ export namespace models {
 	        this.material_id = source["material_id"];
 	        this.name = source["name"];
 	        this.description = source["description"];
-	        this.dimensions = this.convertValues(source["dimensions"], ContextDimensionDTO);
+	        this.dimension_ids = this.convertValues(source["dimension_ids"], ContextDimensionDTO);
 	        this.methods = this.convertValues(source["methods"], CreateMethodDTO);
 	    }
 	

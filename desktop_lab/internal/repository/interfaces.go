@@ -5,12 +5,25 @@ import (
 	"desktop_lab/internal/models"
 )
 
+type DimensionRepo interface {
+	GetAvailableDimensions(ctx context.Context) ([]models.ContextDimension, error)
+	GetDimensionByID(ctx context.Context, id string) (models.ContextDimension, error)
+	GetDimensionByKey(ctx context.Context, key string) (models.ContextDimension, error)
+	AddDimension(ctx context.Context, dim models.ContextDimension) error
+	UpdatePossibleValues(ctx context.Context, id string, values []string) error
+	DeletePossibleValues(ctx context.Context, id string) error
+	DeleteDimension(ctx context.Context, id string) error
+}
+
 // MaterialRepo работает с базовыми материалами
 type MaterialRepo interface {
 	Create(ctx context.Context, m models.Material) error
 	GetAll(ctx context.Context) ([]models.Material, error)
 	GetByID(ctx context.Context, id string) (models.Material, error)
 	GetByName(ctx context.Context, name string) (models.Material, error)
+	GetContextDimensionsByMaterialID(ctx context.Context, materialID string) ([]models.ContextDimension, error)
+	AddContextDimensionToMaterial(ctx context.Context, materialID, dimensionID string, isRequired bool) error
+	DeleteContextDimensionFromMaterial(ctx context.Context, materialID, dimensionID string) error
 }
 
 // StandardRepo управляет стандартами, методами и нормативами
@@ -26,6 +39,7 @@ type StandardRepo interface {
 	GetStandardFull(ctx context.Context, standardID string) (models.StandardContext, error)
 	GetMethodLimits(ctx context.Context, methodID string) ([]models.NormativeLimit, error)
 	GetLimitConditions(ctx context.Context, limitID string) ([]models.LimitCondition, error)
+	LinkDimensionToStandard(ctx context.Context, standardID, dimensionID string) error
 }
 
 // ExperimentGroupRepo управляет группами экспериментов

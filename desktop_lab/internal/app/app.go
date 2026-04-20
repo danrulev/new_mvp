@@ -94,10 +94,11 @@ func (a *App) Init(fontFS embed.FS, templateFS embed.FS) error {
 	protRepo := repository.NewProtocolRepo(dbConn, a.log)
 	sampRepo := repository.NewSampleRepo(dbConn, a.log)
 	groupRepo := repository.NewExperimentGroupRepo(dbConn, a.log)
+	dimRepo := repository.NewDimensionRepo(dbConn, a.log)
 
 	// 7. Сервисы
 	a.services = service.NewServices(
-		matRepo, stdRepo, protRepo, sampRepo, groupRepo,
+		matRepo, stdRepo, protRepo, sampRepo, groupRepo, dimRepo,
 		fontDir, "templates", a.log,
 	)
 
@@ -771,6 +772,42 @@ func (a *App) EmitEvent(eventName string, payload interface{}) {
 	a.log.Debug("Event emitted", zap.String("event", eventName))
 }
 
-func (a *App) GetMethodsFullByStandardID(ctx context.Context, standardID string) (map[string]models.TestMethodFull, error) {
-	return a.services.Standards.GetMethodsFullByStandardIDWithCache(ctx, standardID)
+func (a *App) GetMethodsFullByStandardID(standardID string) (map[string]models.TestMethodFull, error) {
+	return a.services.Standards.GetMethodsFullByStandardIDWithCache(a.ctx, standardID)
+}
+
+func (a *App) GetContextDimensionsByMaterialID(materialID string) ([]models.ContextDimension, error) {
+	return a.services.Materials.GetContextDimensionsByMaterialID(a.ctx, materialID)
+}
+
+func (a *App) AddContextDimensionToMaterial(materialID, dimensionID string, isRequired bool) error {
+	return a.services.Materials.AddContextDimensionToMaterial(a.ctx, materialID, dimensionID, isRequired)
+}
+
+func (a *App) DeleteContextDimensionFromMaterial(materialID, dimensionID string) error {
+	return a.services.Materials.DeleteContextDimensionFromMaterial(a.ctx, materialID, dimensionID)
+}
+
+func (a *App) GetAvailableDimensions() ([]models.ContextDimension, error) {
+	return a.services.Dimensions.GetAvailableDimensions(a.ctx)
+}
+
+func (a *App) AddDimension(dim models.ContextDimension) error {
+	return a.services.Dimensions.AddDimension(a.ctx, dim)
+}
+
+func (a *App) UpdatePossibleValues(id string, values []string) error {
+	return a.services.Dimensions.UpdatePossibleValues(a.ctx, id, values)
+}
+
+func (a *App) DeletePossibleValues(id string) error {
+	return a.services.Dimensions.DeletePossibleValues(a.ctx, id)
+}
+
+func (a *App) DeleteDimension(id string) error {
+	return a.services.Dimensions.DeleteDimension(a.ctx, id)
+}
+
+func (a *App) LinkDimensionToStandard(ctx context.Context, standardID, dimensionID string) error {
+	return a.services.Standards.LinkDimensionToStandard(ctx, standardID, dimensionID)
 }
