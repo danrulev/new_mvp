@@ -3,7 +3,6 @@ module desktop_lab
 go 1.25.7
 
 require (
-	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/SebastiaanKlippert/go-wkhtmltopdf v1.9.3
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/google/uuid v1.6.0

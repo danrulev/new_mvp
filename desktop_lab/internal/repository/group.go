@@ -21,7 +21,6 @@ func NewExperimentGroupRepo(db *sqlx.DB, log *zap.Logger) ExperimentGroupRepo {
 }
 
 func (r *experimentGroupRepo) Create(ctx context.Context, g models.ExperimentGroup) error {
-	// 🔥 ИСПРАВЛЕНИЕ: Используем UTC для записи
 	nowUTC := time.Now().UTC()
 	nowStr := nowUTC.Format(timeLayout)
 
@@ -133,4 +132,28 @@ func (r *experimentGroupRepo) AddSampleToGroup(ctx context.Context, sampleID, gr
 	}
 
 	return nil
+}
+
+func (r *experimentGroupRepo) DeleteGroup(ctx context.Context, id string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	_, err = tx.ExecContext(ctx, "DELETE FROM samples WHERE group_id = ?", id)
+	if err != nil {
+		return fmt.Errorf("failed to delete samples: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, "DELETE FROM experiment_groups WHERE id = ?", id)
+	if err != nil {
+		return fmt.Errorf("failed to delete group: %w", err)
+	}
+
+	return tx.Commit()
 }

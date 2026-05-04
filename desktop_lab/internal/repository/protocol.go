@@ -398,3 +398,13 @@ func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 
 	return full, rows.Err()
 }
+
+func (r *protocolRepo) DeleteProtocol(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM protocols WHERE id = ?`, id)
+	return err
+}
+
+func (r *protocolRepo) UpdateStatus(ctx context.Context, id string, status string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE protocols SET status = ? WHERE id = ?`, status, id)
+	return err
+}

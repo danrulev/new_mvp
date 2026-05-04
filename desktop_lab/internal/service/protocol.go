@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Knetic/govaluate"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -479,56 +478,6 @@ func (s *ProtocolService) saveProtocol(
 	return protocol, nil
 }
 
-// calculateFormula вычисляет выражение через govaluate
-func (s *ProtocolService) calculateFormula(exprStr string, params map[string]interface{}) (float64, error) {
-	expr, err := govaluate.NewEvaluableExpression(exprStr)
-	if err != nil {
-		return 0, fmt.Errorf("синтаксическая ошибка формулы: %w", err)
-	}
-
-	funcs := map[string]interface{}{
-		"abs": math.Abs, "sqrt": math.Sqrt, "log": math.Log, "ln": math.Log,
-		"log10": math.Log10, "sin": math.Sin, "cos": math.Cos, "tan": math.Tan,
-		"pi": math.Pi, "pow": math.Pow,
-		"min": func(a, b float64) float64 {
-			if a < b {
-				return a
-			}
-			return b
-		},
-		"max": func(a, b float64) float64 {
-			if a > b {
-				return a
-			}
-			return b
-		},
-	}
-
-	allParams := make(map[string]interface{}, len(params)+len(funcs))
-	for k, v := range params {
-		allParams[k] = v
-	}
-	for k, v := range funcs {
-		allParams[k] = v
-	}
-
-	result, err := expr.Evaluate(allParams)
-	if err != nil {
-		return 0, fmt.Errorf("ошибка вычисления: %w", err)
-	}
-
-	switch v := result.(type) {
-	case float64:
-		return v, nil
-	case int64:
-		return float64(v), nil
-	case float32:
-		return float64(v), nil
-	default:
-		return 0, fmt.Errorf("неподдерживаемый тип результата: %T", v)
-	}
-}
-
 // GetProtocolFull загружает полный протокол с пробой, материалом и результатами (ОПТИМИЗИРОВАНО)
 func (s *ProtocolService) GetProtocolFull(ctx context.Context, id string) (models.ProtocolFull, error) {
 	full, err := s.protocolRepo.GetProtocolFull(ctx, id)
@@ -691,4 +640,12 @@ func (s *ProtocolService) generateProtocolNumber(ctx context.Context, protocolID
 		isGroup = "G"
 	}
 	return fmt.Sprintf("%s%s-%s-%s-%s", isGroup, mat.Code[:8], sampleID[:8], protocolID[:8], createdAt.Format("20060102")), nil
+}
+
+func (s *ProtocolService) UpdateProtocolStatus(ctx context.Context, id string, status string) error {
+	return s.protocolRepo.UpdateStatus(ctx, id, status)
+}
+
+func (s *ProtocolService) DeleteProtocol(ctx context.Context, id string) error {
+	return s.protocolRepo.DeleteProtocol(ctx, id)
 }

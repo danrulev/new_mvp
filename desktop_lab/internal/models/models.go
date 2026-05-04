@@ -335,10 +335,11 @@ type ProtocolListResponse struct {
 }
 
 type PaginatedMetadata struct {
-	Total      int64 `json:"total"`
-	Page       int64 `json:"page"`
-	PageSize   int64 `json:"page_size"`
-	TotalPages int64 `json:"total_pages"`
+	Page        int64 `json:"page"`
+	Total       int64 `json:"total"`
+	TotalPages  int64 `json:"total_pages"`
+	HasNextPage bool  `json:"has_next_page"`
+	HasPrevPage bool  `json:"has_prev_page"`
 }
 
 type GroupListResponse struct {
@@ -382,4 +383,23 @@ func (s JSONStringSlice) Value() (driver.Value, error) {
 		return nil, nil // Или return "[]", nil если хотите хранить пустой массив явно
 	}
 	return json.Marshal(s)
+}
+
+func MakePaginatedMetadata(limit, offset, total int64) PaginatedMetadata {
+	if limit <= 0 {
+		limit = 1
+	}
+
+	totalPages := int64(0)
+	if total > 0 {
+		totalPages = (total + limit - 1) / limit
+	}
+
+	return PaginatedMetadata{
+		Page:        offset/limit + 1,
+		Total:       total,
+		TotalPages:  totalPages,
+		HasNextPage: total > offset+limit,
+		HasPrevPage: offset > 0,
+	}
 }

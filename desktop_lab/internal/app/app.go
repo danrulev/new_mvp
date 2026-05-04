@@ -466,12 +466,7 @@ func (a *App) GetGroups(limit, offset int64) (models.GroupListResponse, error) {
 		return models.GroupListResponse{}, a.wrapError("GetGroups", err)
 	}
 
-	meta := models.PaginatedMetadata{
-		Total:      total,
-		Page:       offset/limit + 1,
-		PageSize:   limit,
-		TotalPages: (total + limit - 1) / limit,
-	}
+	meta := models.MakePaginatedMetadata(limit, offset, total)
 
 	return models.GroupListResponse{Items: items, Meta: meta}, nil
 }
@@ -564,12 +559,7 @@ func (a *App) GetProtocols(limit, offset int64) (models.ProtocolListResponse, er
 		return models.ProtocolListResponse{}, a.wrapError("GetProtocols", err)
 	}
 
-	meta := models.PaginatedMetadata{
-		Total:      total,
-		Page:       offset/limit + 1,
-		PageSize:   limit,
-		TotalPages: (total + limit - 1) / limit,
-	}
+	meta := models.MakePaginatedMetadata(limit, offset, total)
 
 	return models.ProtocolListResponse{Items: items, Meta: meta}, nil
 }
@@ -810,4 +800,12 @@ func (a *App) DeleteDimension(id string) error {
 
 func (a *App) LinkDimensionToStandard(ctx context.Context, standardID, dimensionID string) error {
 	return a.services.Standards.LinkDimensionToStandard(ctx, standardID, dimensionID)
+}
+
+func (a *App) DeleteProtocol(id string) error {
+	return a.services.Protocols.DeleteProtocol(a.ctx, id)
+}
+
+func (a *App) UpdateProtocolStatus(id string, status string) error {
+	return a.services.Protocols.UpdateProtocolStatus(a.ctx, id, status)
 }
