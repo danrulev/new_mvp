@@ -29,13 +29,13 @@ func (h *Handler) createGroup(c *gin.Context) {
 	var input CreateGroupRequest
 
 	if err := c.BindJSON(&input); err != nil {
-		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "createGroup", "invalid data", err)
 		return
 	}
 
 	group, err := h.group.Create(c, input.Name, input.ProjectName, input.Location, input.MaterialID)
 	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "createGroup", "service error", err)
 		return
 	}
 
@@ -45,13 +45,13 @@ func (h *Handler) createGroup(c *gin.Context) {
 func (h *Handler) getGroupList(c *gin.Context) {
 	var p models.Paginated
 	if err := c.BindQuery(&p); err != nil {
-		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "getGroupList", "invalid data", err)
 		return
 	}
 
 	data, err := h.group.GetList(c.Request.Context(), p.Limit, p.Offset)
 	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "getGroupList", "service error", err)
 		return
 	}
 
@@ -62,13 +62,13 @@ func (h *Handler) getGroupByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "getGroupByID", "invalid id param", err)
 		return
 	}
 
 	data, err := h.group.GetByID(c.Request.Context(), id.String())
 	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "getGroupByID", "service error", err)
 		return
 	}
 
@@ -79,12 +79,12 @@ func (h *Handler) deleteGroup(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "deleteGroup", "invalid id param", err)
 		return
 	}
 
 	if err := h.group.DeleteGroupByID(c.Request.Context(), id.String()); err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "deleteGroup", "service error", err)
 		return
 	}
 

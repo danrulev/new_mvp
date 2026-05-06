@@ -18,11 +18,12 @@ import (
 
 // ReportService отвечает за генерацию печатных форм (PDF)
 type ReportService struct {
-	protocolService *ProtocolService
-	materialService *MaterialService // ✅ Используем сервис, а не интерфейс репозитория
-	templatesDir    string           // Оставляем для кастомных путей, если нужно
-	fontDir         string
-	log             *zap.Logger
+	protocolService    *ProtocolService
+	materialService    *MaterialService // ✅ Используем сервис, а не интерфейс репозитория
+	templatesDir       string           // Оставляем для кастомных путей, если нужно
+	fontDir            string
+	wkhtmltopdfWindows []byte
+	log                *zap.Logger
 }
 
 // NewReportService создает сервис отчетов
@@ -32,14 +33,16 @@ func NewReportService(
 	// fontDir можно убрать, если шрифты тоже в embed, или оставить для wkhtmltopdf
 	fontDir string,
 	templatesDir string,
+	wkhtmltopdfWindows []byte,
 	log *zap.Logger,
 ) *ReportService {
 	return &ReportService{
-		protocolService: protoSvc,
-		materialService: matSvc,
-		templatesDir:    templatesDir,
-		fontDir:         fontDir,
-		log:             log,
+		protocolService:    protoSvc,
+		materialService:    matSvc,
+		templatesDir:       templatesDir,
+		fontDir:            fontDir,
+		wkhtmltopdfWindows: wkhtmltopdfWindows,
+		log:                log,
 	}
 }
 
@@ -665,6 +668,10 @@ func (s *ReportService) renderHTML(templateName string, data interface{}) (strin
 
 // generatePDFFromHTML (без изменений, логика wkhtmltopdf)
 func (s *ReportService) generatePDFFromHTML(htmlContent string) ([]byte, error) {
+	wkPath, err := GetWkhtmltopdfPath(s.wkhtmltopdfWindows)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare wkhtmltopdf: %w", err)
+	}
 	tmpFile, err := os.CreateTemp("", "protocol_*.html")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file: %w", err)
@@ -677,6 +684,8 @@ func (s *ReportService) generatePDFFromHTML(htmlContent string) ([]byte, error) 
 		return nil, fmt.Errorf("failed to write to temp file: %w", err)
 	}
 	tmpFile.Close()
+
+	wkhtmltopdf.SetPath(wkPath)
 
 	pdfg, err := wkhtmltopdf.NewPDFGenerator()
 	if err != nil {
@@ -700,4 +709,37 @@ func (s *ReportService) generatePDFFromHTML(htmlContent string) ([]byte, error) 
 	}
 
 	return pdfg.Bytes(), nil
+}
+
+func GetWkhtmltopdfPath(wkhtmltopdfWindows []byte) (string, error) {
+	var binary []byte
+	var filename string
+
+	binary = wkhtmltopdfWindows
+	filename = "wkhtmltopdf.exe"
+
+	// Проверяем, уже ли извлечён файл
+	tempDir := os.TempDir()
+	binaryPath := filepath.Join(tempDir, "desktop_lab_wkhtmltopdf", filename)
+
+	if _, err := os.Stat(binaryPath); err == nil {
+		// Файл существует — проверяем, что он исполняемый
+		if err := os.Chmod(binaryPath, 0755); err != nil {
+			return "", fmt.Errorf("failed to chmod binary: %w", err)
+		}
+		return binaryPath, nil
+	}
+
+	// Создаём директорию
+	dir := filepath.Dir(binaryPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create temp dir: %w", err)
+	}
+
+	// Записываем бинарник
+	if err := os.WriteFile(binaryPath, binary, 0755); err != nil {
+		return "", fmt.Errorf("failed to write wkhtmltopdf binary: %w", err)
+	}
+
+	return binaryPath, nil
 }

@@ -34,7 +34,7 @@ type App struct {
 // ============================================================================
 // ИНИЦИАЛИЗАЦИЯ
 // ============================================================================
-func NewApp(fontFS, frontendFS embed.FS) error {
+func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 	a := &App{}
 
 	// 1. Конфигурация
@@ -80,7 +80,7 @@ func NewApp(fontFS, frontendFS embed.FS) error {
 
 	svc := service.NewServices(
 		matRepo, stdRepo, protRepo, sampRepo, groupRepo, dimRepo,
-		a.fontDir, "templates", a.log,
+		a.fontDir, "templates", wkhtmltopdfWindows, a.log,
 	)
 
 	if err := data.SeedData(svc, a.log); err != nil {

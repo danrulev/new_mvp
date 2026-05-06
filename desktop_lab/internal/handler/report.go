@@ -20,13 +20,13 @@ func (h *Handler) initReportRoutes(api *gin.RouterGroup) {
 func (h *Handler) downloadProtocolPDF(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		newErrorResponse(c, http.StatusBadRequest, "protocol ID is required")
+		h.newErrorResponse(c, http.StatusBadRequest, "downloadProtocolPDF", "id param is empty", nil)
 		return
 	}
 
 	pdfBytes, err := h.report.GenerateProtocolPDF(c.Request.Context(), id)
 	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "downloadProtocolPDF", "service error", err)
 		return
 	}
 
@@ -39,13 +39,13 @@ func (h *Handler) downloadProtocolPDF(c *gin.Context) {
 func (h *Handler) downloadGroupSummaryPDF(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		newErrorResponse(c, http.StatusBadRequest, "group ID is required")
+		h.newErrorResponse(c, http.StatusBadRequest, "downloadGroupSummaryPDF", "id param is empty", nil)
 		return
 	}
 
 	pdfBytes, err := h.report.GenerateGroupSummaryPDF(c.Request.Context(), id)
 	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "downloadGroupSummaryPDF", "service error", err)
 		return
 	}
 

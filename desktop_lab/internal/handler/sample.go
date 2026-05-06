@@ -21,13 +21,13 @@ func (h *Handler) createSample(c *gin.Context) {
 		Note          string            `json:"note"`
 	}
 	if err := c.BindJSON(&req); err != nil {
-		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "createSample", "invalid data", err)
 		return
 	}
 
 	sample, err := h.sample.CreateSample(c.Request.Context(), req.GroupID, req.Number, req.ContextParams, req.Note)
 	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "createSample", "service error", err)
 		return
 	}
 

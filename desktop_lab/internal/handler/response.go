@@ -1,8 +1,19 @@
 package handler
 
-import "github.com/gin-gonic/gin"
+import (
+	contextkeys "desktop_lab/internal/contextKey"
 
-func newErrorResponse(c *gin.Context, statusCode int, message string) {
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+)
+
+func (h *Handler) newErrorResponse(c *gin.Context, statusCode int, handler, message string, err error) {
+	requestID := c.Value(contextkeys.RequestIDKey)
+	if requestID == nil {
+		requestID = "unknown"
+	}
+
+	h.log.Error(handler, zap.String("request_id", requestID.(string)), zap.String("message", message), zap.Error(err))
 	c.AbortWithStatusJSON(statusCode, gin.H{"error": message})
 }
 

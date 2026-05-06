@@ -23,13 +23,13 @@ func (h *Handler) initProtocolRoutes(api *gin.RouterGroup) {
 func (h *Handler) createProtocol(c *gin.Context) {
 	var req models.CreateProtocolRequest
 	if err := c.BindJSON(&req); err != nil {
-		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "createProtocol", "invalid data", err)
 		return
 	}
 
 	protocol, err := h.protocol.CreateProtocolWithSample(c.Request.Context(), req)
 	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "createProtocol", "service error", err)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"id": protocol.ID})
@@ -38,13 +38,13 @@ func (h *Handler) createProtocol(c *gin.Context) {
 func (h *Handler) getProtocolList(c *gin.Context) {
 	var p models.Paginated
 	if err := c.BindQuery(&p); err != nil {
-		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "getProtocolList", "invalid data", err)
 		return
 	}
 
 	data, err := h.protocol.GetList(c.Request.Context(), p.Limit, p.Offset)
 	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "getProtocolList", "service error", err)
 		return
 	}
 
@@ -53,10 +53,14 @@ func (h *Handler) getProtocolList(c *gin.Context) {
 
 func (h *Handler) getProtocolFull(c *gin.Context) {
 	id := c.Param("id")
+	if id == "" {
+		h.newErrorResponse(c, http.StatusBadRequest, "getProtocolFull", "id param is empty", nil)
+		return
+	}
 
 	data, err := h.protocol.GetProtocolFull(c.Request.Context(), id)
 	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "getProtocolFull", "service error", err)
 		return
 	}
 
@@ -64,10 +68,15 @@ func (h *Handler) getProtocolFull(c *gin.Context) {
 }
 
 func (h *Handler) getProtocolsByGroupID(c *gin.Context) {
-	groupID := c.Param("id")
-	data, err := h.protocol.GetProtocolsByGroupID(c.Request.Context(), groupID)
+	id := c.Param("id")
+	if id == "" {
+		h.newErrorResponse(c, http.StatusBadRequest, "getProtocolsByGroupID", "id param is empty", nil)
+		return
+	}
+
+	data, err := h.protocol.GetProtocolsByGroupID(c.Request.Context(), id)
 	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "getProtocolsByGroupID", "service error", err)
 		return
 	}
 
@@ -75,10 +84,15 @@ func (h *Handler) getProtocolsByGroupID(c *gin.Context) {
 }
 
 func (h *Handler) getGroupSummary(c *gin.Context) {
-	groupID := c.Param("group_id")
-	data, err := h.protocol.GetGroupSummary(c.Request.Context(), groupID)
+	id := c.Param("id")
+	if id == "" {
+		h.newErrorResponse(c, http.StatusBadRequest, "getGroupSummary", "id param is empty", nil)
+		return
+	}
+
+	data, err := h.protocol.GetGroupSummary(c.Request.Context(), id)
 	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "getGroupSummary", "service error", err)
 		return
 	}
 
@@ -87,17 +101,21 @@ func (h *Handler) getGroupSummary(c *gin.Context) {
 
 func (h *Handler) updateProtocolStatus(c *gin.Context) {
 	id := c.Param("id")
+	if id == "" {
+		h.newErrorResponse(c, http.StatusBadRequest, "getGroupSummary", "id param is empty", nil)
+		return
+	}
 
 	var req struct {
 		Status string `json:"status" binding:"required,oneof=draft completed archived"`
 	}
 	if err := c.BindJSON(&req); err != nil {
-		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "updateProtocolStatus", "invalid data", err)
 		return
 	}
 
 	if err := h.protocol.UpdateProtocolStatus(c.Request.Context(), id, req.Status); err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "updateProtocolStatus", "service error", err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "updated"})
@@ -105,9 +123,13 @@ func (h *Handler) updateProtocolStatus(c *gin.Context) {
 
 func (h *Handler) deleteProtocol(c *gin.Context) {
 	id := c.Param("id")
+	if id == "" {
+		h.newErrorResponse(c, http.StatusBadRequest, "deleteProtocol", "id param is empty", nil)
+		return
+	}
 
 	if err := h.protocol.DeleteProtocol(c.Request.Context(), id); err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "deleteProtocol", "service error", err)
 		return
 	}
 

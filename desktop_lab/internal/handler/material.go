@@ -18,7 +18,7 @@ func (h *Handler) initMaterialRoutes(api *gin.RouterGroup) {
 func (h *Handler) getMaterialList(c *gin.Context) {
 	materials, err := h.material.GetAll(c.Request.Context())
 	if err != nil {
-		newErrorResponse(c, 500, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "getMaterialList", "service error", err)
 		return
 	}
 
@@ -27,10 +27,14 @@ func (h *Handler) getMaterialList(c *gin.Context) {
 
 func (h *Handler) getMaterialByID(c *gin.Context) {
 	id := c.Param("id")
+	if id == "" {
+		h.newErrorResponse(c, http.StatusBadRequest, "getMaterialByID", "id param is empty", nil)
+		return
+	}
 
 	material, err := h.material.GetByID(c.Request.Context(), id)
 	if err != nil {
-		newErrorResponse(c, 500, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "getMaterialList", "service error", err)
 		return
 	}
 
@@ -39,10 +43,14 @@ func (h *Handler) getMaterialByID(c *gin.Context) {
 
 func (h *Handler) getDimensions(c *gin.Context) {
 	id := c.Param("id")
+	if id == "" {
+		h.newErrorResponse(c, http.StatusBadRequest, "getDimensions", "id param is empty", nil)
+		return
+	}
 
 	dim, err := h.material.GetContextDimensionsByMaterialID(c.Request.Context(), id)
 	if err != nil {
-		newErrorResponse(c, 500, err.Error())
+		h.newErrorResponse(c, http.StatusInternalServerError, "getDimensions", "service error", err)
 		return
 	}
 

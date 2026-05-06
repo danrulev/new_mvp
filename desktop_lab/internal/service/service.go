@@ -25,6 +25,7 @@ func NewServices(
 	dimRepo repository.DimensionRepo,
 	fontDir string,
 	templatesDir string,
+	wkhtmltopdfWindows []byte,
 	log *zap.Logger,
 ) *Services {
 	material := NewMaterialService(matRepo, log)
@@ -32,7 +33,7 @@ func NewServices(
 	sample := NewSampleService(sampRepo, log)
 	group := NewExperimentGroupService(groupRepo, log)
 	protocol := NewProtocolService(protRepo, sampRepo, stdRepo, groupRepo, matRepo, log)
-	report := NewReportService(protocol, material, fontDir, templatesDir, log)
+	report := NewReportService(protocol, material, fontDir, templatesDir, wkhtmltopdfWindows, log)
 	dimension := NewDimensionService(dimRepo, log)
 	return &Services{
 		Materials:  material,
