@@ -34,8 +34,17 @@ func (s *ExperimentGroupService) Create(ctx context.Context, name, projectName, 
 	return g, nil
 }
 
-func (s *ExperimentGroupService) GetList(ctx context.Context, limit, offset int64) ([]models.ExperimentGroup, int64, error) {
-	return s.repo.GetList(ctx, limit, offset)
+func (s *ExperimentGroupService) GetList(ctx context.Context, limit, offset int64) (models.GroupListResponse, error) {
+	groups, total, err := s.repo.GetList(ctx, limit, offset)
+	if err != nil {
+		return models.GroupListResponse{}, err
+	}
+
+	meta := models.MakePaginatedMetadata(limit, offset, total)
+	return models.GroupListResponse{
+		Items: groups,
+		Meta:  meta,
+	}, nil
 }
 
 func (s *ExperimentGroupService) GetByID(ctx context.Context, id string) (models.ExperimentGroup, error) {
@@ -47,4 +56,14 @@ func (s *ExperimentGroupService) GetByID(ctx context.Context, id string) (models
 		return models.ExperimentGroup{}, fmt.Errorf("group not found")
 	}
 	return g, nil
+}
+
+func (s *ExperimentGroupService) DeleteGroupByID(ctx context.Context, id string) error {
+	err := s.repo.DeleteGroup(ctx, id)
+	if err != nil {
+		s.log.Error("failed to delete group", zap.Error(err))
+		return err
+	}
+
+	return nil
 }

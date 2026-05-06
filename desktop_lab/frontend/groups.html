@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Группы — ЛИС</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>🧪 ЛИС</h1>
+        <p>Лабораторная система</p>
+      </div>
+      <nav>
+        <ul class="nav">
+          <li class="nav-item"><a href="/protocol-create.html" class="nav-link">📝 Новый протокол</a></li>
+          <li class="nav-item"><a href="/protocols.html" class="nav-link">📋 Протоколы</a></li>
+          <li class="nav-item"><a href="/groups.html" class="nav-link active">🗂️ Группы</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="page-header">
+        <h2 class="page-title">🗂️ Группы испытаний</h2>
+        <button class="btn btn-primary" onclick="openCreateGroupModal()">+ Новая группа</button>
+      </header>
+
+      <!-- Таблица -->
+      <section class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Название</th>
+                <th>Проект</th>
+                <th>Материал</th>
+                <th>Протоколов</th>
+                <th>Создана</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="groupsTable">
+              <tr><td colspan="6" class="text-center">Загрузка...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal: Создание группы -->
+  <div id="createGroupModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Новая группа</h3>
+        <button class="modal-close" onclick="closeCreateGroupModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Название <span class="required">*</span></label>
+          <input type="text" id="newGroupName">
+        </div>
+        <div class="form-group">
+          <label>Проект</label>
+          <input type="text" id="newGroupProject">
+        </div>
+        <div class="form-group">
+          <label>Место</label>
+          <input type="text" id="newGroupLocation">
+        </div>
+        <div class="form-group">
+          <label>Материал <span class="required">*</span></label>
+          <select id="newGroupMaterial">
+            <option value="">-- Загрузка... --</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeCreateGroupModal()">Отмена</button>
+        <button class="btn btn-primary" onclick="createGroup()">Создать</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Просмотр группы -->
+  <div id="viewGroupModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Группа: <span id="viewGroupName"></span></h3>
+        <button class="modal-close" onclick="closeViewGroupModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="viewGroupInfo" class="info-grid"></div>
+        <h4 class="mt-4">Протоколы группы</h4>
+        <div id="viewGroupProtocols" class="table-wrap"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeViewGroupModal()">Закрыть</button>
+        <button class="btn btn-primary" id="groupDownloadBtn">📥 Скачать PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="js/api.js"></script>
+  <script type="module" src="js/utils.js"></script>
+  <script type="module" src="js/navigation.js"></script>
+  <script type="module" src="js/groups.js"></script>
+</body>
+</html>

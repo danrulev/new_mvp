@@ -496,8 +496,16 @@ func (s *ProtocolService) GetProtocolsByGroupID(ctx context.Context, groupID str
 }
 
 // GetList возвращает список протоколов с пагинацией
-func (s *ProtocolService) GetList(ctx context.Context, limit, offset int64) ([]models.Protocol, int64, error) {
-	return s.protocolRepo.GetList(ctx, limit, offset)
+func (s *ProtocolService) GetList(ctx context.Context, limit, offset int64) (models.ProtocolListResponse, error) {
+	protocols, total, err := s.protocolRepo.GetList(ctx, limit, offset)
+	if err != nil {
+		return models.ProtocolListResponse{}, err
+	}
+
+	return models.ProtocolListResponse{
+		Items: protocols,
+		Meta:  models.MakePaginatedMetadata(limit, offset, total),
+	}, nil
 }
 
 // GetGroupSummary формирует сводный отчет по группе испытаний (ОПТИМИЗИРОВАНО)

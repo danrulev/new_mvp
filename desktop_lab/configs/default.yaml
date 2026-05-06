@@ -9,6 +9,10 @@ db:
 server:
   host: localhost
   port: 8080
+  max_header_bytes:  1048576
+  read_timeout: 5s
+  write_timeout: 10s
+  idle_timeout: 120s
 
 logger:
   level: debug

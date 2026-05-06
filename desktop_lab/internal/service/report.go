@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/SebastiaanKlippert/go-wkhtmltopdf"
@@ -107,18 +108,310 @@ func (s *ReportService) GenerateProtocolPDF(ctx context.Context, protocolID stri
 	return s.generatePDFFromHTML(htmlContent)
 }
 
-// GenerateGroupSummaryPDF - заглушка для примера
+type GroupSummaryTemplateData struct {
+	Group         GroupView
+	Statistics    StatisticsView
+	MethodResults []MethodSummaryView
+	FormattedDate string
+	QRCodeData    string
+	LabName       string // Опционально: можно передать из контекста
+	GeneratedAt   string
+}
+
+type GroupView struct {
+	ID             string
+	Name           string
+	MaterialName   string
+	MaterialCode   string
+	Project        string
+	Location       string
+	CreatedAt      string
+	TotalProtocols int
+}
+
+type StatisticsView struct {
+	CompliantRate    float64 // 0.0–1.0
+	CompliantPercent string  // "85.3%"
+	TotalSamples     int
+	TotalTests       int
+	CompliantTests   int
+}
+
+type MethodSummaryView struct {
+	MethodID     string
+	MethodName   string
+	Unit         string
+	AverageValue float64
+	MinValue     float64
+	MaxValue     float64
+	NormDisplay  string
+	IsCompliant  bool
+	TrialsCount  int
+	Protocols    []ProtocolTrialView
+}
+
+type ProtocolTrialView struct {
+	ProtocolNumber string
+	SampleNumber   string
+	TestDate       string
+	Value          float64
+	IsCompliant    bool
+	Deviation      string
+	LabName        string
+}
+
+// GenerateGroupSummaryPDF генерирует сводный PDF-отчёт по группе испытаний
 func (s *ReportService) GenerateGroupSummaryPDF(ctx context.Context, groupID string) ([]byte, error) {
-	// Логика аналогична:
-	// 1. Получить сводку через protocolService.GetGroupSummary (уже оптимизировано)
-	// 2. Подготовить данные шаблона
-	// 3. Сгенерировать PDF
-	// Реализация опущена для краткости, но принцип тот же: минимум запросов, максимум кэша.
+	s.log.Info("Generating group summary PDF", zap.String("group_id", groupID))
 
-	// summary, err := s.protocolService.GetGroupSummary(ctx, groupID)
-	// ...
+	// 1. Получаем базовую информацию о группе
+	group, err := s.protocolService.groupRepo.GetByID(ctx, groupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get group: %w", err)
+	}
+	if group.ID == "" {
+		return nil, fmt.Errorf("group %s not found", groupID)
+	}
 
-	return nil, fmt.Errorf("group summary generation not fully implemented")
+	// 2. Получаем материал для отображения
+	material, err := s.materialService.GetByID(ctx, group.MaterialID)
+	if err != nil {
+		s.log.Warn("failed to load material for group report", zap.Error(err))
+		material = models.Material{ID: group.MaterialID, Name: "Неизвестный материал"}
+	}
+
+	// 3. Получаем сводную статистику
+	summary, err := s.protocolService.GetGroupSummary(ctx, groupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get group summary: %w", err)
+	}
+
+	// 4. 🔥 КЭШИРОВАНИЕ МЕТОДОВ через GetMethodsFullByStandardID
+	methodsCache := make(map[string]models.TestMethodFull)
+
+	// Получаем StandardID по первому результату (если есть)
+	standardID := ""
+	if len(summary.Results) > 0 {
+		firstMethod, err := s.protocolService.standardRepo.GetTestMethod(ctx, summary.Results[0].MethodID)
+		if err == nil && firstMethod.StandardID != "" {
+			standardID = firstMethod.StandardID
+		}
+	}
+
+	// Загружаем ВСЕ методы стандарта одним запросом (оптимизация)
+	if standardID != "" {
+		cache, err := s.protocolService.standardRepo.GetMethodsFullByStandardID(ctx, standardID)
+		if err != nil {
+			s.log.Warn("failed to preload methods for group report", zap.Error(err))
+		} else {
+			methodsCache = cache
+		}
+	}
+
+	// 5. Получаем протоколы группы для детализации испытаний
+	protocols, err := s.protocolService.protocolRepo.GetByGroupID(ctx, groupID)
+	if err != nil {
+		s.log.Warn("failed to load protocols for group report", zap.Error(err))
+		protocols = []models.Protocol{}
+	}
+
+	// 6. Подготавливаем данные для шаблона
+	templateData, err := s.prepareGroupSummaryTemplateData(ctx, group, material, summary, methodsCache, protocols)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare group template  %w", err)
+	}
+
+	// 7. Рендерим HTML
+	htmlContent, err := s.renderHTML("group_summary_template.html", templateData)
+	if err != nil {
+		return nil, err
+	}
+
+	// 8. Генерируем PDF
+	return s.generatePDFFromHTML(htmlContent)
+}
+
+// prepareGroupSummaryTemplateData подготавливает данные для шаблона сводки группы
+func (s *ReportService) prepareGroupSummaryTemplateData(
+	ctx context.Context,
+	group models.ExperimentGroup,
+	material models.Material,
+	summary models.GroupSummary,
+	methodsCache map[string]models.TestMethodFull,
+	protocols []models.Protocol,
+) (GroupSummaryTemplateData, error) {
+	// Форматирование даты
+	createdAt := group.CreatedAt
+	if createdAt.IsZero() {
+		createdAt = time.Now()
+	}
+	dateStr := createdAt.Format("02.01.2006")
+	formattedFullDate := createdAt.Format("02.01.2006 15:04")
+
+	// 🔹 Создаем карту только завершенных протоколов
+	completedProtocolsMap := make(map[string]models.Protocol)
+	for _, p := range protocols {
+		if p.Status == "completed" {
+			completedProtocolsMap[p.ID] = p
+		}
+	}
+
+	data := GroupSummaryTemplateData{
+		Group: GroupView{
+			ID:             group.ID,
+			Name:           group.Name,
+			MaterialName:   material.Name,
+			MaterialCode:   material.Code,
+			Project:        group.ProjectName,
+			Location:       group.Location,
+			CreatedAt:      dateStr,
+			TotalProtocols: len(completedProtocolsMap), // Показываем только завершенные
+		},
+		FormattedDate: formattedFullDate,
+		QRCodeData:    group.ID,
+		GeneratedAt:   time.Now().Format("02.01.2006 15:04"),
+	}
+
+	// Временный срез для накопления методов
+	tempMethodResults := make([]MethodSummaryView, 0)
+
+	// Переменные для общей статистики (только по методам, которые войдут в отчет)
+	totalTests := 0
+	compliantTests := 0
+
+	// Обработка результатов по методам
+	for _, res := range summary.Results {
+		methodFull, exists := methodsCache[res.MethodID]
+		if !exists {
+			methodBasic, err := s.protocolService.standardRepo.GetTestMethod(ctx, res.MethodID)
+			if err != nil {
+				s.log.Warn("failed to load method for group report", zap.String("method_id", res.MethodID), zap.Error(err))
+				continue
+			}
+			methodFull = models.TestMethodFull{
+				Method: methodBasic,
+				Inputs: []models.MethodInput{},
+				Limits: []models.NormativeLimit{},
+			}
+		}
+		method := methodFull.Method
+		var normStr string = "—"
+
+		if len(methodFull.Limits) > 0 {
+			// Простая логика: берем первый лимит, у которого нет условий, или просто первый, если условий нет ни у кого
+			// В идеале здесь нужна та же логика findMatchingLimit, но с пустым или усредненным контекстом.
+			// Для простоты возьмем первый лимит, считая его основным для метода.
+			limit := methodFull.Limits[0]
+
+			if limit.LimitType == "range" && limit.MinValue != nil && limit.MaxValue != nil {
+				normStr = fmt.Sprintf("%.2f – %.2f", *limit.MinValue, *limit.MaxValue)
+			} else if limit.LimitType == "min" && limit.MinValue != nil {
+				normStr = fmt.Sprintf("≥ %.2f", *limit.MinValue)
+			} else if limit.LimitType == "max" && limit.MaxValue != nil {
+				normStr = fmt.Sprintf("≤ %.2f", *limit.MaxValue)
+			} else if len(limit.DiscreteValues) > 0 {
+				normStr = strings.Join(limit.DiscreteValues, ", ")
+			}
+		}
+
+		// Собираем детализацию ТОЛЬКО по завершенным протоколам
+		protocolTrials := make([]ProtocolTrialView, 0)
+		values := make([]float64, 0)
+
+		for _, trial := range res.Trials {
+			// 🔹 ГЛАВНЫЙ ФИЛЬТР: Пропускаем черновики
+			proto, exists := completedProtocolsMap[trial.ProtocolID]
+			if !exists {
+				continue
+			}
+
+			// Добавляем значение для статистики метода
+			if !math.IsNaN(trial.Value) && !math.IsInf(trial.Value, 0) {
+				values = append(values, trial.Value)
+			}
+
+			// Формируем строку для таблицы
+			testDate := proto.TestDate
+			if testDate == nil || testDate.IsZero() {
+				testDate = &proto.CreatedAt
+			}
+
+			deviationStr := ""
+			if trial.Deviation != nil {
+				deviationStr = *trial.Deviation
+			}
+
+			protocolTrials = append(protocolTrials, ProtocolTrialView{
+				ProtocolNumber: proto.ProtocolNumber,
+				SampleNumber:   trial.SampleNumber,
+				TestDate:       testDate.Format("02.01.2006"),
+				Value:          math.Round(trial.Value*100) / 100,
+				IsCompliant:    trial.IsCompliant,
+				Deviation:      deviationStr,
+				LabName:        proto.LabName,
+			})
+		}
+
+		// 🔹 ИСКЛЮЧЕНИЕ МЕТОДА: Если нет завершенных протоколов, пропускаем этот метод полностью
+		if len(protocolTrials) == 0 {
+			continue
+		}
+
+		// Расчет статистики для этого метода
+		var avg, min, max float64
+
+		if len(values) > 0 {
+			sum := 0.0
+			min = values[0]
+			max = values[0]
+			for _, v := range values {
+				sum += v
+				if v < min {
+					min = v
+				}
+				if v > max {
+					max = v
+				}
+			}
+			avg = sum / float64(len(values))
+		}
+
+		// Обновляем общую статистику (теперь мы уверены, что метод имеет данные)
+		for _, trial := range protocolTrials {
+			totalTests++
+			if trial.IsCompliant {
+				compliantTests++
+			}
+		}
+
+		methodView := MethodSummaryView{
+			MethodID:     res.MethodID,
+			MethodName:   method.Name,
+			Unit:         method.Unit,
+			AverageValue: math.Round(avg*100) / 100,
+			MinValue:     math.Round(min*100) / 100,
+			MaxValue:     math.Round(max*100) / 100,
+			NormDisplay:  normStr,
+			IsCompliant:  res.IsCompliant, // Статус соответствия метода (из сервиса)
+			TrialsCount:  len(protocolTrials),
+			Protocols:    protocolTrials,
+		}
+		tempMethodResults = append(tempMethodResults, methodView)
+	}
+
+	// Записываем отфильтрованные результаты
+	data.MethodResults = tempMethodResults
+
+	// Записываем пересчитанную статистику
+	data.Statistics = StatisticsView{
+		CompliantRate:    summary.CompliantRate, // Берем из сервиса (там логика только по completed)
+		CompliantPercent: fmt.Sprintf("%.1f%%", summary.CompliantRate*100),
+		TotalSamples:     len(completedProtocolsMap),
+		TotalTests:       totalTests,
+		CompliantTests:   compliantTests,
+	}
+
+	return data, nil
 }
 
 // ============================================================================

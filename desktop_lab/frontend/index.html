@@ -1,13 +1,36 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-    <meta charset="UTF-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>desktop_lab</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ЛИС — Лабораторная система</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module">
+    // Редирект на страницу протоколов
+    window.location.href = '/protocols.html';
+  </script>
 </head>
 <body>
-<div id="root"></div>
-<script src="./src/main.tsx" type="module"></script>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>🧪 ЛИС</h1>
+        <p>Лабораторная система</p>
+      </div>
+      <nav>
+        <ul class="nav">
+          <li class="nav-item"><a href="/protocol-create.html" class="nav-link">📝 Новый протокол</a></li>
+          <li class="nav-item"><a href="/protocols.html" class="nav-link">📋 Протоколы</a></li>
+          <li class="nav-item"><a href="/groups.html" class="nav-link">🗂️ Группы</a></li>
+        </ul>
+      </nav>
+    </aside>
+    <main class="main">
+      <div class="card text-center" style="padding: 40px;">
+        <h2>Загрузка...</h2>
+        <p class="text-muted">Перенаправляем на страницу протоколов</p>
+      </div>
+    </main>
+  </div>
 </body>
 </html>
-

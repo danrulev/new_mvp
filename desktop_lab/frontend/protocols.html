@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Протоколы — ЛИС</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>🧪 ЛИС</h1>
+        <p>Лабораторная система</p>
+      </div>
+      <nav>
+        <ul class="nav">
+          <li class="nav-item"><a href="/protocol-create.html" class="nav-link">📝 Новый протокол</a></li>
+          <li class="nav-item"><a href="/protocols.html" class="nav-link active">📋 Протоколы</a></li>
+          <li class="nav-item"><a href="/groups.html" class="nav-link">🗂️ Группы</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="page-header">
+        <h2 class="page-title">📋 Протоколы</h2>
+        <button class="btn btn-primary" onclick="window.location.href='/protocol-create.html'">
+          + Новый протокол
+        </button>
+      </header>
+
+      <!-- Фильтры -->
+      <div class="card">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Статус</label>
+            <select id="filterStatus">
+              <option value="">Все</option>
+              <option value="draft">Черновики</option>
+              <option value="completed">Завершённые</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Поиск</label>
+            <input type="text" id="searchInput" placeholder="Номер, лаборатория...">
+          </div>
+        </div>
+      </div>
+
+      <!-- Таблица -->
+      <section class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>№ Протокола</th>
+                <th>Дата</th>
+                <th>Лаборатория</th>
+                <th>Проба</th>
+                <th>Статус</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="protocolsTable">
+              <tr><td colspan="6" class="text-center">Загрузка...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Пагинация -->
+        <div class="flex justify-between items-center mt-4">
+          <button id="prevPage" class="btn btn-secondary btn-small" disabled>← Назад</button>
+          <span id="pageInfo" class="text-muted">Страница 1</span>
+          <button id="nextPage" class="btn btn-secondary btn-small">Вперёд →</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal: Просмотр протокола -->
+  <div id="viewModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Просмотр протокола</h3>
+        <button class="modal-close" onclick="closeViewModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="viewInfo" class="info-grid"></div>
+        <div id="viewResults"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeViewModal()">Закрыть</button>
+        <button class="btn btn-primary" id="viewDownloadBtn">📥 Скачать PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="js/api.js"></script>
+  <script type="module" src="js/utils.js"></script>
+  <script type="module" src="js/navigation.js"></script>
+  <script type="module" src="js/protocols.js"></script>
+</body>
+</html>

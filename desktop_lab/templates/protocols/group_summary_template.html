@@ -2,146 +2,309 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Сводный протокол группы</title>
+    <title>Сводный отчёт: {{.Group.Name}}</title>
     <style>
-        {{if .FontPath}}
-        @font-face {
-            font-family: 'DejaVu Sans';
-            src: url('file://{{.FontPath}}/DejaVuSans.ttf');
-        }
-        @font-face {
-            font-family: 'DejaVu Sans';
-            src: url('file://{{.FontPath}}/DejaVuSans-Bold.ttf');
-            font-weight: bold;
-        }
-        {{end}}
-
-        body {
-            font-family: "DejaVu Sans", sans-serif;
-            font-size: 11px;
-            margin: 15mm;
+        @page { size: A4; margin: 10mm; }
+        body { 
+            font-family: "DejaVu Sans", "Arial", sans-serif; 
+            font-size: 11pt; 
+            color: #1f2937; 
             line-height: 1.4;
+            margin: 0;
+            padding: 0;
         }
-
-        h1 {
-            text-align: center;
-            font-size: 16px;
+        .header { 
+            border-bottom: 2px solid #2563eb; 
+            padding-bottom: 12px; 
             margin-bottom: 20px;
-        }
-
-        .info-block {
-            margin-bottom: 15px;
-            padding: 10px;
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-        }
-
-        .info-row {
-            margin-bottom: 5px;
-        }
-        
-        .info-label {
-            font-weight: bold;
-            margin-right: 10px;
-        }
-
-        .method-block {
-            margin-top: 20px;
-            page-break-inside: avoid;
-            border: 1px solid #eee;
-        }
-
-        .method-header {
-            background-color: #eaeaea;
-            padding: 8px;
-            font-weight: bold;
-            border-bottom: 1px solid #ccc;
             display: flex;
             justify-content: space-between;
+            align-items: flex-start;
         }
-
-        .norm-info {
-            font-style: italic;
-            font-size: 10px;
-            padding: 4px 8px;
-            background: #fff;
-            border-bottom: 1px solid #eee;
+        .header h1 { 
+            margin: 0; 
+            font-size: 18pt; 
+            color: #111827;
         }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        .header .meta { 
+            text-align: right; 
+            font-size: 9pt; 
+            color: #6b7280;
         }
-
-        th, td {
-            border: 1px solid #ccc;
-            padding: 4px 6px;
-            text-align: left;
+        .section { 
+            margin-bottom: 24px; 
+            page-break-inside: avoid;
         }
-
-        th {
-            background-color: #f5f5f5;
-            font-size: 10px;
+        .section-title { 
+            font-size: 13pt; 
+            font-weight: 600; 
+            color: #111827;
+            margin: 0 0 12px 0;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .info-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 8px 24px;
+            font-size: 10pt;
+        }
+        .info-item { display: flex; justify-content: space-between; }
+        .info-label { color: #6b7280; font-weight: 500; }
+        .info-value { font-weight: 600; color: #1f2937; }
+        
+        .stats-cards { 
+            display: flex; 
+            gap: 16px; 
+            margin: 16px 0;
+        }
+        .stat-card { 
+            flex: 1; 
+            padding: 12px 16px; 
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
             text-align: center;
         }
-
-        .status-pass { color: green; font-weight: bold; }
-        .status-fail { color: red; font-weight: bold; }
-
-        .footer {
-            margin-top: 30px;
-            font-style: italic;
-            font-size: 10px;
-            text-align: right;
+        .stat-card.good { background: #f0fdf4; border-color: #bbf7d0; }
+        .stat-card.neutral { background: #f9fafb; border-color: #e5e7eb; }
+        .stat-label { font-size: 9pt; color: #6b7280; margin-bottom: 4px; }
+        .stat-value { font-size: 18pt; font-weight: 700; }
+        .stat-card.good .stat-value { color: #166534; }
+        .stat-card.neutral .stat-value { color: #374151; }
+        
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 10pt;
+            margin: 8px 0;
+        }
+        th { 
+            background: #f9fafb; 
+            padding: 8px 12px; 
+            text-align: left; 
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        td { 
+            padding: 8px 12px; 
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: top;
+        }
+        tr:last-child td { border-bottom: none; }
+        
+        .badge { 
+            display: inline-block; 
+            padding: 2px 8px; 
+            border-radius: 999px; 
+            font-size: 9pt; 
+            font-weight: 600;
+        }
+        .badge-success { background: #dcfce7; color: #166534; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        
+        .method-row { 
+            background: #f8fafc; 
+            font-weight: 600;
+            cursor: default;
+        }
+        .protocol-subtable { 
+            margin: 8px 0 8px 24px; 
+            font-size: 9pt;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .protocol-subtable th { 
+            background: #f1f5f9; 
+            font-size: 9pt;
+            padding: 6px 10px;
+        }
+        .protocol-subtable td { 
+            padding: 6px 10px;
+            font-size: 9pt;
+        }
+        
+        .footer { 
+            margin-top: 32px; 
+            padding-top: 12px; 
+            border-top: 1px solid #e5e7eb;
+            font-size: 9pt; 
+            color: #6b7280;
+            text-align: center;
+        }
+        
+        @media print {
+            .no-print { display: none; }
         }
     </style>
 </head>
 <body>
-
-    <h1>Сводный протокол испытаний</h1>
-
-    <div class="info-block">
-        <div class="info-row"><span class="info-label">Группа:</span> {{.GroupName}}</div>
-        <div class="info-row"><span class="info-label">Материал:</span> {{.MaterialName}}</div>
-        <div class="info-row"><span class="info-label">Всего проб:</span> {{.TotalSamples}}</div>
-        <div class="info-row"><span class="info-label">Доля соответствия:</span> {{printf "%.1f" .CompliantRate}}%</div>
+    <!-- Заголовок -->
+    <div class="header">
+        <div>
+            <h1>Сводный отчёт по группе испытаний</h1>
+            <div style="margin-top: 4px; font-size: 11pt;">
+                <strong>{{.Group.Name}}</strong>
+                {{if .Group.Project}} • {{.Group.Project}}{{end}}
+                {{if .Group.Location}} • {{.Group.Location}}{{end}}
+            </div>
+        </div>
+        <div class="meta">
+            <div>Дата формирования: {{.GeneratedAt}}</div>
+            <div>ID группы: {{.Group.ID}}</div>
+            {{if .QRCodeData}}
+            <div style="margin-top: 8px; font-size: 8pt;">
+                <!-- QR-код можно сгенерировать через wkhtmltopdf или вставить как base64 -->
+                [QR: {{.QRCodeData}}]
+            </div>
+            {{end}}
+        </div>
     </div>
 
-    {{range .Results}}
-    <div class="method-block">
-        <div class="method-header">
-            <span>{{.MethodName}}</span>
-            <span class="{{if eq .Status "Соответствует"}}status-pass{{else}}status-fail{{end}}">{{.Status}}</span>
+    <!-- Основная информация -->
+    <div class="section">
+        <h2 class="section-title">Информация о группе</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Материал:</span>
+                <span class="info-value">{{.Group.MaterialName}}{{if .Group.MaterialCode}} ({{.Group.MaterialCode}}){{end}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Дата создания:</span>
+                <span class="info-value">{{.Group.CreatedAt}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Всего протоколов:</span>
+                <span class="info-value">{{.Group.TotalProtocols}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Всего проб:</span>
+                <span class="info-value">{{.Statistics.TotalSamples}}</span>
+            </div>
         </div>
-        <div class="norm-info">Норма: {{.Norm}}</div>
+    </div>
 
+    <!-- Статистика -->
+    <div class="section">
+        <h2 class="section-title">Общая статистика</h2>
+        <div class="stats-cards">
+            <div class="stat-card good">
+                <div class="stat-label">Соответствует</div>
+                <div class="stat-value">{{.Statistics.CompliantPercent}}</div>
+                <div style="font-size: 9pt; color: #6b7280; margin-top: 2px;">
+                    {{.Statistics.CompliantTests}} из {{.Statistics.TotalTests}} испытаний
+                </div>
+            </div>
+            <div class="stat-card neutral">
+                <div class="stat-label">Всего испытаний</div>
+                <div class="stat-value">{{.Statistics.TotalTests}}</div>
+                <div style="font-size: 9pt; color: #6b7280; margin-top: 2px;">
+                    по {{len .MethodResults}} метод(а/ов)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Результаты по методам -->
+    <div class="section">
+        <h2 class="section-title">Результаты по методам</h2>
+        
+        {{if eq (len .MethodResults) 0}}
+            <p style="color: #6b7280; font-style: italic;">Нет данных о результатах испытаний</p>
+        {{else}}
         <table>
             <thead>
                 <tr>
-                    <th>№ пробы</th>
-                    <th>Значение</th>
-                    <th>Соответствие</th>
-                    <th>Отклонение</th>
+                    <th style="width: 30%;">Метод</th>
+                    <th style="width: 15%;">Среднее</th>
+                    <th style="width: 15%;">Норма</th>
+                    <th style="width: 12%;">Соответствие</th>
+                    <th style="width: 10%;">Испытаний</th>
+                    <th style="width: 18%;">Детализация</th>
                 </tr>
             </thead>
             <tbody>
-                {{range .Trials}}
-                <tr>
-                    <td>{{.SampleNumber}}</td>
-                    <td>{{printf "%.3f" .Value}}</td>
-                    <td class="{{if eq .Compliance "Соответствует"}}status-pass{{else}}status-fail{{end}}">{{.Compliance}}</td>
-                    <td>{{.Deviation}}</td>
+                {{range .MethodResults}}
+                <tr class="method-row">
+                    <td>
+                        <strong>{{.MethodName}}</strong>
+                        {{if .Unit}}<span style="color: #6b7280; font-weight: 400;">({{.Unit}})</span>{{end}}
+                    </td>
+                    <td>{{if eq .AverageValue 0.0}}—{{else}}{{printf "%.2f" .AverageValue}}{{end}}</td>
+                    <td style="color: #4b5563; font-style: italic;">{{.NormDisplay}}</td>
+                    <td>
+                        {{if .IsCompliant}}
+                            <span class="badge badge-success">✓ Да</span>
+                        {{else}}
+                            <span class="badge badge-danger">✕ Нет</span>
+                        {{end}}
+                    </td>
+                    <td style="text-align: center; font-weight: 600;">{{.TrialsCount}}</td>
+                    <td>
+                        {{if gt (len .Protocols) 0}}
+                            <span style="font-size: 9pt; color: #2563eb;">{{len .Protocols}} протокол(ов)</span>
+                        {{else}}
+                            <span style="font-size: 9pt; color: #9ca3af;">—</span>
+                        {{end}}
+                    </td>
                 </tr>
+                
+                <!-- Детализация по протоколам (всегда показываем в PDF) -->
+                {{if gt (len .Protocols) 0}}
+                <tr>
+                    <td colspan="6" style="padding: 0; background: #fff;">
+                        <table class="protocol-subtable">
+                            <thead>
+                                <tr>
+                                    <th>Протокол</th>
+                                    <th>Проба</th>
+                                    <th>Дата</th>
+                                    <th>Значение</th>
+                                    <th>Соответствие</th>
+                                    <th>Отклонение</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .Protocols}}
+                                <tr>
+                                    <td style="font-weight: 500;">
+                                        {{if .ProtocolNumber}}{{.ProtocolNumber}}{{else}}{{printf "%.8s" .ProtocolNumber}}{{end}}
+                                        {{if .LabName}}<br><span style="color: #6b7280; font-size: 8pt;">{{.LabName}}</span>{{end}}
+                                    </td>
+                                    <td>{{.SampleNumber}}</td>
+                                    <td>{{.TestDate}}</td>
+                                    <td style="font-weight: 600;">{{printf "%.2f" .Value}}</td>
+                                    <td>
+                                        {{if .IsCompliant}}
+                                            <span class="badge badge-success" style="font-size: 8pt;">✓</span>
+                                        {{else}}
+                                            <span class="badge badge-danger" style="font-size: 8pt;">✕</span>
+                                        {{end}}
+                                    </td>
+                                    <td style="color: {{if not .IsCompliant}}#dc2626{{else}}#6b7280{{end}}; font-size: 9pt;">
+                                        {{if and (not .IsCompliant) .Deviation}}{{.Deviation}}{{else}}—{{end}}
+                                    </td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                {{end}}
                 {{end}}
             </tbody>
         </table>
+        {{end}}
     </div>
-    {{end}}
 
+    <!-- Подвал -->
     <div class="footer">
-        Сформировано: {{.GeneratedDate}}<br>
-        Подпись ответственного: ___________________
+        <div>Сформировано автоматически • {{.GeneratedAt}}</div>
+        <div style="margin-top: 4px; font-size: 8pt;">
+            Лабораторная информационная система • Конфиденциально
+        </div>
     </div>
-
 </body>
 </html>

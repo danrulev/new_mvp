@@ -45,15 +45,18 @@ func (s *MaterialService) GetAll(ctx context.Context) ([]models.Material, error)
 		s.log.Error("failed to get materials", zap.Error(err))
 		return nil, err
 	}
+	s.log.Debug("Material Service: Get All", zap.Int("count", len(mats)))
 	return mats, nil
 }
 
 func (s *MaterialService) GetByID(ctx context.Context, id string) (models.Material, error) {
 	mat, err := s.repo.GetByID(ctx, id)
 	if err != nil {
+		s.log.Error("failed to get material", zap.Error(err))
 		return models.Material{}, err
 	}
 	if mat.ID == "" {
+		s.log.Error("material not found", zap.String("id", id))
 		return models.Material{}, fmt.Errorf("material not found")
 	}
 	return mat, nil

@@ -5,10 +5,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
+
+type ServerConfig struct {
+	Host           string        `mapstructure:"host" validate:"required"`
+	Port           string        `mapstructure:"port" validate:"required"`
+	ReadTimeout    time.Duration `mapstructure:"read_timeout" validate:"required"`
+	WriteTimeout   time.Duration `mapstructure:"write_timeout" validate:"required"`
+	IdleTimeout    time.Duration `mapstructure:"idle_timeout" validate:"required"`
+	MaxHeaderBytes int           `mapstructure:"max_header_bytes" validate:"required"`
+}
 
 // DBConfig теперь содержит только путь к файлу базы данных
 type DBConfig struct {
@@ -26,6 +36,7 @@ type LoggerConfig struct {
 }
 
 type Config struct {
+	Server ServerConfig `mapstructure:"server"`
 	DB     DBConfig     `mapstructure:"db"`
 	Logger LoggerConfig `mapstructure:"logger"`
 }

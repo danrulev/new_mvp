@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Новый протокол — ЛИС</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>🧪 ЛИС</h1>
+        <p>Лабораторная система</p>
+      </div>
+      <nav>
+        <ul class="nav">
+          <li class="nav-item"><a href="/protocol-create.html" class="nav-link active">📝 Новый протокол</a></li>
+          <li class="nav-item"><a href="/protocols.html" class="nav-link">📋 Протоколы</a></li>
+          <li class="nav-item"><a href="/groups.html" class="nav-link">🗂️ Группы</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="page-header">
+        <h2 class="page-title">📝 Новый протокол</h2>
+        <div class="badge" id="calcBadge">Готов к работе</div>
+      </header>
+
+      <div class="form-grid">
+        <!-- Параметры пробы -->
+        <section class="card">
+          <h3 class="card-title">Параметры пробы</h3>
+          
+          <div class="form-group">
+            <label>Номер пробы <span class="required">*</span></label>
+            <input type="text" id="sampleNumber" placeholder="П-001">
+          </div>
+          
+          <div class="form-group">
+            <label>Место отбора <span class="required">*</span></label>
+            <input type="text" id="samplePlace" placeholder="Объект №5">
+          </div>
+          
+          <div class="form-group">
+            <label>Группа испытаний</label>
+            <select id="groupSelect">
+              <option value="">-- Без группы --</option>
+            </select>
+          </div>
+
+          <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
+            <div class="form-group">
+              <label>Лаборатория <span class="required">*</span></label>
+              <input type="text" id="labName" value="БГТУ им. В.Г. Шухова">
+            </div>
+            <div class="form-group">
+              <label>Оператор <span class="required">*</span></label>
+              <input type="text" id="operator" placeholder="ФИО">
+            </div>
+          </div>
+        </section>
+
+        <!-- Метод испытания -->
+        <section class="card">
+          <h3 class="card-title">Метод испытания</h3>
+          
+          <div class="form-group">
+            <label>Материал <span class="required">*</span></label>
+            <select id="materialSelect">
+              <option value="">-- Загрузка... --</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Стандарт <span class="required">*</span></label>
+            <select id="standardSelect" disabled>
+              <option value="">-- Выберите материал --</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Метод <span class="required">*</span></label>
+            <select id="methodSelect" disabled>
+              <option value="">-- Выберите стандарт --</option>
+            </select>
+          </div>
+
+          <div id="methodDetails"></div>
+          
+          <button class="btn btn-secondary" onclick="resetMethodForm()">Сброс</button>
+        </section>
+      </div>
+
+      <!-- Кнопка сохранения -->
+      <div class="flex justify-between items-center">
+        <button class="btn btn-secondary" onclick="window.location.href='/protocols.html'">← Назад</button>
+        <button id="saveBtn" class="btn btn-primary" onclick="saveProtocol()" disabled>
+          💾 Сохранить протокол
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="js/api.js"></script>
+  <script type="module" src="js/utils.js"></script>
+  <script type="module" src="js/navigation.js"></script>
+  <script type="module" src="js/protocol-create.js"></script>
+</body>
+</html>
