@@ -12,6 +12,11 @@
   --text-muted: #6b7280;
   --border: #e5e7eb;
   --sidebar-width: 240px;
+  
+  --bg-secondary: #f8fafc;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --accent: #7c3aed; 
 }
 body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -276,4 +281,89 @@ th { color: var(--text-muted); font-weight: 600; background: #f9fafb; }
   .form-grid { grid-template-columns: 1fr; }
   .info-grid { grid-template-columns: 1fr; }
   .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+}
+
+/* === Стили для блока заметок === */
+
+.notes-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.note-block {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 0.9rem;
+}
+
+.note-block.note-protocol {
+  border-left: 3px solid var(--primary);
+}
+
+.note-block.note-sample {
+  border-left: 3px solid var(--accent);
+}
+
+.note-block.note-result {
+  border-left: 3px solid var(--warning);
+}
+
+.note-label {
+  display: block;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.note-content {
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* Заметка в таблице результатов */
+.note-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.note-inline:hover {
+  background: var(--primary);
+  color: white;
+}
+
+/* Адаптивность модального окна */
+.modal-content.modal-lg {
+  max-width: 900px;
+  width: 95%;
+}
+
+@media (max-width: 768px) {
+  .notes-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal-content.modal-lg {
+    width: 100%;
+    max-width: 100%;
+    margin: 10px;
+  }
 }

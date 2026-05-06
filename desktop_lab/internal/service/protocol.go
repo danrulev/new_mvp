@@ -78,6 +78,7 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		OperatorName:   req.OperatorName,
 		TestDate:       &now,
 		Status:         "draft",
+		Note:           req.Note,
 	}
 
 	// Предзагрузка всех методов стандарта
@@ -648,6 +649,19 @@ func (s *ProtocolService) generateProtocolNumber(ctx context.Context, protocolID
 		isGroup = "G"
 	}
 	return fmt.Sprintf("%s%s-%s-%s-%s", isGroup, mat.Code[:8], sampleID[:8], protocolID[:8], createdAt.Format("20060102")), nil
+}
+
+func (s *ProtocolService) UpdateProtocol(ctx context.Context, id string, req models.UpdateProtocolRequest) error {
+	prot, err := s.protocolRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if prot.Status != "draft" {
+		return fmt.Errorf("cannot update protocol with status %s", prot.Status)
+	}
+
+	return s.protocolRepo.UpdateProtocol(ctx, id, req)
 }
 
 func (s *ProtocolService) UpdateProtocolStatus(ctx context.Context, id string, status string) error {

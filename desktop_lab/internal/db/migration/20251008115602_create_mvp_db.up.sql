@@ -168,6 +168,7 @@ CREATE TABLE IF NOT EXISTS protocols (
     operator_name TEXT,
     test_date DATE,
     status TEXT DEFAULT 'draft', -- 'draft', 'completed', 'approved'
+    note TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
     

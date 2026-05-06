@@ -82,13 +82,20 @@
 
   <!-- Modal: Просмотр протокола -->
   <div id="viewModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content modal-lg">
       <div class="modal-header">
         <h3>Просмотр протокола</h3>
         <button class="modal-close" onclick="closeViewModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <div id="viewInfo" class="info-grid"></div>
+        <!-- 🔥 Блок заметок протокола и пробы -->
+        <div id="viewNotes" class="notes-section mb-4"></div>
+        
+        <!-- Основная информация -->
+        <div id="viewInfo" class="info-grid mb-4"></div>
+        
+        <!-- Результаты испытаний -->
+        <h4 class="mb-3">📊 Результаты испытаний</h4>
         <div id="viewResults"></div>
       </div>
       <div class="modal-footer">

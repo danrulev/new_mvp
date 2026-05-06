@@ -9,13 +9,9 @@ import (
 //go:embed bin/windows/wkhtmltopdf.exe
 var wkhtmltopdfWindows []byte
 
-// ✅ Встраиваем шрифты — обратите внимание на звёздочку рекурсивно
-//
 //go:embed fonts/dejavu-fonts-ttf-2.37/ttf/*.ttf
 var fontFS embed.FS
 
-// ✅ Если нужно встроить ещё и шаблоны/миграции:
-//
 //go:embed templates/protocols/*.html
 //go:embed internal/db/migration/*.sql
 //go:embed frontend/*

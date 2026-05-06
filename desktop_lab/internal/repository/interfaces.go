@@ -67,5 +67,6 @@ type ProtocolRepo interface {
 	GetList(ctx context.Context, limit, offset int64) ([]models.Protocol, int64, error)
 	GetProtocolFull(ctx context.Context, id string) (models.ProtocolFull, error)
 	UpdateStatus(ctx context.Context, id string, status string) error
+	UpdateProtocol(ctx context.Context, id string, req models.UpdateProtocolRequest) error
 	DeleteProtocol(ctx context.Context, id string) error
 }

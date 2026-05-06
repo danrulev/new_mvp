@@ -31,20 +31,37 @@
       </header>
 
       <div class="form-grid">
-        <!-- Параметры пробы -->
+        <!-- 🔹 Параметры пробы -->
         <section class="card">
           <h3 class="card-title">Параметры пробы</h3>
           
+          <!-- Материал -->
+          <div class="form-group">
+            <label>Материал <span class="required">*</span></label>
+            <select id="materialSelect">
+              <option value="">-- Загрузка... --</option>
+            </select>
+          </div>
+          
+          <!-- Номер пробы -->
           <div class="form-group">
             <label>Номер пробы <span class="required">*</span></label>
             <input type="text" id="sampleNumber" placeholder="П-001">
           </div>
           
+          <!-- Место отбора -->
           <div class="form-group">
             <label>Место отбора <span class="required">*</span></label>
             <input type="text" id="samplePlace" placeholder="Объект №5">
           </div>
           
+          <!-- 🔥 Новое: Заметка к пробе (необязательно) -->
+          <div class="form-group">
+            <label>Заметка к пробе</label>
+            <textarea id="sampleNote" rows="2" class="form-control" placeholder="Дополнительная информация о пробе..."></textarea>
+          </div>
+          
+          <!-- Группа испытаний -->
           <div class="form-group">
             <label>Группа испытаний</label>
             <select id="groupSelect">
@@ -52,6 +69,7 @@
             </select>
           </div>
 
+          <!-- Разделитель -->
           <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
             <div class="form-group">
               <label>Лаборатория <span class="required">*</span></label>
@@ -61,19 +79,18 @@
               <label>Оператор <span class="required">*</span></label>
               <input type="text" id="operator" placeholder="ФИО">
             </div>
+            
+            <!-- 🔥 Новое: Заметка к протоколу (необязательно) -->
+            <div class="form-group">
+              <label>Заметка к протоколу</label>
+              <textarea id="protocolNote" rows="2" class="form-control" placeholder="Комментарии к протоколу..."></textarea>
+            </div>
           </div>
         </section>
 
-        <!-- Метод испытания -->
+        <!-- 🔹 Метод испытания -->
         <section class="card">
           <h3 class="card-title">Метод испытания</h3>
-          
-          <div class="form-group">
-            <label>Материал <span class="required">*</span></label>
-            <select id="materialSelect">
-              <option value="">-- Загрузка... --</option>
-            </select>
-          </div>
           
           <div class="form-group">
             <label>Стандарт <span class="required">*</span></label>
@@ -89,14 +106,15 @@
             </select>
           </div>
 
+          <!-- Контейнер для динамических полей метода -->
           <div id="methodDetails"></div>
           
-          <button class="btn btn-secondary" onclick="resetMethodForm()">Сброс</button>
+          <button class="btn btn-secondary" onclick="resetMethodForm()">🔄 Сбросить метод</button>
         </section>
       </div>
 
       <!-- Кнопка сохранения -->
-      <div class="flex justify-between items-center">
+      <div class="flex justify-between items-center" style="margin-top: 24px;">
         <button class="btn btn-secondary" onclick="window.location.href='/protocols.html'">← Назад</button>
         <button id="saveBtn" class="btn btn-primary" onclick="saveProtocol()" disabled>
           💾 Сохранить протокол

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func (h *Handler) initProtocolRoutes(api *gin.RouterGroup) {
@@ -16,6 +17,7 @@ func (h *Handler) initProtocolRoutes(api *gin.RouterGroup) {
 		group.GET("/groups/:id", h.getProtocolsByGroupID)
 		group.GET("/summary/:id", h.getGroupSummary)
 		group.PUT("/:id/status", h.updateProtocolStatus)
+		group.PUT("/:id", h.updateProtocol)
 		group.DELETE("/:id", h.deleteProtocol)
 	}
 }
@@ -27,6 +29,7 @@ func (h *Handler) createProtocol(c *gin.Context) {
 		return
 	}
 
+	h.log.Debug("create protocol", zap.Any("req", req))
 	protocol, err := h.protocol.CreateProtocolWithSample(c.Request.Context(), req)
 	if err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "createProtocol", "service error", err)
@@ -118,6 +121,26 @@ func (h *Handler) updateProtocolStatus(c *gin.Context) {
 		h.newErrorResponse(c, http.StatusInternalServerError, "updateProtocolStatus", "service error", err)
 		return
 	}
+	c.JSON(http.StatusOK, gin.H{"status": "updated"})
+}
+
+func (h *Handler) updateProtocol(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		h.newErrorResponse(c, http.StatusBadRequest, "getGroupSummary", "id param is empty", nil)
+		return
+	}
+	var upd models.UpdateProtocolRequest
+	if err := c.BindJSON(&upd); err != nil {
+		h.newErrorResponse(c, http.StatusInternalServerError, "updateProtocol", "invalid data", err)
+		return
+	}
+
+	if err := h.protocol.UpdateProtocol(c.Request.Context(), id, upd); err != nil {
+		h.newErrorResponse(c, http.StatusInternalServerError, "updateProtocol", "service error", err)
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"status": "updated"})
 }
 

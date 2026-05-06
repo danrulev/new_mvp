@@ -11,24 +11,23 @@ let currentMethod = null;
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 DOM Loaded, initializing...');
   
-  // 1. Инициализация навигации
   initNavigation();
-  
-  // 2. Настройка слушателей событий
   setupFormListeners();
   setupCascadingSelects();
   
-  // 3. Загрузка данных
   await loadMaterials();
   await loadGroups();
 });
 
 function setupFormListeners() {
-  const inputs = ['sampleNumber', 'samplePlace', 'labName', 'operator'];
+  // 🔥 Добавили note-поля в список отслеживаемых
+  const inputs = ['sampleNumber', 'samplePlace', 'labName', 'operator', 'sampleNote', 'protocolNote'];
   inputs.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
+      // Для textarea используем 'input' и 'change' для надёжности
       el.addEventListener('input', checkCanSave);
+      el.addEventListener('change', checkCanSave);
     }
   });
 }
@@ -47,7 +46,6 @@ function setupCascadingSelects() {
   matSel.addEventListener('change', async (e) => {
     const matId = e.target.value;
     
-    // Сброс зависимых полей
     stdSel.value = '';
     mthSel.value = '';
     mthSel.innerHTML = '<option value="">-- Выберите стандарт --</option>';
@@ -62,15 +60,16 @@ function setupCascadingSelects() {
       return;
     }
 
-    stdSel.disabled = false;
-    stdSel.innerHTML = '<option value="">-- Загрузка... --</option>';
+    stdSel.disabled = true;
+    stdSel.innerHTML = '<option value="">⏳ Загрузка стандартов...</option>';
 
     try {
       standards = await api.getStandardsByMaterial(matId);
       stdSel.innerHTML = '<option value="">-- Выберите стандарт --</option>';
       
       if (!standards || standards.length === 0) {
-        stdSel.innerHTML += '<option value="" disabled>Нет стандартов</option>';
+        stdSel.innerHTML += '<option value="" disabled>⚠️ Нет стандартов</option>';
+        showToast('Для выбранного материала нет доступных стандартов', false);
       } else {
         standards.forEach(s => {
           const opt = document.createElement('option');
@@ -78,10 +77,12 @@ function setupCascadingSelects() {
           opt.textContent = s.name;
           stdSel.appendChild(opt);
         });
+        stdSel.disabled = false;
       }
     } catch (err) {
       console.error('Error loading standards:', err);
-      stdSel.innerHTML = '<option value="">Ошибка загрузки</option>';
+      stdSel.innerHTML = '<option value="">❌ Ошибка загрузки</option>';
+      showToast('Не удалось загрузить стандарты', true);
     }
   });
 
@@ -107,15 +108,21 @@ function setupCascadingSelects() {
       methods = await api.getMethodsByStandard(stdId);
       mthSel.innerHTML = '<option value="">-- Выберите метод --</option>';
       
-      methods.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.id;
-        opt.textContent = `${m.name}${m.unit ? ` (${m.unit})` : ''}`;
-        mthSel.appendChild(opt);
-      });
+      if (!methods || methods.length === 0) {
+        mthSel.innerHTML += '<option value="" disabled>⚠️ Нет методов</option>';
+      } else {
+        methods.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.id;
+          opt.textContent = `${m.name}${m.unit ? ` (${m.unit})` : ''}`;
+          mthSel.appendChild(opt);
+        });
+        mthSel.disabled = false;
+      }
     } catch (err) {
       console.error('Error loading methods:', err);
-      mthSel.innerHTML = '<option value="">Ошибка загрузки</option>';
+      mthSel.innerHTML = '<option value="">❌ Ошибка загрузки</option>';
+      showToast('Не удалось загрузить методы', true);
     }
   });
 
@@ -136,7 +143,8 @@ function setupCascadingSelects() {
       checkCanSave();
     } catch (err) {
       console.error('Error loading method details:', err);
-      detailsContainer.innerHTML = '<div class="text-danger">Ошибка загрузки метода</div>';
+      detailsContainer.innerHTML = '<div class="text-danger">❌ Ошибка загрузки метода</div>';
+      showToast('Не удалось загрузить детали метода', true);
     }
   });
 }
@@ -152,21 +160,17 @@ async function loadMaterials() {
   try {
     console.log('🔄 Loading materials...');
     const data = await api.getMaterials();
-    console.log('✅ Raw API Response:', data);
-
-    // Приводим к массиву (на случай если бэкенд вернет объект с полем items)
     const list = Array.isArray(data) ? data : (data.items || []);
 
     sel.innerHTML = '<option value="">-- Выберите материал --</option>';
 
     if (list.length === 0) {
-      sel.innerHTML += '<option value="" disabled>Нет материалов в БД</option>';
+      sel.innerHTML += '<option value="" disabled>⚠️ Нет материалов в БД</option>';
       console.warn('⚠️ Materials list is empty');
       return;
     }
 
     list.forEach(m => {
-      // Используем поля в нижнем регистре, так как в Go стоят теги json:"id"
       const id = m.id; 
       const name = m.name || 'Без названия';
 
@@ -193,7 +197,6 @@ async function loadGroups() {
 
   try {
     const res = await api.getGroups(100, 0);
-    // Проверка структуры ответа для групп
     const list = res.items || (Array.isArray(res) ? res : []);
     
     sel.innerHTML = '<option value="">-- Без группы --</option>';
@@ -238,7 +241,7 @@ function renderMethodDetails(full) {
   } else {
     html += `
       <div class="mb-2">
-        <label class="form-label">Результат ${method.unit ? `(${method.unit})` : ''}</label>
+        <label class="form-label">Результат ${method.unit ? `(${method.unit})` : ''} <span class="text-danger">*</span></label>
         <input type="number" step="any" id="manualValue" class="form-control method-input">
       </div>`;
     setTimeout(() => {
@@ -247,8 +250,24 @@ function renderMethodDetails(full) {
     }, 0);
   }
   
+  // 🔥 Новое: поле заметки для результата метода
+  html += `
+    <div class="form-group mt-3">
+      <label class="small text-muted">Заметка к результату</label>
+      <textarea id="resultNote" rows="2" class="form-control form-control-sm" placeholder="Комментарий к измерению..."></textarea>
+    </div>`;
+  
   html += `</div>`;
   document.getElementById('methodDetails').innerHTML = html;
+  
+  // 🔥 Добавляем слушатель для заметки результата
+  setTimeout(() => {
+    const noteEl = document.getElementById('resultNote');
+    if (noteEl) {
+      noteEl.addEventListener('input', checkCanSave);
+      noteEl.addEventListener('change', checkCanSave);
+    }
+  }, 0);
 }
 
 function calculatePreview() {
@@ -292,6 +311,7 @@ function calculatePreview() {
           badgeEl.textContent = `Готов к сохранению`;
           badgeEl.className = 'badge badge-success';
       }
+      checkCanSave();
     }
   } catch(e) {
     console.error('Calc error', e);
@@ -299,6 +319,7 @@ function calculatePreview() {
 }
 
 function checkCanSave() {
+  // 🔥 Обязательные поля (без note — они опциональны)
   const requiredIds = ['sampleNumber', 'samplePlace', 'labName', 'operator', 'materialSelect', 'standardSelect', 'methodSelect'];
   let isValid = true;
   
@@ -327,18 +348,46 @@ function checkCanSave() {
 
 function resetMethodForm() {
   const mthSel = document.getElementById('methodSelect');
+  const stdSel = document.getElementById('standardSelect');
+  
   if (mthSel) {
       mthSel.value = '';
       mthSel.dispatchEvent(new Event('change'));
   }
+  if (stdSel) {
+      stdSel.value = '';
+  }
+  
+  document.getElementById('methodDetails').innerHTML = '';
+  currentMethod = null;
+  checkCanSave();
 }
 
 async function saveProtocol() {
-  const btn = document.getElementById('saveBtn');
   if (!currentMethod) {
       showToast('Выберите метод испытания', true);
       return;
   }
+
+  // 🔥 Отладка: проверяем, что поля существуют и имеют значения
+  console.log('🔍 Debug notes before send:');
+  
+  const sampleNoteEl = document.getElementById('sampleNote');
+  const protocolNoteEl = document.getElementById('protocolNote');
+  const resultNoteEl = document.getElementById('resultNote');
+  
+  console.log('  sampleNote element:', sampleNoteEl ? 'found' : 'NOT FOUND');
+  console.log('  protocolNote element:', protocolNoteEl ? 'found' : 'NOT FOUND');
+  console.log('  resultNote element:', resultNoteEl ? 'found' : 'NOT FOUND');
+  
+  // 🔥 Безопасное получение значений (без ошибки при null)
+  const sampleNote = sampleNoteEl ? (sampleNoteEl.value.trim() || null) : null;
+  const protocolNote = protocolNoteEl ? (protocolNoteEl.value.trim() || null) : null;
+  const resultNote = resultNoteEl ? (resultNoteEl.value.trim() || null) : null;
+  
+  console.log('  sampleNote value:', sampleNote);
+  console.log('  protocolNote value:', protocolNote);
+  console.log('  resultNote value:', resultNote);
 
   const results = [];
   let rawInputs = {};
@@ -350,12 +399,17 @@ async function saveProtocol() {
      });
   } else {
      const val = document.getElementById('manualValue')?.value;
+     if (!val || isNaN(parseFloat(val))) {
+        showToast('Введите результат испытания', true);
+        return;
+     }
      rawInputs = { value: val };
   }
 
   results.push({ 
       method_id: currentMethod.id, 
-      raw_inputs: rawInputs 
+      raw_inputs: rawInputs,
+      note: resultNote  // null автоматически станет omitempty в JSON
   });
 
   const payload = {
@@ -365,21 +419,27 @@ async function saveProtocol() {
       material_id: document.getElementById('materialSelect').value,
       collection_place: document.getElementById('samplePlace').value,
       context_params: {},
-      note: null
+      note: sampleNote
     },
     lab_name: document.getElementById('labName').value,
     operator_name: document.getElementById('operator').value,
+    note: protocolNote,
     results: results
   };
 
+  console.log('📦 Final payload:', JSON.stringify(payload, null, 2));
+
   try {
+    const btn = document.getElementById('saveBtn');
     setLoading(btn, true);
     await api.createProtocol(payload);
-    showToast('Протокол успешно сохранен!');
+    showToast('✅ Протокол успешно сохранен!');
     setTimeout(() => window.location.href = '/protocols.html', 1000);
   } catch (e) {
-    console.error(e);
+    console.error('Save error:', e);
+    showToast('❌ Ошибка сохранения: ' + (e.message || 'Неизвестная ошибка'), true);
   } finally {
+    const btn = document.getElementById('saveBtn');
     setLoading(btn, false);
   }
 }

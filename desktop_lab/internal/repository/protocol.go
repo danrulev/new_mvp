@@ -47,10 +47,10 @@ func (r *protocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 
 	// 1. Создаем Протокол
 	_, err = tx.ExecContext(ctx,
-		`INSERT INTO protocols (id, sample_id, protocol_number, lab_name, operator_name, test_date, status, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO protocols (id, sample_id, protocol_number, lab_name, operator_name, test_date, status, note, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		protocol.ID, protocol.SampleID, protocol.ProtocolNumber, protocol.LabName,
-		protocol.OperatorName, protocol.TestDate, protocol.Status, nowStr, nowStr,
+		protocol.OperatorName, protocol.TestDate, protocol.Status, protocol.Note, nowStr, nowStr,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert protocol: %w", err)
@@ -105,9 +105,9 @@ func (r *protocolRepo) GetByID(ctx context.Context, id string) (models.Protocol,
 	var createdAt, updatedAt string
 
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, sample_id, protocol_number, lab_name, operator_name, test_date, status, created_at, updated_at 
+		`SELECT id, sample_id, protocol_number, lab_name, operator_name, test_date, status, note, created_at, updated_at 
 		 FROM protocols WHERE id = ?`, id,
-	).Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.LabName, &p.OperatorName, &testDateStr, &p.Status, &createdAt, &updatedAt)
+	).Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.LabName, &p.OperatorName, &testDateStr, &p.Status, &p.Status, &p.Note, &createdAt, &updatedAt)
 
 	if err == sql.ErrNoRows {
 		return models.Protocol{}, nil
@@ -291,7 +291,7 @@ func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 
 	query := `
 		SELECT 
-			p.id, p.sample_id, p.protocol_number, p.lab_name, p.operator_name, p.test_date, p.status, p.created_at, p.updated_at,
+			p.id, p.sample_id, p.protocol_number, p.lab_name, p.operator_name, p.test_date, p.status, p.note, p.created_at, p.updated_at,
 			s.id, s.group_id, s.material_id, s.sample_number, s.collection_place, s.collection_date, s.context_params, s.note, s.created_at,
 			m.id, m.name, m.code, m.created_at
 		FROM protocols p
@@ -306,7 +306,7 @@ func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&full.Protocol.ID, &full.Protocol.SampleID, &full.Protocol.ProtocolNumber, &full.Protocol.LabName,
-		&full.Protocol.OperatorName, &testDateStr, &full.Protocol.Status, &protCreatedAt, &protUpdatedAt,
+		&full.Protocol.OperatorName, &testDateStr, &full.Protocol.Status, &full.Protocol.Note, &protCreatedAt, &protUpdatedAt,
 
 		&full.Sample.ID, &full.Sample.GroupID, &full.Sample.MaterialID, &full.Sample.SampleNumber, &full.Sample.CollectionPlace, &collDateStr, &rawContext, &full.Sample.Note, &sampCreatedAt,
 
@@ -397,6 +397,38 @@ func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 	}
 
 	return full, rows.Err()
+}
+
+func (r *protocolRepo) UpdateProtocol(ctx context.Context, id string, req models.UpdateProtocolRequest) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var sampleID string
+	err = tx.QueryRowContext(ctx, `SELECT sample_id FROM protocols WHERE id = ?`, id).Scan(&sampleID)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("protocol not found")
+	}
+
+	_, err = tx.ExecContext(ctx, `UPDATE protocols SET lab_name = ?, operator_name = ?, test_date = ? WHERE id = ? AND status = 'draft'`,
+		req.LabName, req.OperatorName, req.TestDate, id)
+	if err != nil {
+		return fmt.Errorf("failed to update protocol: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, `UPDATE samples SET collection_place = ?, collection_date = ?, context_params = ?, note = ? WHERE id = ?`,
+		req.CollectionPlace, req.CollectionDate, req.RawContext, req.Note, sampleID)
+	if err != nil {
+		return fmt.Errorf("failed to update sample: %w", err)
+	}
+
+	return tx.Commit()
 }
 
 func (r *protocolRepo) DeleteProtocol(ctx context.Context, id string) error {
