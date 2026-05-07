@@ -166,16 +166,15 @@ type Sample struct {
 }
 
 type UpdateProtocolRequest struct {
-	GroupID         string            `json:"group_id" db:"group_id"`
-	LabName         string            `json:"lab_name" db:"lab_name"`
-	OperatorName    string            `json:"operator_name" db:"operator_name"`
-	TestDate        time.Time         `json:"test_date,omitempty" db:"test_date"`
-	SampleNumber    string            `json:"sample_number" db:"sample_number"`
-	CollectionPlace string            `json:"collection_place" db:"collection_place"`
-	CollectionDate  time.Time         `json:"collection_date,omitempty" db:"collection_date"`
+	GroupID         *string           `json:"group_id" db:"group_id"`
+	LabName         *string           `json:"lab_name" db:"lab_name"`
+	OperatorName    *string           `json:"operator_name" db:"operator_name"`
+	TestDate        *time.Time        `json:"test_date,omitempty" db:"test_date"`
+	SampleNumber    *string           `json:"sample_number" db:"sample_number"`
+	CollectionPlace *string           `json:"collection_place" db:"collection_place"`
+	CollectionDate  *time.Time        `json:"collection_date,omitempty" db:"collection_date"`
 	ContextParams   map[string]string `json:"context_params" db:"context_params"`
-	RawContext      string            `json:"-" db:"-"`
-	Note            string            `json:"note,omitempty" db:"note"`
+	Note            *string           `json:"note,omitempty" db:"note"`
 }
 
 // Protocol соответствует таблице protocols

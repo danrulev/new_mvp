@@ -6,6 +6,7 @@ import (
 	"desktop_lab/internal/models"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -381,14 +382,67 @@ func (r *protocolRepo) UpdateProtocol(ctx context.Context, id string, req models
 		return fmt.Errorf("protocol not found")
 	}
 
-	_, err = tx.ExecContext(ctx, `UPDATE protocols SET lab_name = ?, operator_name = ?, test_date = ? WHERE id = ? AND status = 'draft'`,
-		req.LabName, req.OperatorName, req.TestDate, id)
+	var (
+		protocolUpdateFields []string
+		protocolUpdateValues []interface{}
+	)
+	if req.LabName != nil {
+		protocolUpdateFields = append(protocolUpdateFields, "lab_name = ?")
+		protocolUpdateValues = append(protocolUpdateValues, *req.LabName)
+	}
+	if req.OperatorName != nil {
+		protocolUpdateFields = append(protocolUpdateFields, "operator_name = ?")
+		protocolUpdateValues = append(protocolUpdateValues, *req.OperatorName)
+	}
+	if req.TestDate != nil && !req.TestDate.IsZero() {
+		protocolUpdateFields = append(protocolUpdateFields, "test_date = ?")
+		testDate := req.TestDate.Format(timeLayout)
+		protocolUpdateValues = append(protocolUpdateValues, testDate)
+	}
+
+	_, err = tx.ExecContext(ctx, fmt.Sprintf(`UPDATE protocols SET %v WHERE id = ? AND status = 'draft'`, strings.Join(protocolUpdateFields, ", ")), append(protocolUpdateValues, id)...)
 	if err != nil {
 		return fmt.Errorf("failed to update protocol: %w", err)
 	}
 
-	_, err = tx.ExecContext(ctx, `UPDATE samples SET collection_place = ?, collection_date = ?, context_params = ?, note = ? WHERE id = ?`,
-		req.CollectionPlace, req.CollectionDate, req.RawContext, req.Note, sampleID)
+	var (
+		sampleUpdateFields []string
+		sampleUpdateValues []interface{}
+	)
+	if req.GroupID != nil {
+		sampleUpdateFields = append(sampleUpdateFields, "group_id = ?")
+		sampleUpdateValues = append(sampleUpdateValues, *req.GroupID)
+	}
+	if req.SampleNumber != nil {
+		sampleUpdateFields = append(sampleUpdateFields, "sample_number = ?")
+		sampleUpdateValues = append(sampleUpdateValues, *req.SampleNumber)
+	}
+	if req.CollectionPlace != nil {
+		sampleUpdateFields = append(sampleUpdateFields, "collection_place = ?")
+		sampleUpdateValues = append(sampleUpdateValues, *req.CollectionPlace)
+	}
+	if req.CollectionDate != nil {
+		sampleUpdateFields = append(sampleUpdateFields, "collection_date = ?")
+		collectionDate := req.CollectionDate.Format(timeLayout)
+		sampleUpdateValues = append(sampleUpdateValues, collectionDate)
+	}
+	if req.Note != nil {
+		sampleUpdateFields = append(sampleUpdateFields, "note = ?")
+		sampleUpdateValues = append(sampleUpdateValues, *req.Note)
+	}
+	if req.ContextParams != nil {
+		inputJSON := "{}"
+		if len(req.ContextParams) > 0 {
+			b, marshalErr := json.Marshal(req.ContextParams)
+			if marshalErr != nil {
+				return fmt.Errorf("failed to marshal input data: %w", marshalErr)
+			}
+			inputJSON = string(b)
+		}
+		sampleUpdateFields = append(sampleUpdateFields, "context_params = ?")
+		sampleUpdateValues = append(sampleUpdateValues, inputJSON)
+	}
+	_, err = tx.ExecContext(ctx, fmt.Sprintf(`UPDATE samples SET %v WHERE id = ?`, strings.Join(sampleUpdateFields, ", ")), append(sampleUpdateValues, sampleID)...)
 	if err != nil {
 		return fmt.Errorf("failed to update sample: %w", err)
 	}
