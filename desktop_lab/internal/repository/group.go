@@ -134,6 +134,16 @@ func (r *experimentGroupRepo) AddSampleToGroup(ctx context.Context, sampleID, gr
 	return nil
 }
 
+func (r *experimentGroupRepo) UpdateGroup(ctx context.Context, id string, g models.UpdateExperimentGroup) error {
+	query := `UPDATE experiment_groups SET name = ?, material_id = ?, project_name = ?, location = ? WHERE id = ?`
+	_, err := r.db.ExecContext(ctx, query, g.Name, g.ProjectName, g.Location, id)
+	if err != nil {
+		return fmt.Errorf("failed to update group: %w", err)
+	}
+
+	return nil
+}
+
 func (r *experimentGroupRepo) DeleteGroup(ctx context.Context, id string) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {

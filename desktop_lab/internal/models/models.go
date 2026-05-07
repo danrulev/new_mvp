@@ -40,10 +40,16 @@ type ContextDimension struct {
 
 // ProtocolFull — агрегированный ответ (не маппится напрямую в БД)
 type ProtocolFull struct {
-	Protocol Protocol     `json:"protocol" db:"-"`
-	Sample   Sample       `json:"sample" db:"-"`
-	Material Material     `json:"material" db:"-"`
-	Results  []TestResult `json:"results" db:"-"`
+	Protocol Protocol             `json:"protocol" db:"-"`
+	Sample   Sample               `json:"sample" db:"-"`
+	Material Material             `json:"material" db:"-"`
+	Results  []TestResultResponse `json:"results" db:"-"`
+}
+
+type TestResultResponse struct {
+	TestResult        // встраиваем все поля оригинала
+	MethodName string `json:"method_name" db:"method_name"`           // ← новое поле
+	MethodUnit string `json:"method_unit,omitempty" db:"method_unit"` // опционально
 }
 
 // TestMethodFull — агрегированный ответ (не маппится напрямую в БД)
@@ -139,6 +145,12 @@ type ExperimentGroup struct {
 	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 }
 
+type UpdateExperimentGroup struct {
+	Name        string `json:"name" db:"name"`
+	ProjectName string `json:"project_name" db:"project_name"`
+	Location    string `json:"location,omitempty" db:"location"`
+}
+
 // Sample соответствует таблице samples
 type Sample struct {
 	ID              string            `json:"id" db:"id"`
@@ -146,7 +158,7 @@ type Sample struct {
 	MaterialID      string            `json:"material_id" db:"material_id"`
 	SampleNumber    string            `json:"sample_number" db:"sample_number"`
 	CollectionPlace string            `json:"collection_place" db:"collection_place"`
-	CollectionDate  *time.Time        `json:"collection_date,omitempty" db:"collection_date"`
+	CollectionDate  time.Time         `json:"collection_date,omitempty" db:"collection_date"`
 	ContextParams   map[string]string `json:"context_params" db:"context_params"`
 	RawContext      string            `json:"-" db:"-"`
 	Note            string            `json:"note,omitempty" db:"note"`
@@ -157,10 +169,10 @@ type UpdateProtocolRequest struct {
 	GroupID         string            `json:"group_id" db:"group_id"`
 	LabName         string            `json:"lab_name" db:"lab_name"`
 	OperatorName    string            `json:"operator_name" db:"operator_name"`
-	TestDate        *time.Time        `json:"test_date,omitempty" db:"test_date"`
+	TestDate        time.Time         `json:"test_date,omitempty" db:"test_date"`
 	SampleNumber    string            `json:"sample_number" db:"sample_number"`
 	CollectionPlace string            `json:"collection_place" db:"collection_place"`
-	CollectionDate  *time.Time        `json:"collection_date,omitempty" db:"collection_date"`
+	CollectionDate  time.Time         `json:"collection_date,omitempty" db:"collection_date"`
 	ContextParams   map[string]string `json:"context_params" db:"context_params"`
 	RawContext      string            `json:"-" db:"-"`
 	Note            string            `json:"note,omitempty" db:"note"`
@@ -168,16 +180,16 @@ type UpdateProtocolRequest struct {
 
 // Protocol соответствует таблице protocols
 type Protocol struct {
-	ID             string     `json:"id" db:"id"`
-	SampleID       string     `json:"sample_id" db:"sample_id"`
-	ProtocolNumber string     `json:"protocol_number,omitempty" db:"protocol_number"`
-	LabName        string     `json:"lab_name,omitempty" db:"lab_name"`
-	OperatorName   string     `json:"operator_name,omitempty" db:"operator_name"`
-	TestDate       *time.Time `json:"test_date,omitempty" db:"test_date"`
-	Status         string     `json:"status" db:"status"`
-	Note           string     `json:"note,omitempty" db:"note"`
-	CreatedAt      time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at" db:"updated_at"`
+	ID             string    `json:"id" db:"id"`
+	SampleID       string    `json:"sample_id" db:"sample_id"`
+	ProtocolNumber string    `json:"protocol_number,omitempty" db:"protocol_number"`
+	LabName        string    `json:"lab_name,omitempty" db:"lab_name"`
+	OperatorName   string    `json:"operator_name,omitempty" db:"operator_name"`
+	TestDate       time.Time `json:"test_date,omitempty" db:"test_date"`
+	Status         string    `json:"status" db:"status"`
+	Note           string    `json:"note,omitempty" db:"note"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // TestResult соответствует таблице test_results
@@ -257,7 +269,7 @@ type CreateProtocolRequest struct {
 type CreateSampleDTO struct {
 	SampleNumber    string            `json:"sample_number"`
 	MaterialID      string            `json:"material_id"`
-	CollectionDate  *time.Time        `json:"collection_date,omitempty"`
+	CollectionDate  time.Time         `json:"collection_date,omitempty"`
 	CollectionPlace string            `json:"collection_place,omitempty"`
 	ContextParams   map[string]string `json:"context_params"`
 	Note            string            `json:"note,omitempty"`

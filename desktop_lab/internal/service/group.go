@@ -58,6 +58,16 @@ func (s *ExperimentGroupService) GetByID(ctx context.Context, id string) (models
 	return g, nil
 }
 
+func (s *ExperimentGroupService) UpdateGroupByID(ctx context.Context, id string, g models.UpdateExperimentGroup) error {
+	err := s.repo.UpdateGroup(ctx, id, g)
+	if err != nil {
+		s.log.Error("failed to update group", zap.Error(err))
+		return err
+	}
+
+	return nil
+}
+
 func (s *ExperimentGroupService) DeleteGroupByID(ctx context.Context, id string) error {
 	err := s.repo.DeleteGroup(ctx, id)
 	if err != nil {

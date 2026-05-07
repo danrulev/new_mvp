@@ -47,6 +47,10 @@ export const api = {
   }),
   getProtocolsByGroup: (id) => apiRequest(`/protocol/groups/${id}`),
   deleteProtocol: (id) => apiRequest(`/protocol/${id}`, { method: 'DELETE' }),
+  updateProtocol: (id, data) => apiRequest(`/protocol/${id}`, { 
+      method: 'PUT', 
+      body: JSON.stringify(data) 
+  }),
   
   // === ОТЧЁТЫ ===
   downloadProtocolPDF: (id) => apiRequest(`/report/protocol/${id}/pdf`),

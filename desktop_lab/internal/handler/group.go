@@ -14,6 +14,7 @@ func (h *Handler) initGroupRoutes(api *gin.RouterGroup) {
 		group.POST("/", h.createGroup)
 		group.GET("/", h.getGroupList)
 		group.GET("/:id", h.getGroupByID)
+		group.PUT("/:id", h.updateGroup)
 		group.DELETE("/:id", h.deleteGroup)
 	}
 }
@@ -73,6 +74,28 @@ func (h *Handler) getGroupByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, data)
+}
+
+func (h *Handler) updateGroup(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		h.newErrorResponse(c, http.StatusBadRequest, "updateGroup", "id param is empty", nil)
+		return
+	}
+
+	var req models.UpdateExperimentGroup
+	if err := c.BindJSON(&req); err != nil {
+		h.newErrorResponse(c, http.StatusBadRequest, "updateGroup", "invalid request body", err)
+		return
+	}
+
+	err := h.group.UpdateGroupByID(c.Request.Context(), id, req)
+	if err != nil {
+		h.newErrorResponse(c, http.StatusInternalServerError, "updateGroup", "failed to update group", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "updated"})
 }
 
 func (h *Handler) deleteGroup(c *gin.Context) {

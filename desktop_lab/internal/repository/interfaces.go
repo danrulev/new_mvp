@@ -48,6 +48,7 @@ type ExperimentGroupRepo interface {
 	GetByID(ctx context.Context, id string) (models.ExperimentGroup, error)
 	GetList(ctx context.Context, limit, offset int64) ([]models.ExperimentGroup, int64, error)
 	AddSampleToGroup(ctx context.Context, sampleID, groupID string) error
+	UpdateGroup(ctx context.Context, id string, g models.UpdateExperimentGroup) error
 	DeleteGroup(ctx context.Context, id string) error
 }
 

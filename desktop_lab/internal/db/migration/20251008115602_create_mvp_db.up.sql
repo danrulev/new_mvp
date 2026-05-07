@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS samples (
     group_id TEXT,
     material_id TEXT NOT NULL,
     sample_number TEXT NOT NULL, -- Номер пробы в журнале
-    collection_date DATE,
+    collection_date TEXT DEFAULT (datetime('now')),
     collection_place TEXT,
     -- Контекстные параметры пробы (значения Dimensions)
     -- Хранятся как JSON для гибкости: {"climate_zone": "II", "mix_grade": "I", "layer": "upper"}
@@ -166,7 +166,7 @@ CREATE TABLE IF NOT EXISTS protocols (
     protocol_number TEXT, -- Номер документа
     lab_name TEXT,
     operator_name TEXT,
-    test_date DATE,
+    test_date TEXT DEFAULT (datetime('now')),
     status TEXT DEFAULT 'draft', -- 'draft', 'completed', 'approved'
     note TEXT,
     created_at TEXT DEFAULT (datetime('now')),

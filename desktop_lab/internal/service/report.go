@@ -335,8 +335,8 @@ func (s *ReportService) prepareGroupSummaryTemplateData(
 
 			// Формируем строку для таблицы
 			testDate := proto.TestDate
-			if testDate == nil || testDate.IsZero() {
-				testDate = &proto.CreatedAt
+			if testDate.IsZero() {
+				testDate = proto.CreatedAt
 			}
 
 			deviationStr := ""
@@ -479,7 +479,7 @@ func (s *ReportService) prepareProtocolTemplateData(
 	// Форматирование даты
 	var reportTime time.Time
 
-	if full.Protocol.TestDate != nil && !full.Protocol.TestDate.IsZero() {
+	if !full.Protocol.TestDate.IsZero() {
 		reportTime = full.Protocol.TestDate.Local()
 	} else if !full.Protocol.CreatedAt.IsZero() {
 		reportTime = full.Protocol.CreatedAt.Local()

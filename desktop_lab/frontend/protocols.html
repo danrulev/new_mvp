@@ -80,6 +80,77 @@
     </main>
   </div>
 
+    <!-- Modal: Edit Protocol -->
+  <div id="editModal" class="modal">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h3>✏️ Редактирование протокола</h3>
+        <button class="modal-close" onclick="closeEditModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="editForm">
+          <input type="hidden" id="editProtocolId">
+          
+          <div class="form-grid">
+            <!-- Группа -->
+            <div class="form-group">
+              <label>Группа испытаний</label>
+              <select id="editGroupSelect">
+                <option value="">-- Без группы --</option>
+              </select>
+            </div>
+            
+            <!-- Лаборатория -->
+            <div class="form-group">
+              <label>Лаборатория <span class="required">*</span></label>
+              <input type="text" id="editLabName" required>
+            </div>
+            
+            <!-- Оператор -->
+            <div class="form-group">
+              <label>Оператор <span class="required">*</span></label>
+              <input type="text" id="editOperatorName" required>
+            </div>
+            
+            <!-- Дата испытания -->
+            <div class="form-group">
+              <label>Дата испытания</label>
+              <input type="date" id="editTestDate">
+            </div>
+            
+            <!-- Номер пробы -->
+            <div class="form-group">
+              <label>Номер пробы <span class="required">*</span></label>
+              <input type="text" id="editSampleNumber" required>
+            </div>
+            
+            <!-- Место отбора -->
+            <div class="form-group">
+              <label>Место отбора <span class="required">*</span></label>
+              <input type="text" id="editCollectionPlace" required>
+            </div>
+            
+            <!-- Дата отбора -->
+            <div class="form-group">
+              <label>Дата отбора</label>
+              <input type="date" id="editCollectionDate">
+            </div>
+            
+            <!-- Заметка -->
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label>Заметка</label>
+              <textarea id="editNote" rows="3" placeholder="Дополнительная информация..."></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeEditModal()">Отмена</button>
+        <button id="editSaveBtn" class="btn btn-primary" onclick="saveProtocolEdit()">💾 Сохранить изменения</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Просмотр протокола -->
   <div id="viewModal" class="modal">
     <div class="modal-content modal-lg">

@@ -20,12 +20,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function setupFormListeners() {
-  // 🔥 Добавили note-поля в список отслеживаемых
-  const inputs = ['sampleNumber', 'samplePlace', 'labName', 'operator', 'sampleNote', 'protocolNote'];
-  inputs.forEach(id => {
+  const optionalInputs = ['sampleNote', 'protocolNote', 'collectionDate'];
+  optionalInputs.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
-      // Для textarea используем 'input' и 'change' для надёжности
+      el.addEventListener('input', checkCanSave); // можно убрать, если не нужна реактивность
+      el.addEventListener('change', checkCanSave);
+    }
+  });
+  
+  const requiredInputs = ['sampleNumber', 'samplePlace', 'labName', 'operator'];
+  requiredInputs.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
       el.addEventListener('input', checkCanSave);
       el.addEventListener('change', checkCanSave);
     }
@@ -369,25 +376,21 @@ async function saveProtocol() {
       return;
   }
 
-  // 🔥 Отладка: проверяем, что поля существуют и имеют значения
-  console.log('🔍 Debug notes before send:');
-  
+  // 🔥 Получение значений заметок и даты
   const sampleNoteEl = document.getElementById('sampleNote');
   const protocolNoteEl = document.getElementById('protocolNote');
   const resultNoteEl = document.getElementById('resultNote');
+  const collectionDateEl = document.getElementById('collectionDate');
   
-  console.log('  sampleNote element:', sampleNoteEl ? 'found' : 'NOT FOUND');
-  console.log('  protocolNote element:', protocolNoteEl ? 'found' : 'NOT FOUND');
-  console.log('  resultNote element:', resultNoteEl ? 'found' : 'NOT FOUND');
-  
-  // 🔥 Безопасное получение значений (без ошибки при null)
   const sampleNote = sampleNoteEl ? (sampleNoteEl.value.trim() || null) : null;
   const protocolNote = protocolNoteEl ? (protocolNoteEl.value.trim() || null) : null;
   const resultNote = resultNoteEl ? (resultNoteEl.value.trim() || null) : null;
   
-  console.log('  sampleNote value:', sampleNote);
-  console.log('  protocolNote value:', protocolNote);
-  console.log('  resultNote value:', resultNote);
+  // 🔥 Обработка даты отбора
+  let collectionDate = null;
+  if (collectionDateEl && collectionDateEl.value) {
+    collectionDate = new Date(collectionDateEl.value + 'T00:00:00Z').toISOString();
+  }
 
   const results = [];
   let rawInputs = {};
@@ -409,7 +412,7 @@ async function saveProtocol() {
   results.push({ 
       method_id: currentMethod.id, 
       raw_inputs: rawInputs,
-      note: resultNote  // null автоматически станет omitempty в JSON
+      note: resultNote
   });
 
   const payload = {
@@ -418,6 +421,7 @@ async function saveProtocol() {
       sample_number: document.getElementById('sampleNumber').value,
       material_id: document.getElementById('materialSelect').value,
       collection_place: document.getElementById('samplePlace').value,
+      collection_date: collectionDate,  // 🔥 Новое
       context_params: {},
       note: sampleNote
     },
@@ -426,8 +430,6 @@ async function saveProtocol() {
     note: protocolNote,
     results: results
   };
-
-  console.log('📦 Final payload:', JSON.stringify(payload, null, 2));
 
   try {
     const btn = document.getElementById('saveBtn');

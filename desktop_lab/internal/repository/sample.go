@@ -43,15 +43,8 @@ func (r *sampleRepo) Create(ctx context.Context, s models.Sample) error {
 		return fmt.Errorf("failed to marshal context params: %w", err)
 	}
 
-	var collDateStr interface{}
-	if s.CollectionDate != nil {
-		// Сохраняем дату в UTC строке
-		collDateStr = s.CollectionDate.UTC().Format(dateLayout)
-	} else {
-		collDateStr = nil
-	}
-
 	// 🔥 ИСПРАВЛЕНИЕ: Используем UTC для created_at
+	collDateStr := s.CollectionDate.Format(timeLayout)
 	nowUTC := time.Now().UTC()
 	nowStr := nowUTC.Format(timeLayout)
 
@@ -70,8 +63,7 @@ func (r *sampleRepo) Create(ctx context.Context, s models.Sample) error {
 
 func (r *sampleRepo) GetByID(ctx context.Context, id string) (models.Sample, error) {
 	s := models.Sample{}
-	var collDateStr sql.NullString
-	var rawJSON, createdAt string
+	var collDateStr, rawJSON, createdAt string
 
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, group_id, material_id, sample_number, collection_place, collection_date, context_params, note, created_at 
@@ -93,13 +85,10 @@ func (r *sampleRepo) GetByID(ctx context.Context, id string) (models.Sample, err
 		s.CreatedAt = time.Now()
 	}
 
-	if collDateStr.Valid {
-		t, err := helperParseDate(collDateStr.String)
-		if err == nil {
-			s.CollectionDate = &t
-		} else {
-			r.log.Warn("failed parse collection date", zap.Error(err))
-		}
+	s.CollectionDate, err = helperParseTime(collDateStr)
+	if err != nil {
+		r.log.Warn("failed parse collection date", zap.Error(err), zap.String("val", collDateStr))
+		s.CollectionDate = time.Now()
 	}
 
 	if err := s.FromJSON(rawJSON); err != nil {
@@ -126,8 +115,7 @@ func (r *sampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 		s := models.Sample{
 			ContextParams: make(map[string]string),
 		}
-		var collDateStr sql.NullString
-		var rawJSON, createdAt string
+		var collDateStr, rawJSON, createdAt string
 
 		err := rows.Scan(
 			&s.ID,
@@ -151,11 +139,10 @@ func (r *sampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 			s.CreatedAt = time.Now()
 		}
 
-		if collDateStr.Valid {
-			t, err := helperParseDate(collDateStr.String)
-			if err == nil {
-				s.CollectionDate = &t
-			}
+		s.CollectionDate, err = helperParseTime(collDateStr)
+		if err != nil {
+			r.log.Warn("failed parse collection date", zap.Error(err))
+			s.CollectionDate = time.Now()
 		}
 
 		if err := s.FromJSON(rawJSON); err != nil {

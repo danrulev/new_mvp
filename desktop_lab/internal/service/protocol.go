@@ -76,7 +76,7 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		ProtocolNumber: protocolNumber,
 		LabName:        req.LabName,
 		OperatorName:   req.OperatorName,
-		TestDate:       &now,
+		TestDate:       now,
 		Status:         "draft",
 		Note:           req.Note,
 	}
