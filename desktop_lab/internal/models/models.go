@@ -146,9 +146,9 @@ type ExperimentGroup struct {
 }
 
 type UpdateExperimentGroup struct {
-	Name        string `json:"name" db:"name"`
-	ProjectName string `json:"project_name" db:"project_name"`
-	Location    string `json:"location,omitempty" db:"location"`
+	Name        *string `json:"name" db:"name"`
+	ProjectName *string `json:"project_name" db:"project_name"`
+	Location    *string `json:"location,omitempty" db:"location"`
 }
 
 // Sample соответствует таблице samples

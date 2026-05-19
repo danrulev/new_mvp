@@ -154,7 +154,8 @@ CREATE TABLE IF NOT EXISTS samples (
     context_params TEXT NOT NULL DEFAULT '{}', 
     
     note TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (group_id) REFERENCES experiment_groups(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_samples_group ON samples(group_id);
 -- Индекс для поиска проб по параметрам (потребуется функциональный индекс или поиск по JSON в коде)

@@ -22,7 +22,8 @@ type ServerConfig struct {
 
 // DBConfig теперь содержит только путь к файлу базы данных
 type DBConfig struct {
-	Path string `mapstructure:"path" validate:"required"` // Путь к файлу, например: "./data/app.db"
+	Path           string `mapstructure:"path" validate:"required"` // Путь к файлу, например: "./data/app.db"
+	AllowSelection bool
 }
 
 type LoggerConfig struct {

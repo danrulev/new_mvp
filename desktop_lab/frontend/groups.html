@@ -19,6 +19,9 @@
           <li class="nav-item"><a href="/protocol-create.html" class="nav-link">📝 Новый протокол</a></li>
           <li class="nav-item"><a href="/protocols.html" class="nav-link">📋 Протоколы</a></li>
           <li class="nav-item"><a href="/groups.html" class="nav-link active">🗂️ Группы</a></li>
+          <li class="nav-item" style="margin-top: auto; border-top: 1px solid #eee; padding-top: 10px;">
+            <a href="/settings.html" class="nav-link">⚙️ Настройки</a>
+          </li>
         </ul>
       </nav>
     </aside>
@@ -102,6 +105,35 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeViewGroupModal()">Закрыть</button>
         <button class="btn btn-primary" id="groupDownloadBtn">📥 Скачать PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Редактирование группы -->
+  <div id="editGroupModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Редактировать группу</h3>
+        <button class="modal-close" onclick="closeEditGroupModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editGroupId">
+        <div class="form-group">
+          <label>Название <span class="required">*</span></label>
+          <input type="text" id="editGroupName">
+        </div>
+        <div class="form-group">
+          <label>Проект</label>
+          <input type="text" id="editGroupProject">
+        </div>
+        <div class="form-group">
+          <label>Место</label>
+          <input type="text" id="editGroupLocation">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeEditGroupModal()">Отмена</button>
+        <button class="btn btn-primary" onclick="saveGroupUpdate()">Сохранить</button>
       </div>
     </div>
   </div>

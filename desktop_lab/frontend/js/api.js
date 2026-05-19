@@ -36,6 +36,10 @@ export const api = {
   getGroups: (limit = 50, offset = 0) => apiRequest(`/group?limit=${limit}&offset=${offset}`),
   createGroup: (data) => apiRequest('/group', { method: 'POST', body: JSON.stringify(data) }),
   getGroupById: (id) => apiRequest(`/group/${id}`),
+  updateGroup: (id, data) => apiRequest(`/group/${id}`, { 
+    method: 'PUT', 
+    body: JSON.stringify(data) 
+  }),
   deleteGroup: (id) => apiRequest(`/group/${id}`, { method: 'DELETE' }),
   
   // === ПРОТОКОЛЫ ===

@@ -10,6 +10,11 @@ import (
 	"go.uber.org/zap"
 )
 
+type DatabaseSwitcher interface {
+	SwitchDatabase(newPath string) error
+	GetDBPath() string
+}
+
 type Handler struct {
 	log       *zap.Logger
 	dimension *service.DimensionService
@@ -19,6 +24,8 @@ type Handler struct {
 	report    *service.ReportService
 	sample    *service.SampleService
 	standard  *service.StandardService
+
+	appRef DatabaseSwitcher
 
 	frontendFS      embed.FS
 	frontendFSReady bool
@@ -32,6 +39,9 @@ func NewHandler(
 	report *service.ReportService,
 	sample *service.SampleService,
 	standard *service.StandardService,
+
+	appRef DatabaseSwitcher,
+
 	log *zap.Logger,
 ) *Handler {
 	return &Handler{
@@ -42,6 +52,7 @@ func NewHandler(
 		report:    report,
 		sample:    sample,
 		standard:  standard,
+		appRef:    appRef,
 		log:       log,
 	}
 }
@@ -75,6 +86,7 @@ func (h *Handler) Init() *gin.Engine {
 		h.initDimensionRoutes(api)
 		h.initProtocolRoutes(api)
 		h.initReportRoutes(api)
+		h.initDBRoutes(api)
 	}
 
 	router.NoRoute(func(c *gin.Context) {

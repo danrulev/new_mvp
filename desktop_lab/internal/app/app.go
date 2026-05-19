@@ -19,11 +19,14 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/gen2brain/dlgs"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
 type App struct {
+	dbConn  *sqlx.DB
+	cfgMu   sync.RWMutex
 	cfg     *config.Config
 	log     *zap.Logger
 	fontDir string
@@ -52,6 +55,30 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 	a.log = logInstance
 	a.log.Info("Starting Lab Desktop Application (HTTP Mode)")
 
+	if a.cfg.DB.AllowSelection {
+		selectedPath, ok, err := dlgs.File(
+			"Выберите файл базы данных",
+			"*.db *.sqlite",
+			false, // ← важно: false для выбора файла
+		)
+		if err != nil {
+			return fmt.Errorf("file dialog error: %w", err)
+		}
+		if !ok {
+			a.log.Info("Database selection cancelled by user")
+			return nil // или верните ошибку, если отмена недопустима
+		}
+
+		// Опционально: проверить существование файла
+		if _, statErr := os.Stat(selectedPath); os.IsNotExist(statErr) {
+			a.log.Warn("Selected database file does not exist, will create new",
+				zap.String("path", selectedPath))
+		}
+
+		cfg.DB.Path = selectedPath
+		a.log.Info("Database selected", zap.String("path", selectedPath))
+	}
+
 	// 3. Шрифты
 	fontDir, err := font.ExtractFonts(fontFS)
 	if err != nil {
@@ -64,6 +91,7 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 	if err != nil {
 		return fmt.Errorf("db connection failed: %w", err)
 	}
+	a.dbConn = dbConn
 
 	// 5. Миграции
 	if err := a.runMigrations(dbConn); err != nil {
@@ -90,7 +118,7 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 		a.log.Info("Data seed completed")
 	}
 
-	handl := handler.NewHandler(svc.Dimensions, svc.Materials, svc.Groups, svc.Protocols, svc.Reports, svc.Samples, svc.Standards, a.log)
+	handl := handler.NewHandler(svc.Dimensions, svc.Materials, svc.Groups, svc.Protocols, svc.Reports, svc.Samples, svc.Standards, a, a.log)
 
 	handl.SetFrontendFS(frontendFS)
 
@@ -115,6 +143,37 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 
 	a.log.Info("Shutting down")
 
+	return nil
+}
+
+// Метод для безопасной смены БД
+func (a *App) SwitchDatabase(newPath string) error {
+	a.cfgMu.Lock()
+	defer a.cfgMu.Unlock()
+
+	// 1. Закрыть старое соединение
+	if a.dbConn != nil {
+		if err := a.dbConn.Close(); err != nil {
+			a.log.Error("Failed to close old DB", zap.Error(err))
+		}
+	}
+
+	// 2. Обновить путь в конфиге
+	a.cfg.DB.Path = newPath
+
+	// 3. Подключиться к новой БД
+	newConn, err := db.New(newPath, a.log)
+	if err != nil {
+		return fmt.Errorf("failed to connect to new DB: %w", err)
+	}
+	a.dbConn = newConn
+
+	// 4. Применить миграции (опционально)
+	if err := a.runMigrations(newConn); err != nil {
+		return fmt.Errorf("migration on new DB failed: %w", err)
+	}
+
+	a.log.Info("Database switched successfully", zap.String("path", newPath))
 	return nil
 }
 
@@ -147,4 +206,10 @@ func (a *App) runMigrations(dbConn *sqlx.DB) error {
 	}
 	a.log.Warn("Migration directory not found - skipping")
 	return nil
+}
+
+func (a *App) GetDBPath() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.DB.Path
 }

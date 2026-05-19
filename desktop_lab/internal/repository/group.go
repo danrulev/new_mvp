@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"desktop_lab/internal/models"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -135,8 +136,25 @@ func (r *experimentGroupRepo) AddSampleToGroup(ctx context.Context, sampleID, gr
 }
 
 func (r *experimentGroupRepo) UpdateGroup(ctx context.Context, id string, g models.UpdateExperimentGroup) error {
-	query := `UPDATE experiment_groups SET name = ?, material_id = ?, project_name = ?, location = ? WHERE id = ?`
-	_, err := r.db.ExecContext(ctx, query, g.Name, g.ProjectName, g.Location, id)
+	var (
+		groupUpdateFields []string
+		groupUpdateValues []interface{}
+	)
+	if g.Name != nil {
+		groupUpdateFields = append(groupUpdateFields, "name = ?")
+		groupUpdateValues = append(groupUpdateValues, *g.Name)
+	}
+	if g.ProjectName != nil {
+		groupUpdateFields = append(groupUpdateFields, "project_name = ?")
+		groupUpdateValues = append(groupUpdateValues, *g.ProjectName)
+	}
+	if g.Location != nil {
+		groupUpdateFields = append(groupUpdateFields, "location = ?")
+		groupUpdateValues = append(groupUpdateValues, *g.Location)
+	}
+
+	query := fmt.Sprintf(`UPDATE experiment_groups SET %v WHERE id = ?`, strings.Join(groupUpdateFields, ", "))
+	_, err := r.db.ExecContext(ctx, query, append(groupUpdateValues, id)...)
 	if err != nil {
 		return fmt.Errorf("failed to update group: %w", err)
 	}
@@ -154,11 +172,6 @@ func (r *experimentGroupRepo) DeleteGroup(ctx context.Context, id string) error 
 			tx.Rollback()
 		}
 	}()
-
-	_, err = tx.ExecContext(ctx, "DELETE FROM samples WHERE group_id = ?", id)
-	if err != nil {
-		return fmt.Errorf("failed to delete samples: %w", err)
-	}
 
 	_, err = tx.ExecContext(ctx, "DELETE FROM experiment_groups WHERE id = ?", id)
 	if err != nil {

@@ -57,9 +57,10 @@ function renderGroupsTable(groups) {
         <td>${formatDate(g.created_at)}</td>
         <td>
           <div class="actions">
-            <button class="btn btn-small btn-secondary" onclick="viewGroup('${g.id}')">👁️</button>
-            <button class="btn btn-small btn-secondary" onclick="downloadGroupPDF('${g.id}')">📥</button>
-            <button class="btn btn-small btn-danger" onclick="deleteGroup('${g.id}')">🗑️</button>
+            <button class="btn btn-small btn-secondary" onclick="viewGroup('${g.id}')" title="Просмотр">👁️</button>
+            <button class="btn btn-small btn-secondary" onclick="editGroup('${g.id}')" title="Редактировать">✏️</button>
+            <button class="btn btn-small btn-secondary" onclick="downloadGroupPDF('${g.id}')" title="Скачать PDF">📥</button>
+            <button class="btn btn-small btn-danger" onclick="deleteGroup('${g.id}')" title="Удалить">🗑️</button>
           </div>
         </td>
       </tr>`;
@@ -148,6 +149,68 @@ window.viewGroup = async function(id) {
     showToast('Ошибка загрузки группы', true);
   }
 };
+
+// === EDIT GROUP ===
+
+// Открытие модального окна редактирования с загрузкой данных
+// === EDIT GROUP (без изменения материала) ===
+
+window.editGroup = async function(id) {
+  try {
+    // Загружаем текущие данные группы
+    const group = await api.getGroupById(id);
+    
+    // Заполняем форму
+    document.getElementById('editGroupId').value = id;
+    document.getElementById('editGroupName').value = group.name || '';
+    document.getElementById('editGroupProject').value = group.project_name || '';
+    document.getElementById('editGroupLocation').value = group.location || '';
+    
+    // Показываем модальное окно
+    document.getElementById('editGroupModal').classList.add('active');
+  } catch(e) {
+    console.error('editGroup error:', e);
+    showToast('Ошибка загрузки данных группы', true);
+  }
+};
+
+window.closeEditGroupModal = function() {
+  document.getElementById('editGroupModal').classList.remove('active');
+  document.getElementById('editGroupId').value = '';
+};
+
+async function saveGroupUpdate() {
+  const id = document.getElementById('editGroupId').value;
+  const name = document.getElementById('editGroupName').value.trim();
+  
+  // Валидация: обязательно только название
+  if (!id || !name) {
+    showToast('Заполните название группы', true);
+    return;
+  }
+  
+  // Отправляем только разрешённые поля (без material_id)
+  const payload = {
+    name: name,
+    project_name: document.getElementById('editGroupProject').value.trim(),
+    location: document.getElementById('editGroupLocation').value.trim()
+  };
+  
+  try {
+    await api.updateGroup(id, payload);
+    showToast('Группа обновлена');
+    closeEditGroupModal();
+    loadGroups(); // Перезагружаем таблицу
+  } catch(e) {
+    console.error('saveGroupUpdate error:', e);
+    showToast('Ошибка сохранения: ' + e.message, true);
+  }
+}
+
+// Экспорт для HTML onclick
+window.editGroup = editGroup;
+window.closeEditGroupModal = closeEditGroupModal;
+window.saveGroupUpdate = saveGroupUpdate;
 
 window.closeViewGroupModal = function() {
   document.getElementById('viewGroupModal').classList.remove('active');
