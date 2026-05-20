@@ -408,7 +408,7 @@ func (s *ReportService) prepareGroupSummaryTemplateData(
 	// Записываем пересчитанную статистику
 	data.Statistics = StatisticsView{
 		CompliantRate:    summary.CompliantRate, // Берем из сервиса (там логика только по completed)
-		CompliantPercent: fmt.Sprintf("%.1f%%", summary.CompliantRate*100),
+		CompliantPercent: fmt.Sprintf("%.1f%%", summary.CompliantRate),
 		TotalSamples:     len(completedProtocolsMap),
 		TotalTests:       totalTests,
 		CompliantTests:   compliantTests,
