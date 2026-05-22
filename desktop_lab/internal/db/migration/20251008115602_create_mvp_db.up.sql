@@ -229,3 +229,14 @@ CREATE TABLE IF NOT EXISTS reference_data (
     UNIQUE (category, key_val)
 );
 CREATE INDEX IF NOT EXISTS idx_ref_category ON reference_data(category);
+
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL, -- 'admin', 'user'
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    UNIQUE (email)
+);
