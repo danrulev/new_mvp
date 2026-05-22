@@ -21,8 +21,19 @@ func NewSampleRepo(db *sqlx.DB, log *zap.Logger) *SampleRepo {
 }
 
 func (r *SampleRepo) Create(ctx context.Context, s models.Sample) error {
+	log := logQuery(ctx, r.log, "INSERT", "samples",
+		zap.String("sample_id", s.ID),
+		zap.String("sample_number", s.SampleNumber),
+		zap.String("group_id", s.GroupID),
+		zap.String("material_id", s.MaterialID),
+		zap.String("collection_place", s.CollectionPlace),
+		zap.Int("context_params_count", len(s.ContextParams)),
+	)
+	log.Debug("creating new sample")
+
 	jsonData, err := s.ToJSON()
 	if err != nil {
+		log.Error("failed to marshal context params", zap.Error(err))
 		return fmt.Errorf("failed to marshal context params: %w", err)
 	}
 
@@ -39,11 +50,14 @@ func (r *SampleRepo) Create(ctx context.Context, s models.Sample) error {
 		return fmt.Errorf("failed to create sample: %w", err)
 	}
 
-	r.log.Info("Sample created", zap.String("id", s.ID), zap.String("number", s.SampleNumber))
+	r.log.Info("Sample created", zap.String("id", s.ID), zap.String("sample_number", s.SampleNumber))
 	return nil
 }
 
 func (r *SampleRepo) GetByID(ctx context.Context, id string) (models.Sample, error) {
+	log := logQuery(ctx, r.log, "SELECT", "samples",
+		zap.String("sample_id", id))
+	log.Debug("fetching sample by ID")
 	s := models.Sample{}
 	var collDateStr, rawJSON, createdAt string
 
@@ -54,6 +68,7 @@ func (r *SampleRepo) GetByID(ctx context.Context, id string) (models.Sample, err
 	).Scan(&s.ID, &s.GroupID, &s.MaterialID, &s.SampleNumber, &s.CollectionPlace, &collDateStr, &rawJSON, &s.Note, &createdAt)
 
 	if err == sql.ErrNoRows {
+		log.Debug("sample not found")
 		return models.Sample{}, nil
 	}
 	if err != nil {
@@ -76,11 +91,18 @@ func (r *SampleRepo) GetByID(ctx context.Context, id string) (models.Sample, err
 		r.log.Warn("Failed to unmarshal sample context", zap.Error(err), zap.String("id", id))
 		s.ContextParams = make(map[string]string)
 	}
-
+	log.Debug("sample retrieved successfully",
+		zap.String("sample_number", s.SampleNumber),
+		zap.String("material_id", s.MaterialID),
+		zap.Int("context_params_count", len(s.ContextParams)))
 	return s, nil
 }
 
 func (r *SampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models.Sample, error) {
+	log := logQuery(ctx, r.log, "SELECT", "samples",
+		zap.String("group_id", groupID))
+	log.Debug("fetching samples for group")
+
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, group_id, material_id, sample_number, collection_place, collection_date, context_params, note, created_at 
 		 FROM samples WHERE group_id = ?`,
@@ -136,9 +158,12 @@ func (r *SampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 	}
 
 	if err := rows.Err(); err != nil {
+		log.Error("rows iteration error", zap.Error(err))
 		return nil, fmt.Errorf("error iterating samples: %w", err)
 	}
 
+	log.Debug("samples retrieved successfully",
+		zap.String("group_id", groupID))
 	if samples == nil {
 		return []models.Sample{}, nil
 	}

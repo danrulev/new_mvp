@@ -123,11 +123,12 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 	a.ready = true
 	a.log.Info("Application initialized successfully")
 
+	a.log.Info("Starting server", zap.String("address", cfg.Server.Host+":"+cfg.Server.Port))
 	server := server.NewServer(cfg.Server, handl.Init())
 
 	go func() {
 		if err := server.Start(); err != nil {
-			a.log.Fatal("Failed to start server", zap.Error(err))
+			a.log.Fatal("Stop server", zap.Error(err))
 		}
 	}()
 

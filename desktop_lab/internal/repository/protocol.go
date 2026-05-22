@@ -28,13 +28,26 @@ const timeLayout = "2006-01-02 15:04:05"
 
 // CreateFull создает протокол и результаты в одной транзакции
 func (r *ProtocolRepo) CreateFull(ctx context.Context, protocol models.Protocol, results []models.TestResult) error {
+	log := logQuery(ctx, r.log, "INSERT (TX)", "protocols + test_results",
+		zap.String("protocol_id", protocol.ID),
+		zap.String("protocol_number", protocol.ProtocolNumber),
+		zap.String("sample_id", protocol.SampleID),
+		zap.Int("results_count", len(results)),
+		zap.String("status", protocol.Status),
+	)
+	log.Info("starting protocol creation transaction")
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				log.Error("transaction rollback failed", zap.Error(rbErr))
+			} else {
+				log.Debug("transaction rolled back")
+			}
 		}
 	}()
 
@@ -92,11 +105,22 @@ func (r *ProtocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 		}
 	}
 
-	return tx.Commit()
+	if err = tx.Commit(); err != nil {
+		log.Error("transaction commit failed", zap.Error(err))
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	log.Info("protocol and results created successfully",
+		zap.Int("results_inserted", len(results)))
+	return nil
 }
 
 // GetByID загружает протокол с данными пробы
 func (r *ProtocolRepo) GetByID(ctx context.Context, id string) (models.Protocol, error) {
+	log := logQuery(ctx, r.log, "SELECT", "protocols",
+		zap.String("protocol_id", id))
+	log.Debug("fetching protocol by ID")
+
 	p := models.Protocol{}
 	var testDateStr, createdAt, updatedAt string
 
@@ -106,6 +130,7 @@ func (r *ProtocolRepo) GetByID(ctx context.Context, id string) (models.Protocol,
 	).Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.LabName, &p.OperatorName, &testDateStr, &p.Status, &p.Note, &createdAt, &updatedAt)
 
 	if err == sql.ErrNoRows {
+		log.Debug("protocol not found")
 		return models.Protocol{}, nil
 	}
 	if err != nil {
@@ -129,12 +154,18 @@ func (r *ProtocolRepo) GetByID(ctx context.Context, id string) (models.Protocol,
 		r.log.Warn("failed to parse updated_at", zap.String("val", updatedAt), zap.Error(err))
 		p.UpdatedAt = time.Now() // Fallback
 	}
-
+	log.Debug("protocol retrieved successfully",
+		zap.String("protocol_number", p.ProtocolNumber),
+		zap.String("status", p.Status))
 	return p, nil
 }
 
 // GetResultsByProtocolID загружает результаты
 func (r *ProtocolRepo) GetResultsByProtocolID(ctx context.Context, protocolID string) ([]models.TestResult, error) {
+	log := logQuery(ctx, r.log, "SELECT", "test_results",
+		zap.String("protocol_id", protocolID))
+	log.Debug("fetching test results for protocol")
+
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, method_id, input_data, calculated_value, applied_limit_id, is_compliant, deviation_msg, note, created_at 
 		 FROM test_results WHERE protocol_id = ?`,
@@ -177,11 +208,22 @@ func (r *ProtocolRepo) GetResultsByProtocolID(ctx context.Context, protocolID st
 		results = append(results, r)
 	}
 
+	if err := rows.Err(); err != nil {
+		log.Error("rows iteration error", zap.Error(err))
+		return nil, err
+	}
+
+	log.Debug("test results retrieved successfully",
+		zap.Int("count", len(results)))
 	return results, nil
 }
 
 // GetByGroupID возвращает список протоколов группы
 func (r *ProtocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]models.Protocol, error) {
+	log := logQuery(ctx, r.log, "SELECT", "protocols",
+		zap.String("group_id", groupID))
+	log.Debug("fetching protocols by group ID")
+
 	query := `
 		SELECT p.id, p.sample_id, p.protocol_number, p.status, p.created_at
 		FROM protocols p
@@ -210,11 +252,21 @@ func (r *ProtocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]mode
 		}
 		protocols = append(protocols, p)
 	}
+	if err := rows.Err(); err != nil {
+		log.Error("rows iteration error", zap.Error(err))
+		return nil, err
+	}
+
+	log.Debug("protocols retrieved successfully",
+		zap.Int("count", len(protocols)))
 
 	return protocols, rows.Err()
 }
 
 func (r *ProtocolRepo) GetList(ctx context.Context, limit, offset int64) ([]models.Protocol, int64, error) {
+	log := logQuery(ctx, r.log, "SELECT", "protocols", zap.Int64("limit", limit),
+		zap.Int64("offset", offset))
+	log.Debug("fetching paginated protocols list")
 	var total int64
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM protocols`).Scan(&total)
 	if err != nil {
@@ -259,10 +311,23 @@ func (r *ProtocolRepo) GetList(ctx context.Context, limit, offset int64) ([]mode
 
 		protocols = append(protocols, p)
 	}
+	if err := rows.Err(); err != nil {
+		log.Error("rows iteration error", zap.Error(err))
+		return nil, 0, err
+	}
+
+	log.Debug("protocols retrieved successfully",
+		zap.Int("returned_count", len(protocols)),
+		zap.Int64("total_count", total),
+	)
+
 	return protocols, total, nil
 }
 
 func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.ProtocolFull, error) {
+	log := logQuery(ctx, r.log, "SELECT (FULL JOIN)", "protocols + samples + materials + test_results + test_methods",
+		zap.String("protocol_id", id))
+	log.Debug("fetching full protocol with joins")
 	var full models.ProtocolFull
 
 	query := `
@@ -288,6 +353,7 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		&full.Material.ID, &full.Material.Name, &full.Material.Code, &matCreatedAt,
 	)
 	if err == sql.ErrNoRows {
+		log.Debug("protocol not found")
 		return models.ProtocolFull{}, nil
 	}
 	if err != nil {
@@ -353,24 +419,51 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		full.Results = append(full.Results, res)
 	}
 
-	return full, rows.Err()
+	if err := rows.Err(); err != nil {
+		log.Error("rows iteration error for results", zap.Error(err))
+		return models.ProtocolFull{}, err
+	}
+
+	log.Info("full protocol loaded successfully",
+		zap.String("protocol_number", full.Protocol.ProtocolNumber),
+		zap.Int("results_count", len(full.Results)))
+
+	return full, nil
 }
 
 func (r *ProtocolRepo) UpdateProtocol(ctx context.Context, id string, req models.UpdateProtocolRequest) error {
+	log := logQuery(ctx, r.log, "UPDATE (TX)", "protocols + samples",
+		zap.String("protocol_id", id),
+		zap.Bool("lab_name_provided", req.LabName != nil),
+		zap.Bool("operator_provided", req.OperatorName != nil),
+		zap.Bool("test_date_provided", req.TestDate != nil && !req.TestDate.IsZero()),
+		zap.Bool("sample_updates", req.GroupID != nil || req.SampleNumber != nil || req.ContextParams != nil),
+	)
+	log.Debug("starting protocol update transaction")
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				log.Error("transaction rollback failed", zap.Error(rbErr))
+			} else {
+				log.Debug("transaction rolled back")
+			}
 		}
 	}()
 
 	var sampleID string
 	err = tx.QueryRowContext(ctx, `SELECT sample_id FROM protocols WHERE id = ?`, id).Scan(&sampleID)
-	if err == sql.ErrNoRows {
-		return fmt.Errorf("protocol not found")
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Warn("protocol not found for update",
+				zap.String("protocol_id", id))
+			return fmt.Errorf("protocol not found")
+		}
+		return fmt.Errorf("failed to fetch sample ID for protocol: %w", err)
 	}
 
 	var (
@@ -380,20 +473,30 @@ func (r *ProtocolRepo) UpdateProtocol(ctx context.Context, id string, req models
 	if req.LabName != nil {
 		protocolUpdateFields = append(protocolUpdateFields, "lab_name = ?")
 		protocolUpdateValues = append(protocolUpdateValues, *req.LabName)
+		log.Debug("including protocol field update", zap.String("field", "lab_name"))
 	}
 	if req.OperatorName != nil {
 		protocolUpdateFields = append(protocolUpdateFields, "operator_name = ?")
 		protocolUpdateValues = append(protocolUpdateValues, *req.OperatorName)
+		log.Debug("including protocol field update", zap.String("field", "operator_name"))
 	}
 	if req.TestDate != nil && !req.TestDate.IsZero() {
 		protocolUpdateFields = append(protocolUpdateFields, "test_date = ?")
 		testDate := req.TestDate.Format(timeLayout)
 		protocolUpdateValues = append(protocolUpdateValues, testDate)
+		log.Debug("including protocol field update", zap.String("field", "test_date"))
 	}
 
-	_, err = tx.ExecContext(ctx, fmt.Sprintf(`UPDATE protocols SET %v WHERE id = ? AND status = 'draft'`, strings.Join(protocolUpdateFields, ", ")), append(protocolUpdateValues, id)...)
-	if err != nil {
-		return fmt.Errorf("failed to update protocol: %w", err)
+	if len(protocolUpdateFields) == 0 {
+		log.Debug("no fields to update, skipping query")
+	} else {
+		protocolUpdateFields = append(protocolUpdateFields, "updated_at = ?")
+		protocolUpdateValues = append(protocolUpdateValues, time.Now().Format(timeLayout))
+
+		_, err = tx.ExecContext(ctx, fmt.Sprintf(`UPDATE protocols SET %v WHERE id = ? AND status = 'draft'`, strings.Join(protocolUpdateFields, ", ")), append(protocolUpdateValues, id)...)
+		if err != nil {
+			return fmt.Errorf("failed to update protocol: %w", err)
+		}
 	}
 
 	var (
@@ -403,23 +506,28 @@ func (r *ProtocolRepo) UpdateProtocol(ctx context.Context, id string, req models
 	if req.GroupID != nil {
 		sampleUpdateFields = append(sampleUpdateFields, "group_id = ?")
 		sampleUpdateValues = append(sampleUpdateValues, *req.GroupID)
+		log.Debug("including sample field update", zap.String("field", "group_id"))
 	}
 	if req.SampleNumber != nil {
 		sampleUpdateFields = append(sampleUpdateFields, "sample_number = ?")
 		sampleUpdateValues = append(sampleUpdateValues, *req.SampleNumber)
+		log.Debug("including sample field update", zap.String("field", "sample_number"))
 	}
 	if req.CollectionPlace != nil {
 		sampleUpdateFields = append(sampleUpdateFields, "collection_place = ?")
 		sampleUpdateValues = append(sampleUpdateValues, *req.CollectionPlace)
+		log.Debug("including sample field update", zap.String("field", "collection_place"))
 	}
 	if req.CollectionDate != nil {
 		sampleUpdateFields = append(sampleUpdateFields, "collection_date = ?")
 		collectionDate := req.CollectionDate.Format(timeLayout)
 		sampleUpdateValues = append(sampleUpdateValues, collectionDate)
+		log.Debug("including sample field update", zap.String("field", "collection_date"))
 	}
 	if req.Note != nil {
 		sampleUpdateFields = append(sampleUpdateFields, "note = ?")
 		sampleUpdateValues = append(sampleUpdateValues, *req.Note)
+		log.Debug("including sample field update", zap.String("field", "note"))
 	}
 	if req.ContextParams != nil {
 		inputJSON := "{}"
@@ -432,21 +540,53 @@ func (r *ProtocolRepo) UpdateProtocol(ctx context.Context, id string, req models
 		}
 		sampleUpdateFields = append(sampleUpdateFields, "context_params = ?")
 		sampleUpdateValues = append(sampleUpdateValues, inputJSON)
+		log.Debug("including sample field update", zap.String("field", "context_params"))
 	}
-	_, err = tx.ExecContext(ctx, fmt.Sprintf(`UPDATE samples SET %v WHERE id = ?`, strings.Join(sampleUpdateFields, ", ")), append(sampleUpdateValues, sampleID)...)
-	if err != nil {
-		return fmt.Errorf("failed to update sample: %w", err)
+	if len(sampleUpdateFields) == 0 {
+		log.Debug("no fields to update, skipping query")
+	} else {
+		sampleUpdateFields = append(sampleUpdateFields, "updated_at = ?")
+		sampleUpdateValues = append(sampleUpdateValues, time.Now().Format(timeLayout))
+		_, err = tx.ExecContext(ctx, fmt.Sprintf(`UPDATE samples SET %v WHERE id = ?`, strings.Join(sampleUpdateFields, ", ")), append(sampleUpdateValues, sampleID)...)
+		if err != nil {
+			return fmt.Errorf("failed to update sample: %w", err)
+		}
 	}
 
-	return tx.Commit()
+	if err = tx.Commit(); err != nil {
+		log.Error("transaction commit failed", zap.Error(err))
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	log.Info("protocol and sample updated successfully")
+	return nil
 }
 
 func (r *ProtocolRepo) DeleteProtocol(ctx context.Context, id string) error {
+	log := logQuery(ctx, r.log, "DELETE", "protocols",
+		zap.String("protocol_id", id))
+	log.Info("deleting protocol")
 	_, err := r.db.ExecContext(ctx, `DELETE FROM protocols WHERE id = ?`, id)
-	return err
+	if err != nil {
+		log.Error("delete failed", zap.Error(err))
+		return err
+	}
+	log.Info("protocol deleted successfully")
+	return nil
 }
 
 func (r *ProtocolRepo) UpdateStatus(ctx context.Context, id string, status string) error {
+	log := logQuery(ctx, r.log, "UPDATE", "protocols",
+		zap.String("protocol_id", id),
+		zap.String("new_status", status))
+	log.Debug("updating protocol status")
 	_, err := r.db.ExecContext(ctx, `UPDATE protocols SET status = ? WHERE id = ?`, status, id)
-	return err
+	if err != nil {
+		log.Error("status update failed", zap.Error(err))
+		return err
+	}
+	log.Info("protocol status updated successfully",
+		zap.String("protocol_id", id),
+		zap.String("new_status", status))
+	return nil
 }
