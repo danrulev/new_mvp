@@ -240,3 +240,10 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TEXT DEFAULT (datetime('now')),
     UNIQUE (email)
 );
+
+CREATE TABLE IF NOT EXISTS tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    expires_at TEXT DEFAULT (datetime('now')),
+    created_at TEXT DEFAULT (datetime('now')) 
+);
