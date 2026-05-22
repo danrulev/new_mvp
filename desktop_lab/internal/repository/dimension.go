@@ -128,15 +128,9 @@ func (r *DimensionRepo) UpdatePossibleValues(ctx context.Context, id string, val
 	return nil
 }
 
-// DeletePossibleValues очищает список возможных значений (устанавливает NULL или пустой массив)
-// Это полезно, если тип измерения меняется с 'enum' на 'text' или значения больше не нужны
+// DeletePossibleValues очищает список возможных значений
 func (r *DimensionRepo) DeletePossibleValues(ctx context.Context, id string) error {
-	// Вариант 1: Установить в NULL
-	// _, err := r.db.ExecContext(ctx, `UPDATE context_dimensions SET possible_values = NULL WHERE id = ?`, id)
-
-	// Вариант 2: Установить в пустой JSON массив (рекомендуется для консистентности)
 	_, err := r.db.ExecContext(ctx, `UPDATE context_dimensions SET possible_values = '[]' WHERE id = ?`, id)
-
 	return err
 }
 

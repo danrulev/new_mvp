@@ -69,7 +69,6 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 			return nil // или верните ошибку, если отмена недопустима
 		}
 
-		// Опционально: проверить существование файла
 		if _, statErr := os.Stat(selectedPath); os.IsNotExist(statErr) {
 			a.log.Warn("Selected database file does not exist, will create new",
 				zap.String("path", selectedPath))
@@ -113,7 +112,6 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 
 	if err := data.SeedData(svc, a.log); err != nil {
 		a.log.Error("Seed failed", zap.Error(err))
-		// Не прерываем запуск, но логируем ошибку
 	} else {
 		a.log.Info("Data seed completed")
 	}
@@ -151,24 +149,20 @@ func (a *App) SwitchDatabase(newPath string) error {
 	a.cfgMu.Lock()
 	defer a.cfgMu.Unlock()
 
-	// 1. Закрыть старое соединение
 	if a.dbConn != nil {
 		if err := a.dbConn.Close(); err != nil {
 			a.log.Error("Failed to close old DB", zap.Error(err))
 		}
 	}
 
-	// 2. Обновить путь в конфиге
 	a.cfg.DB.Path = newPath
 
-	// 3. Подключиться к новой БД
 	newConn, err := db.New(newPath, a.log)
 	if err != nil {
 		return fmt.Errorf("failed to connect to new DB: %w", err)
 	}
 	a.dbConn = newConn
 
-	// 4. Применить миграции (опционально)
 	if err := a.runMigrations(newConn); err != nil {
 		return fmt.Errorf("migration on new DB failed: %w", err)
 	}

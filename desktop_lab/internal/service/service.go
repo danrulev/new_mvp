@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	contextkeys "desktop_lab/internal/contextKey"
 	"desktop_lab/internal/models"
 
 	"go.uber.org/zap"
@@ -112,4 +113,9 @@ func NewServices(
 		Reports:    report,
 		Dimensions: dimension,
 	}
+}
+
+func loggerWith(ctx context.Context, log *zap.Logger, fields ...zap.Field) *zap.Logger {
+	requestID := ctx.Value(contextkeys.RequestIDKey)
+	return log.With(append([]zap.Field{zap.String("request_id", requestID.(string))}, fields...)...)
 }

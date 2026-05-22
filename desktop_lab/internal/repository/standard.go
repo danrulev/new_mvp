@@ -36,7 +36,6 @@ func (r *StandardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 
 	stdID := uuid.New().String()
 
-	// 1. Создаем Стандарт
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO standards (id, material_id, name, description) VALUES (?, ?, ?, ?)`,
 		stdID, req.MaterialID, req.Name, req.Description,
@@ -45,8 +44,6 @@ func (r *StandardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 		return "", fmt.Errorf("failed to insert standard: %w", err)
 	}
 
-	// 2. Привязываем Контекстные Измерения (Dimensions)
-	// В новой схеме мы не создаем измерения, а привязываем существующие по key_name или ID
 	if len(req.Dimensions) > 0 {
 		stmtLink, err := tx.PreparexContext(ctx,
 			`INSERT INTO standard_context_dims (id, standard_id, dimension_id) 
@@ -57,13 +54,10 @@ func (r *StandardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 		}
 
 		for _, dimDTO := range req.Dimensions {
-			// Ищем существующее измерение по key_name (глобальный справочник)
 			var dimID string
 			err := tx.GetContext(ctx, &dimID, `SELECT id FROM context_dimensions WHERE key_name = ?`, dimDTO.KeyName)
 
 			if err == sql.ErrNoRows {
-				// Если измерения нет, создаем его (опционально, зависит от бизнес-логики)
-				// Для строгости лучше требовать предварительного создания измерений
 				return "", fmt.Errorf("dimension with key_name '%s' not found in global registry", dimDTO.KeyName)
 			} else if err != nil {
 				_ = stmtLink.Close()
@@ -80,7 +74,6 @@ func (r *StandardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 		_ = stmtLink.Close()
 	}
 
-	// 3. Создаем Методы и вложенные сущности (без изменений логики, кроме SQL)
 	stmtMethod, err := tx.PreparexContext(ctx,
 		`INSERT INTO test_methods (id, standard_id, code, name, formula_expr, unit, result_type, is_mandatory)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -131,7 +124,6 @@ func (r *StandardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 			return "", fmt.Errorf("failed to insert method %s: %w", mReq.Name, err)
 		}
 
-		// Inputs
 		for _, inp := range mReq.Inputs {
 			inpID := uuid.New().String()
 			isReq := 0
@@ -146,7 +138,6 @@ func (r *StandardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 			}
 		}
 
-		// Limits + Conditions
 		for _, lim := range mReq.Limits {
 			limitID := uuid.New().String()
 			discreteJSON := "null"
@@ -178,7 +169,6 @@ func (r *StandardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 	return stdID, nil
 }
 
-// GetApplicableLimit (без изменений логики, работает с ключами)
 func (r *StandardRepo) GetApplicableLimit(ctx context.Context, methodID string, contextParams map[string]string) (models.NormativeLimit, error) {
 	query := `
 		SELECT 
@@ -442,7 +432,6 @@ func (r *StandardRepo) GetLimitConditions(ctx context.Context, limitID string) (
 	return conditions, nil
 }
 
-// GetStandardDimensions - ОБНОВЛЕНО: JOIN через таблицу связей standard_context_dims
 func (r *StandardRepo) GetStandardDimensions(ctx context.Context, standardID string) ([]models.ContextDimension, error) {
 	query := `
 		SELECT cd.id, cd.key_name, cd.label, cd.data_type, cd.possible_values, cd.description
@@ -487,7 +476,6 @@ func (r *StandardRepo) GetStandardDimensions(ctx context.Context, standardID str
 	return dimensions, rows.Err()
 }
 
-// GetMethodsFullByStandardID (без изменений, работает корректно)
 func (r *StandardRepo) GetMethodsFullByStandardID(ctx context.Context, standardID string) (map[string]models.TestMethodFull, error) {
 	query := `
 		SELECT 
@@ -728,7 +716,6 @@ func (r *StandardRepo) GetStandardFull(ctx context.Context, standardID string) (
 func (r *StandardRepo) LinkDimensionToStandard(ctx context.Context, standardID, dimensionID string) error {
 	id := uuid.New().String()
 
-	// Используем INSERT OR IGNORE
 	query := `INSERT OR IGNORE INTO standard_context_dims (id, standard_id, dimension_id) VALUES (?, ?, ?)`
 	_, err := r.db.ExecContext(ctx, query, id, standardID, dimensionID)
 	return err

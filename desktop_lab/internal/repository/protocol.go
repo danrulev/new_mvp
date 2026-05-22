@@ -38,17 +38,14 @@ func (r *ProtocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 		}
 	}()
 
-	// 🔥 ИСПРАВЛЕНИЕ: Используем UTC для хранения в БД
 	nowUTC := time.Now().UTC()
 	nowStr := nowUTC.Format(timeLayout)
 
 	testDate := protocol.TestDate.Format(timeLayout)
 
-	// Обновляем временные метки в структуре (тоже в UTC для консистентности внутри сессии)
 	protocol.CreatedAt = nowUTC
 	protocol.UpdatedAt = nowUTC
 
-	// 1. Создаем Протокол
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO protocols (id, sample_id, protocol_number, lab_name, operator_name, test_date, status, note, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -59,13 +56,11 @@ func (r *ProtocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 		return fmt.Errorf("failed to insert protocol: %w", err)
 	}
 
-	// 2. Создаем Результаты
 	for _, res := range results {
 		res.ID = uuid.New().String()
 		res.ProtocolID = protocol.ID
 		res.CreatedAt = nowUTC
 
-		// Сериализуем InputData в JSON
 		inputJSON := "{}"
 		if len(res.InputData) > 0 {
 			b, marshalErr := json.Marshal(res.InputData)
@@ -75,7 +70,6 @@ func (r *ProtocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 			inputJSON = string(b)
 		}
 
-		// Обработка nullable полей
 		var calcVal *float64 = res.CalculatedValue
 		var compliant *int = nil
 		if res.IsCompliant != nil {
@@ -300,7 +294,6 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		return models.ProtocolFull{}, err
 	}
 
-	// Парсинг дат с использованием хелпера
 	full.Protocol.TestDate, _ = helperParseTime(testDateStr)
 	full.Sample.CollectionDate, _ = helperParseTime(collDateStr)
 
@@ -309,7 +302,6 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 	full.Sample.CreatedAt, _ = helperParseTime(sampCreatedAt)
 	full.Material.CreatedAt, _ = helperParseTime(matCreatedAt)
 
-	// Парсинг контекста пробы
 	if rawContext.Valid {
 		if err := full.Sample.FromJSON(rawContext.String); err != nil {
 			r.log.Warn("failed to parse sample context", zap.Error(err))
@@ -319,7 +311,6 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		full.Sample.ContextParams = make(map[string]string)
 	}
 
-	// Загрузка результатов
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT 
 			tr.id, tr.method_id, tr.input_data,

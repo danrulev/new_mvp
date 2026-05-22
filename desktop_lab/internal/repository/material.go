@@ -27,12 +27,10 @@ func helperParseTimeMaterial(timeStr string) (time.Time, error) {
 	if timeStr == "" {
 		return time.Time{}, nil
 	}
-	// Парсим как UTC
 	t, err := time.ParseInLocation(timeLayout, timeStr, time.UTC)
 	if err != nil {
 		return time.Time{}, err
 	}
-	// Конвертируем в локальную зону
 	return t.Local(), nil
 }
 
@@ -41,7 +39,6 @@ func (r *MaterialRepo) Create(ctx context.Context, m models.Material) error {
 		return fmt.Errorf("material ID cannot be empty")
 	}
 
-	// 🔥 ИСПРАВЛЕНИЕ: Используем UTC для записи
 	nowUTC := time.Now().UTC()
 	nowStr := nowUTC.Format(timeLayout)
 
@@ -77,7 +74,6 @@ func (r *MaterialRepo) GetAll(ctx context.Context) ([]models.Material, error) {
 			return nil, fmt.Errorf("scan error: %w", err)
 		}
 
-		// 🔥 ИСПРАВЛЕНИЕ: Парсинг с учетом часовых поясов
 		if createdAtRaw != "" {
 			t, err := helperParseTimeMaterial(createdAtRaw)
 			if err == nil {
@@ -107,7 +103,6 @@ func (r *MaterialRepo) GetByID(ctx context.Context, id string) (models.Material,
 		return models.Material{}, err
 	}
 
-	// 🔥 ИСПРАВЛЕНИЕ: Парсинг с учетом часовых поясов
 	if createdAtRaw != "" {
 		t, err := helperParseTimeMaterial(createdAtRaw)
 		if err == nil {
@@ -133,7 +128,6 @@ func (r *MaterialRepo) GetByName(ctx context.Context, name string) (models.Mater
 		return models.Material{}, err
 	}
 
-	// 🔥 ИСПРАВЛЕНИЕ: Парсинг с учетом часовых поясов
 	if createdAtRaw != "" {
 		t, err := helperParseTimeMaterial(createdAtRaw)
 		if err == nil {
@@ -164,8 +158,6 @@ func (r *MaterialRepo) GetContextDimensionsByMaterialID(ctx context.Context, mat
 		var possibleValuesRaw sql.NullString
 		var description sql.NullString
 
-		// В новой модели у ContextDimension нет standard_id при глобальном поиске, но в структуре он есть.
-		// Заполняем его пустым или игнорируем, так как связь идет через таблицу связей.
 		err := rows.Scan(&d.ID, &d.KeyName, &d.Label, &d.DataType, &possibleValuesRaw, &description)
 		if err != nil {
 			return nil, err
@@ -215,6 +207,5 @@ func helperParseTime(raw interface{}) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("expected string for time, got %T", raw)
 	}
 
-	// SQLite возвращает формат "2006-01-02 15:04:05"
 	return time.Parse("2006-01-02 15:04:05", str)
 }

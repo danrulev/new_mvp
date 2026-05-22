@@ -20,30 +20,12 @@ func NewSampleRepo(db *sqlx.DB, log *zap.Logger) *SampleRepo {
 	return &SampleRepo{db: db, log: log}
 }
 
-// Константа формата времени для БД
-const (
-	dateLayout = "2006-01-02"
-)
-
-// helperParseDate парсит дату (без времени)
-func helperParseDate(dateStr string) (time.Time, error) {
-	if dateStr == "" {
-		return time.Time{}, fmt.Errorf("empty date string")
-	}
-	t, err := time.ParseInLocation(dateLayout, dateStr, time.UTC)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return t.Local(), nil
-}
-
 func (r *SampleRepo) Create(ctx context.Context, s models.Sample) error {
 	jsonData, err := s.ToJSON()
 	if err != nil {
 		return fmt.Errorf("failed to marshal context params: %w", err)
 	}
 
-	// 🔥 ИСПРАВЛЕНИЕ: Используем UTC для created_at
 	collDateStr := s.CollectionDate.Format(timeLayout)
 	nowUTC := time.Now().UTC()
 	nowStr := nowUTC.Format(timeLayout)
@@ -78,7 +60,6 @@ func (r *SampleRepo) GetByID(ctx context.Context, id string) (models.Sample, err
 		return models.Sample{}, err
 	}
 
-	// 🔥 ИСПРАВЛЕНИЕ: Парсинг с учетом часовых поясов
 	s.CreatedAt, err = helperParseTime(createdAt)
 	if err != nil {
 		r.log.Warn("failed parse created at date", zap.Error(err), zap.String("val", createdAt))
@@ -132,7 +113,6 @@ func (r *SampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 			return nil, fmt.Errorf("failed to scan sample: %w", err)
 		}
 
-		// 🔥 ИСПРАВЛЕНИЕ: Парсинг с учетом часовых поясов
 		s.CreatedAt, err = helperParseTime(createdAt)
 		if err != nil {
 			r.log.Warn("failed parse created at date", zap.Error(err))

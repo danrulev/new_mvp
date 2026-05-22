@@ -52,7 +52,6 @@ func (r *ExperimentGroupRepo) GetByID(ctx context.Context, id string) (models.Ex
 		return models.ExperimentGroup{}, err
 	}
 
-	// 🔥 ИСПРАВЛЕНИЕ: Парсинг с учетом часовых поясов
 	g.CreatedAt, err = helperParseTime(createdAt)
 	if err != nil {
 		r.log.Warn("failed to parse created_at for group", zap.String("id", id), zap.Error(err))
@@ -63,14 +62,12 @@ func (r *ExperimentGroupRepo) GetByID(ctx context.Context, id string) (models.Ex
 }
 
 func (r *ExperimentGroupRepo) GetList(ctx context.Context, limit, offset int64) ([]models.ExperimentGroup, int64, error) {
-	// 1. Считаем общее количество
 	var total int64
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM experiment_groups`).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// 2. Получаем данные с пагинацией
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, name, material_id, project_name, location, created_at 
 		 FROM experiment_groups 
@@ -92,7 +89,6 @@ func (r *ExperimentGroupRepo) GetList(ctx context.Context, limit, offset int64) 
 			return nil, 0, err
 		}
 
-		// 🔥 ИСПРАВЛЕНИЕ: Парсинг с учетом часовых поясов
 		parsedTime, err := helperParseTime(createdAt)
 		if err != nil {
 			r.log.Warn("failed to parse created_at in list", zap.Error(err))
@@ -108,7 +104,6 @@ func (r *ExperimentGroupRepo) GetList(ctx context.Context, limit, offset int64) 
 
 // AddSampleToGroup обновляет группу у пробы
 func (r *ExperimentGroupRepo) AddSampleToGroup(ctx context.Context, sampleID, groupID string) error {
-	// Сначала проверим существование группы
 	var exists int
 	err := r.db.QueryRowContext(ctx, `SELECT 1 FROM experiment_groups WHERE id = ?`, groupID).Scan(&exists)
 	if err == sql.ErrNoRows {
@@ -118,7 +113,6 @@ func (r *ExperimentGroupRepo) AddSampleToGroup(ctx context.Context, sampleID, gr
 		return err
 	}
 
-	// Обновляем пробу
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE samples SET group_id = ? WHERE id = ?`,
 		groupID, sampleID,
