@@ -14,20 +14,20 @@ import (
 	"go.uber.org/zap"
 )
 
-type protocolRepo struct {
+type ProtocolRepo struct {
 	db  *sqlx.DB
 	log *zap.Logger
 }
 
-func NewProtocolRepo(db *sqlx.DB, log *zap.Logger) ProtocolRepo {
-	return &protocolRepo{db: db, log: log}
+func NewProtocolRepo(db *sqlx.DB, log *zap.Logger) *ProtocolRepo {
+	return &ProtocolRepo{db: db, log: log}
 }
 
 // Константа формата времени
 const timeLayout = "2006-01-02 15:04:05"
 
 // CreateFull создает протокол и результаты в одной транзакции
-func (r *protocolRepo) CreateFull(ctx context.Context, protocol models.Protocol, results []models.TestResult) error {
+func (r *ProtocolRepo) CreateFull(ctx context.Context, protocol models.Protocol, results []models.TestResult) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -102,7 +102,7 @@ func (r *protocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 }
 
 // GetByID загружает протокол с данными пробы
-func (r *protocolRepo) GetByID(ctx context.Context, id string) (models.Protocol, error) {
+func (r *ProtocolRepo) GetByID(ctx context.Context, id string) (models.Protocol, error) {
 	p := models.Protocol{}
 	var testDateStr, createdAt, updatedAt string
 
@@ -140,7 +140,7 @@ func (r *protocolRepo) GetByID(ctx context.Context, id string) (models.Protocol,
 }
 
 // GetResultsByProtocolID загружает результаты
-func (r *protocolRepo) GetResultsByProtocolID(ctx context.Context, protocolID string) ([]models.TestResult, error) {
+func (r *ProtocolRepo) GetResultsByProtocolID(ctx context.Context, protocolID string) ([]models.TestResult, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, method_id, input_data, calculated_value, applied_limit_id, is_compliant, deviation_msg, note, created_at 
 		 FROM test_results WHERE protocol_id = ?`,
@@ -187,7 +187,7 @@ func (r *protocolRepo) GetResultsByProtocolID(ctx context.Context, protocolID st
 }
 
 // GetByGroupID возвращает список протоколов группы
-func (r *protocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]models.Protocol, error) {
+func (r *ProtocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]models.Protocol, error) {
 	query := `
 		SELECT p.id, p.sample_id, p.protocol_number, p.status, p.created_at
 		FROM protocols p
@@ -220,7 +220,7 @@ func (r *protocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]mode
 	return protocols, rows.Err()
 }
 
-func (r *protocolRepo) GetList(ctx context.Context, limit, offset int64) ([]models.Protocol, int64, error) {
+func (r *ProtocolRepo) GetList(ctx context.Context, limit, offset int64) ([]models.Protocol, int64, error) {
 	var total int64
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM protocols`).Scan(&total)
 	if err != nil {
@@ -268,7 +268,7 @@ func (r *protocolRepo) GetList(ctx context.Context, limit, offset int64) ([]mode
 	return protocols, total, nil
 }
 
-func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.ProtocolFull, error) {
+func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.ProtocolFull, error) {
 	var full models.ProtocolFull
 
 	query := `
@@ -365,7 +365,7 @@ func (r *protocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 	return full, rows.Err()
 }
 
-func (r *protocolRepo) UpdateProtocol(ctx context.Context, id string, req models.UpdateProtocolRequest) error {
+func (r *ProtocolRepo) UpdateProtocol(ctx context.Context, id string, req models.UpdateProtocolRequest) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -450,12 +450,12 @@ func (r *protocolRepo) UpdateProtocol(ctx context.Context, id string, req models
 	return tx.Commit()
 }
 
-func (r *protocolRepo) DeleteProtocol(ctx context.Context, id string) error {
+func (r *ProtocolRepo) DeleteProtocol(ctx context.Context, id string) error {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM protocols WHERE id = ?`, id)
 	return err
 }
 
-func (r *protocolRepo) UpdateStatus(ctx context.Context, id string, status string) error {
+func (r *ProtocolRepo) UpdateStatus(ctx context.Context, id string, status string) error {
 	_, err := r.db.ExecContext(ctx, `UPDATE protocols SET status = ? WHERE id = ?`, status, id)
 	return err
 }

@@ -13,13 +13,13 @@ import (
 	"go.uber.org/zap"
 )
 
-type materialRepo struct {
+type MaterialRepo struct {
 	db  *sqlx.DB
 	log *zap.Logger
 }
 
-func NewMaterialRepo(db *sqlx.DB, log *zap.Logger) MaterialRepo {
-	return &materialRepo{db: db, log: log}
+func NewMaterialRepo(db *sqlx.DB, log *zap.Logger) *MaterialRepo {
+	return &MaterialRepo{db: db, log: log}
 }
 
 // helperParseTimeMaterial безопасно парсит время из строки (ожидается UTC в БД) и возвращает локальное время
@@ -36,7 +36,7 @@ func helperParseTimeMaterial(timeStr string) (time.Time, error) {
 	return t.Local(), nil
 }
 
-func (r *materialRepo) Create(ctx context.Context, m models.Material) error {
+func (r *MaterialRepo) Create(ctx context.Context, m models.Material) error {
 	if m.ID == "" {
 		return fmt.Errorf("material ID cannot be empty")
 	}
@@ -60,7 +60,7 @@ func (r *materialRepo) Create(ctx context.Context, m models.Material) error {
 	return nil
 }
 
-func (r *materialRepo) GetAll(ctx context.Context) ([]models.Material, error) {
+func (r *MaterialRepo) GetAll(ctx context.Context) ([]models.Material, error) {
 	rows, err := r.db.QueryContext(ctx, `SELECT id, name, code, created_at FROM materials ORDER BY name`)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func (r *materialRepo) GetAll(ctx context.Context) ([]models.Material, error) {
 	return materials, nil
 }
 
-func (r *materialRepo) GetByID(ctx context.Context, id string) (models.Material, error) {
+func (r *MaterialRepo) GetByID(ctx context.Context, id string) (models.Material, error) {
 	var m models.Material
 	var createdAtRaw string
 
@@ -118,7 +118,7 @@ func (r *materialRepo) GetByID(ctx context.Context, id string) (models.Material,
 	return m, nil
 }
 
-func (r *materialRepo) GetByName(ctx context.Context, name string) (models.Material, error) {
+func (r *MaterialRepo) GetByName(ctx context.Context, name string) (models.Material, error) {
 	var m models.Material
 	var createdAtRaw string
 
@@ -144,7 +144,7 @@ func (r *materialRepo) GetByName(ctx context.Context, name string) (models.Mater
 	return m, nil
 }
 
-func (r *materialRepo) GetContextDimensionsByMaterialID(ctx context.Context, materialID string) ([]models.ContextDimension, error) {
+func (r *MaterialRepo) GetContextDimensionsByMaterialID(ctx context.Context, materialID string) ([]models.ContextDimension, error) {
 	query := `
 		SELECT cd.id, cd.key_name, cd.label, cd.data_type, cd.possible_values, cd.description
 		FROM context_dimensions cd
@@ -182,7 +182,7 @@ func (r *materialRepo) GetContextDimensionsByMaterialID(ctx context.Context, mat
 	return dims, rows.Err()
 }
 
-func (r *materialRepo) AddContextDimensionToMaterial(ctx context.Context, materialID, dimensionID string, isRequired bool) error {
+func (r *MaterialRepo) AddContextDimensionToMaterial(ctx context.Context, materialID, dimensionID string, isRequired bool) error {
 	id := uuid.New().String()
 	isReqInt := 0
 	if isRequired {
@@ -196,7 +196,7 @@ func (r *materialRepo) AddContextDimensionToMaterial(ctx context.Context, materi
 	return err
 }
 
-func (r *materialRepo) DeleteContextDimensionFromMaterial(ctx context.Context, materialID, dimensionID string) error {
+func (r *MaterialRepo) DeleteContextDimensionFromMaterial(ctx context.Context, materialID, dimensionID string) error {
 	_, err := r.db.ExecContext(ctx,
 		`DELETE FROM material_context_dims WHERE material_id = ? AND dimension_id = ?`,
 		materialID, dimensionID,

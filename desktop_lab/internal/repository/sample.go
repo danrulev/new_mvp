@@ -11,13 +11,13 @@ import (
 	"go.uber.org/zap"
 )
 
-type sampleRepo struct {
+type SampleRepo struct {
 	db  *sqlx.DB
 	log *zap.Logger
 }
 
-func NewSampleRepo(db *sqlx.DB, log *zap.Logger) SampleRepo {
-	return &sampleRepo{db: db, log: log}
+func NewSampleRepo(db *sqlx.DB, log *zap.Logger) *SampleRepo {
+	return &SampleRepo{db: db, log: log}
 }
 
 // Константа формата времени для БД
@@ -37,7 +37,7 @@ func helperParseDate(dateStr string) (time.Time, error) {
 	return t.Local(), nil
 }
 
-func (r *sampleRepo) Create(ctx context.Context, s models.Sample) error {
+func (r *SampleRepo) Create(ctx context.Context, s models.Sample) error {
 	jsonData, err := s.ToJSON()
 	if err != nil {
 		return fmt.Errorf("failed to marshal context params: %w", err)
@@ -61,7 +61,7 @@ func (r *sampleRepo) Create(ctx context.Context, s models.Sample) error {
 	return nil
 }
 
-func (r *sampleRepo) GetByID(ctx context.Context, id string) (models.Sample, error) {
+func (r *SampleRepo) GetByID(ctx context.Context, id string) (models.Sample, error) {
 	s := models.Sample{}
 	var collDateStr, rawJSON, createdAt string
 
@@ -99,7 +99,7 @@ func (r *sampleRepo) GetByID(ctx context.Context, id string) (models.Sample, err
 	return s, nil
 }
 
-func (r *sampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models.Sample, error) {
+func (r *SampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models.Sample, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, group_id, material_id, sample_number, collection_place, collection_date, context_params, note, created_at 
 		 FROM samples WHERE group_id = ?`,

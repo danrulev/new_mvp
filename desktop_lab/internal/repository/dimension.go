@@ -12,17 +12,17 @@ import (
 	"go.uber.org/zap"
 )
 
-type dimensionRepo struct {
+type DimensionRepo struct {
 	db  *sqlx.DB
 	log *zap.Logger
 }
 
-func NewDimensionRepo(db *sqlx.DB, log *zap.Logger) DimensionRepo {
-	return &dimensionRepo{db: db, log: log}
+func NewDimensionRepo(db *sqlx.DB, log *zap.Logger) *DimensionRepo {
+	return &DimensionRepo{db: db, log: log}
 }
 
 // GetAvailableDimensions возвращает все доступные измерения из глобального справочника
-func (r *dimensionRepo) GetAvailableDimensions(ctx context.Context) ([]models.ContextDimension, error) {
+func (r *DimensionRepo) GetAvailableDimensions(ctx context.Context) ([]models.ContextDimension, error) {
 	query := `SELECT id, key_name, label, data_type, possible_values FROM context_dimensions ORDER BY label`
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
@@ -52,7 +52,7 @@ func (r *dimensionRepo) GetAvailableDimensions(ctx context.Context) ([]models.Co
 }
 
 // GetDimensionByID получает измерение по ID (полезно для проверки перед обновлением)
-func (r *dimensionRepo) GetDimensionByID(ctx context.Context, id string) (models.ContextDimension, error) {
+func (r *DimensionRepo) GetDimensionByID(ctx context.Context, id string) (models.ContextDimension, error) {
 	query := `SELECT id, key_name, label, data_type, possible_values FROM context_dimensions WHERE id = ?`
 	var d models.ContextDimension
 	var possibleValuesRaw sql.NullString
@@ -77,7 +77,7 @@ func (r *dimensionRepo) GetDimensionByID(ctx context.Context, id string) (models
 }
 
 // AddDimension добавляет новое измерение в глобальный справочник
-func (r *dimensionRepo) AddDimension(ctx context.Context, dim models.ContextDimension) error {
+func (r *DimensionRepo) AddDimension(ctx context.Context, dim models.ContextDimension) error {
 	id := uuid.New().String()
 	valuesJSON := "null"
 	if len(dim.PossibleValues) > 0 {
@@ -96,7 +96,7 @@ func (r *dimensionRepo) AddDimension(ctx context.Context, dim models.ContextDime
 }
 
 // UpdatePossibleValues обновляет список возможных значений для существующего измерения
-func (r *dimensionRepo) UpdatePossibleValues(ctx context.Context, id string, values []string) error {
+func (r *DimensionRepo) UpdatePossibleValues(ctx context.Context, id string, values []string) error {
 	// Сериализуем слайс в JSON
 	valuesJSON := "null"
 	if len(values) > 0 {
@@ -130,7 +130,7 @@ func (r *dimensionRepo) UpdatePossibleValues(ctx context.Context, id string, val
 
 // DeletePossibleValues очищает список возможных значений (устанавливает NULL или пустой массив)
 // Это полезно, если тип измерения меняется с 'enum' на 'text' или значения больше не нужны
-func (r *dimensionRepo) DeletePossibleValues(ctx context.Context, id string) error {
+func (r *DimensionRepo) DeletePossibleValues(ctx context.Context, id string) error {
 	// Вариант 1: Установить в NULL
 	// _, err := r.db.ExecContext(ctx, `UPDATE context_dimensions SET possible_values = NULL WHERE id = ?`, id)
 
@@ -140,12 +140,12 @@ func (r *dimensionRepo) DeletePossibleValues(ctx context.Context, id string) err
 	return err
 }
 
-func (r *dimensionRepo) DeleteDimension(ctx context.Context, id string) error {
+func (r *DimensionRepo) DeleteDimension(ctx context.Context, id string) error {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM context_dimensions WHERE id = ?`, id)
 	return err
 }
 
-func (r *dimensionRepo) GetDimensionByKey(ctx context.Context, key string) (models.ContextDimension, error) {
+func (r *DimensionRepo) GetDimensionByKey(ctx context.Context, key string) (models.ContextDimension, error) {
 	var dim models.ContextDimension
 	var possibleValuesRaw sql.NullString
 

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"desktop_lab/internal/models"
-	"desktop_lab/internal/repository"
 	"fmt"
 	"sync"
 	"time"
@@ -19,7 +18,7 @@ type cacheEntry[T any] struct {
 }
 
 type StandardService struct {
-	repo repository.StandardRepo
+	repo StandardRepo
 	log  *zap.Logger
 
 	methodsCache *lru.Cache[string, cacheEntry[map[string]models.TestMethodFull]]
@@ -27,9 +26,8 @@ type StandardService struct {
 	cacheTTL     time.Duration
 }
 
-func NewStandardService(repo repository.StandardRepo, log *zap.Logger) *StandardService {
+func NewStandardService(repo StandardRepo, log *zap.Logger) *StandardService {
 	// Создаем LRU-кэш на 100 элементов (стандартов)
-	// Этого достаточно для большинства лабораторий
 	cache, _ := lru.New[string, cacheEntry[map[string]models.TestMethodFull]](100)
 
 	return &StandardService{

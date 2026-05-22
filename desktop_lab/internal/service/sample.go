@@ -4,18 +4,17 @@ package service
 import (
 	"context"
 	"desktop_lab/internal/models"
-	"desktop_lab/internal/repository"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 type SampleService struct {
-	repo repository.SampleRepo
+	repo SampleRepo
 	log  *zap.Logger
 }
 
-func NewSampleService(repo repository.SampleRepo, log *zap.Logger) *SampleService {
+func NewSampleService(repo SampleRepo, log *zap.Logger) *SampleService {
 	return &SampleService{repo: repo, log: log}
 }
 

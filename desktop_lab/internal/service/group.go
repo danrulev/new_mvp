@@ -4,7 +4,6 @@ package service
 import (
 	"context"
 	"desktop_lab/internal/models"
-	"desktop_lab/internal/repository"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -12,11 +11,11 @@ import (
 )
 
 type ExperimentGroupService struct {
-	repo repository.ExperimentGroupRepo
+	repo ExperimentGroupRepo
 	log  *zap.Logger
 }
 
-func NewExperimentGroupService(repo repository.ExperimentGroupRepo, log *zap.Logger) *ExperimentGroupService {
+func NewExperimentGroupService(repo ExperimentGroupRepo, log *zap.Logger) *ExperimentGroupService {
 	return &ExperimentGroupService{repo: repo, log: log}
 }
 

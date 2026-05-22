@@ -12,16 +12,16 @@ import (
 	"go.uber.org/zap"
 )
 
-type experimentGroupRepo struct {
+type ExperimentGroupRepo struct {
 	db  *sqlx.DB
 	log *zap.Logger
 }
 
-func NewExperimentGroupRepo(db *sqlx.DB, log *zap.Logger) ExperimentGroupRepo {
-	return &experimentGroupRepo{db: db, log: log}
+func NewExperimentGroupRepo(db *sqlx.DB, log *zap.Logger) *ExperimentGroupRepo {
+	return &ExperimentGroupRepo{db: db, log: log}
 }
 
-func (r *experimentGroupRepo) Create(ctx context.Context, g models.ExperimentGroup) error {
+func (r *ExperimentGroupRepo) Create(ctx context.Context, g models.ExperimentGroup) error {
 	nowUTC := time.Now().UTC()
 	nowStr := nowUTC.Format(timeLayout)
 
@@ -37,7 +37,7 @@ func (r *experimentGroupRepo) Create(ctx context.Context, g models.ExperimentGro
 	return nil
 }
 
-func (r *experimentGroupRepo) GetByID(ctx context.Context, id string) (models.ExperimentGroup, error) {
+func (r *ExperimentGroupRepo) GetByID(ctx context.Context, id string) (models.ExperimentGroup, error) {
 	var createdAt string
 	var g models.ExperimentGroup
 	err := r.db.QueryRowContext(ctx,
@@ -62,7 +62,7 @@ func (r *experimentGroupRepo) GetByID(ctx context.Context, id string) (models.Ex
 	return g, nil
 }
 
-func (r *experimentGroupRepo) GetList(ctx context.Context, limit, offset int64) ([]models.ExperimentGroup, int64, error) {
+func (r *ExperimentGroupRepo) GetList(ctx context.Context, limit, offset int64) ([]models.ExperimentGroup, int64, error) {
 	// 1. Считаем общее количество
 	var total int64
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM experiment_groups`).Scan(&total)
@@ -107,7 +107,7 @@ func (r *experimentGroupRepo) GetList(ctx context.Context, limit, offset int64) 
 }
 
 // AddSampleToGroup обновляет группу у пробы
-func (r *experimentGroupRepo) AddSampleToGroup(ctx context.Context, sampleID, groupID string) error {
+func (r *ExperimentGroupRepo) AddSampleToGroup(ctx context.Context, sampleID, groupID string) error {
 	// Сначала проверим существование группы
 	var exists int
 	err := r.db.QueryRowContext(ctx, `SELECT 1 FROM experiment_groups WHERE id = ?`, groupID).Scan(&exists)
@@ -135,7 +135,7 @@ func (r *experimentGroupRepo) AddSampleToGroup(ctx context.Context, sampleID, gr
 	return nil
 }
 
-func (r *experimentGroupRepo) UpdateGroup(ctx context.Context, id string, g models.UpdateExperimentGroup) error {
+func (r *ExperimentGroupRepo) UpdateGroup(ctx context.Context, id string, g models.UpdateExperimentGroup) error {
 	var (
 		groupUpdateFields []string
 		groupUpdateValues []interface{}
@@ -162,7 +162,7 @@ func (r *experimentGroupRepo) UpdateGroup(ctx context.Context, id string, g mode
 	return nil
 }
 
-func (r *experimentGroupRepo) DeleteGroup(ctx context.Context, id string) error {
+func (r *ExperimentGroupRepo) DeleteGroup(ctx context.Context, id string) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)

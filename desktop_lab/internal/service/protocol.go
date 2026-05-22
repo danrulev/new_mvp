@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"desktop_lab/internal/models"
-	"desktop_lab/internal/repository"
 	"fmt"
 	"math"
 	"strconv"
@@ -14,20 +13,20 @@ import (
 )
 
 type ProtocolService struct {
-	protocolRepo repository.ProtocolRepo
-	sampleRepo   repository.SampleRepo
-	standardRepo repository.StandardRepo
-	groupRepo    repository.ExperimentGroupRepo
-	materialRepo repository.MaterialRepo
+	protocolRepo ProtocolRepo
+	sampleRepo   SampleRepo
+	standardRepo StandardRepo
+	groupRepo    ExperimentGroupRepo
+	materialRepo MaterialRepo
 	log          *zap.Logger
 }
 
 func NewProtocolService(
-	pRepo repository.ProtocolRepo,
-	sRepo repository.SampleRepo,
-	stdRepo repository.StandardRepo,
-	gRepo repository.ExperimentGroupRepo,
-	mRepo repository.MaterialRepo,
+	pRepo ProtocolRepo,
+	sRepo SampleRepo,
+	stdRepo StandardRepo,
+	gRepo ExperimentGroupRepo,
+	mRepo MaterialRepo,
 	log *zap.Logger,
 ) *ProtocolService {
 	return &ProtocolService{

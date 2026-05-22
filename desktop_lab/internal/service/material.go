@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"desktop_lab/internal/models"
-	"desktop_lab/internal/repository"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -11,11 +10,11 @@ import (
 )
 
 type MaterialService struct {
-	repo repository.MaterialRepo
+	repo MaterialRepo
 	log  *zap.Logger
 }
 
-func NewMaterialService(repo repository.MaterialRepo, log *zap.Logger) *MaterialService {
+func NewMaterialService(repo MaterialRepo, log *zap.Logger) *MaterialService {
 	return &MaterialService{repo: repo, log: log}
 }
 

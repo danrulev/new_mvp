@@ -13,17 +13,17 @@ import (
 	"go.uber.org/zap"
 )
 
-type standardRepo struct {
+type StandardRepo struct {
 	db  *sqlx.DB
 	log *zap.Logger
 }
 
-func NewStandardRepo(db *sqlx.DB, log *zap.Logger) StandardRepo {
-	return &standardRepo{db: db, log: log}
+func NewStandardRepo(db *sqlx.DB, log *zap.Logger) *StandardRepo {
+	return &StandardRepo{db: db, log: log}
 }
 
 // CreateFull - ОБНОВЛЕННАЯ ВЕРСИЯ для новой схемы БД
-func (r *standardRepo) CreateFull(ctx context.Context, req models.CreateStandardRequest) (string, error) {
+func (r *StandardRepo) CreateFull(ctx context.Context, req models.CreateStandardRequest) (string, error) {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to begin transaction: %w", err)
@@ -179,7 +179,7 @@ func (r *standardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 }
 
 // GetApplicableLimit (без изменений логики, работает с ключами)
-func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, contextParams map[string]string) (models.NormativeLimit, error) {
+func (r *StandardRepo) GetApplicableLimit(ctx context.Context, methodID string, contextParams map[string]string) (models.NormativeLimit, error) {
 	query := `
 		SELECT 
 			nl.id, nl.method_id, nl.limit_type, nl.min_value, nl.max_value, nl.priority,
@@ -313,7 +313,7 @@ func containsCSV(csv, target string) bool {
 	return false
 }
 
-func (r *standardRepo) GetTestMethod(ctx context.Context, methodID string) (models.TestMethod, error) {
+func (r *StandardRepo) GetTestMethod(ctx context.Context, methodID string) (models.TestMethod, error) {
 	method := models.TestMethod{}
 	err := r.db.QueryRowxContext(ctx,
 		`SELECT id, standard_id, code, name, formula_expr, unit, result_type, is_mandatory 
@@ -331,7 +331,7 @@ func (r *standardRepo) GetTestMethod(ctx context.Context, methodID string) (mode
 	return method, nil
 }
 
-func (r *standardRepo) GetByMaterialID(ctx context.Context, materialID string) ([]models.Standard, error) {
+func (r *StandardRepo) GetByMaterialID(ctx context.Context, materialID string) ([]models.Standard, error) {
 	var standards []models.Standard
 	err := r.db.SelectContext(ctx, &standards,
 		`SELECT id, material_id, name, description, valid_from, valid_to 
@@ -347,7 +347,7 @@ func (r *standardRepo) GetByMaterialID(ctx context.Context, materialID string) (
 	return standards, nil
 }
 
-func (r *standardRepo) GetMethodsByStandardID(ctx context.Context, standardID string) ([]models.TestMethod, error) {
+func (r *StandardRepo) GetMethodsByStandardID(ctx context.Context, standardID string) ([]models.TestMethod, error) {
 	var methods []models.TestMethod
 	err := r.db.SelectContext(ctx, &methods,
 		`SELECT id, standard_id, code, name, description, formula_expr, unit, result_type, is_mandatory 
@@ -362,7 +362,7 @@ func (r *standardRepo) GetMethodsByStandardID(ctx context.Context, standardID st
 	return methods, nil
 }
 
-func (r *standardRepo) GetMethodInputs(ctx context.Context, methodID string) ([]models.MethodInput, error) {
+func (r *StandardRepo) GetMethodInputs(ctx context.Context, methodID string) ([]models.MethodInput, error) {
 	var inputs []models.MethodInput
 	err := r.db.SelectContext(ctx, &inputs,
 		`SELECT id, method_id, param_key, label, unit, input_type, is_required 
@@ -388,7 +388,7 @@ type NormativeLimitDB struct {
 	Priority       int                    `db:"priority"`
 }
 
-func (r *standardRepo) GetMethodLimits(ctx context.Context, methodID string) ([]models.NormativeLimit, error) {
+func (r *StandardRepo) GetMethodLimits(ctx context.Context, methodID string) ([]models.NormativeLimit, error) {
 	query := `SELECT id, method_id, limit_type, min_value, max_value, discrete_values, note, priority 
 			  FROM normative_limits 
 			  WHERE method_id = ? 
@@ -425,7 +425,7 @@ func (nl NormativeLimitDB) toModel() models.NormativeLimit {
 	}
 }
 
-func (r *standardRepo) GetLimitConditions(ctx context.Context, limitID string) ([]models.LimitCondition, error) {
+func (r *StandardRepo) GetLimitConditions(ctx context.Context, limitID string) ([]models.LimitCondition, error) {
 	query := `SELECT id, limit_id, dimension_key, condition_operator, expected_value 
 			  FROM limit_conditions WHERE limit_id = ?`
 
@@ -443,7 +443,7 @@ func (r *standardRepo) GetLimitConditions(ctx context.Context, limitID string) (
 }
 
 // GetStandardDimensions - ОБНОВЛЕНО: JOIN через таблицу связей standard_context_dims
-func (r *standardRepo) GetStandardDimensions(ctx context.Context, standardID string) ([]models.ContextDimension, error) {
+func (r *StandardRepo) GetStandardDimensions(ctx context.Context, standardID string) ([]models.ContextDimension, error) {
 	query := `
 		SELECT cd.id, cd.key_name, cd.label, cd.data_type, cd.possible_values, cd.description
 		FROM context_dimensions cd
@@ -488,7 +488,7 @@ func (r *standardRepo) GetStandardDimensions(ctx context.Context, standardID str
 }
 
 // GetMethodsFullByStandardID (без изменений, работает корректно)
-func (r *standardRepo) GetMethodsFullByStandardID(ctx context.Context, standardID string) (map[string]models.TestMethodFull, error) {
+func (r *StandardRepo) GetMethodsFullByStandardID(ctx context.Context, standardID string) (map[string]models.TestMethodFull, error) {
 	query := `
 		SELECT 
 			tm.id, tm.code, tm.name, tm.description, tm.formula_expr, tm.unit, tm.result_type, tm.is_mandatory,
@@ -636,7 +636,7 @@ func (r *standardRepo) GetMethodsFullByStandardID(ctx context.Context, standardI
 	return resultMap, rows.Err()
 }
 
-func (r *standardRepo) GetStandardFull(ctx context.Context, standardID string) (models.StandardContext, error) {
+func (r *StandardRepo) GetStandardFull(ctx context.Context, standardID string) (models.StandardContext, error) {
 	ctxData := models.StandardContext{
 		StandardID: standardID,
 		Dimensions: []models.ContextDimension{},
@@ -725,7 +725,7 @@ func (r *standardRepo) GetStandardFull(ctx context.Context, standardID string) (
 }
 
 // LinkDimensionToStandard связывает измерение со стандартом
-func (r *standardRepo) LinkDimensionToStandard(ctx context.Context, standardID, dimensionID string) error {
+func (r *StandardRepo) LinkDimensionToStandard(ctx context.Context, standardID, dimensionID string) error {
 	id := uuid.New().String()
 
 	// Используем INSERT OR IGNORE

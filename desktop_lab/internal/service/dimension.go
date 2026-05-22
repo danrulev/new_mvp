@@ -3,17 +3,16 @@ package service
 import (
 	"context"
 	"desktop_lab/internal/models"
-	"desktop_lab/internal/repository"
 
 	"go.uber.org/zap"
 )
 
 type DimensionService struct {
-	repo repository.DimensionRepo
+	repo DimensionRepo
 	log  *zap.Logger
 }
 
-func NewDimensionService(repo repository.DimensionRepo, log *zap.Logger) *DimensionService {
+func NewDimensionService(repo DimensionRepo, log *zap.Logger) *DimensionService {
 	return &DimensionService{repo: repo, log: log}
 }
 
