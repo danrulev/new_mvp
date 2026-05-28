@@ -97,16 +97,10 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 		return fmt.Errorf("migration failed: %w", err)
 	}
 
-	// 6. Репозитории и Сервисы
-	matRepo := repository.NewMaterialRepo(dbConn, a.log)
-	stdRepo := repository.NewStandardRepo(dbConn, a.log)
-	protRepo := repository.NewProtocolRepo(dbConn, a.log)
-	sampRepo := repository.NewSampleRepo(dbConn, a.log)
-	groupRepo := repository.NewExperimentGroupRepo(dbConn, a.log)
-	dimRepo := repository.NewDimensionRepo(dbConn, a.log)
+	repos := repository.NewRepository(dbConn, a.log)
 
 	svc := service.NewServices(
-		matRepo, stdRepo, protRepo, sampRepo, groupRepo, dimRepo,
+		repos.Material, repos.Standard, repos.Protocol, repos.Sample, repos.Group, repos.Token, repos.User, repos.Dimension,
 		a.fontDir, "templates", wkhtmltopdfWindows, a.log,
 	)
 

@@ -11,6 +11,12 @@ import (
 	"github.com/spf13/viper"
 )
 
+type AuthCfg struct {
+	AccessTokenTTL  time.Duration `mapstructure:"access_token_ttl" validate:"required"`
+	RefreshTokenTTL time.Duration `mapstructure:"refresh_token_ttl" validate:"required"`
+	JwtSecret       string        `mapstructure:"jwt_secret" validate:"required"`
+}
+
 type ServerConfig struct {
 	Host           string        `mapstructure:"host" validate:"required"`
 	Port           string        `mapstructure:"port" validate:"required"`
@@ -36,6 +42,7 @@ type LoggerConfig struct {
 }
 
 type Config struct {
+	Auth   AuthCfg
 	Server ServerConfig `mapstructure:"server"`
 	DB     DBConfig     `mapstructure:"db"`
 	Logger LoggerConfig `mapstructure:"logger"`

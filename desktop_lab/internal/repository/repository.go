@@ -15,6 +15,8 @@ type Repository struct {
 	Protocol  *ProtocolRepo
 	Sample    *SampleRepo
 	Standard  *StandardRepo
+	Token     *TokenRepo
+	User      *UserRepo
 }
 
 func NewRepository(db *sqlx.DB, log *zap.Logger) *Repository {
@@ -25,6 +27,8 @@ func NewRepository(db *sqlx.DB, log *zap.Logger) *Repository {
 		Protocol:  NewProtocolRepo(db, log),
 		Sample:    NewSampleRepo(db, log),
 		Standard:  NewStandardRepo(db, log),
+		Token:     NewTokenRepo(db, log),
+		User:      NewUserRepo(db, log),
 	}
 }
 

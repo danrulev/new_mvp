@@ -5,6 +5,7 @@ import (
 	"embed"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -17,6 +18,7 @@ type DatabaseSwitcher interface {
 
 type Handler struct {
 	log       *zap.Logger
+	auth      *service.AuthService
 	dimension *service.DimensionService
 	material  *service.MaterialService
 	group     *service.ExperimentGroupService
@@ -29,6 +31,8 @@ type Handler struct {
 
 	frontendFS      embed.FS
 	frontendFSReady bool
+
+	refreshTokenTTL time.Duration
 }
 
 func NewHandler(

@@ -75,7 +75,22 @@ type ProtocolRepo interface {
 	DeleteProtocol(ctx context.Context, id string) error
 }
 
+type UserRepo interface {
+	Create(ctx context.Context, user models.User) error
+	GetByID(ctx context.Context, id string) (models.User, error)
+	Credential(ctx context.Context, email string) (string, string, error)
+	Update(ctx context.Context, id string, user models.UpdateUserRequest) (models.User, error)
+	Delete(ctx context.Context, id string) error
+}
+
+type TokenRepo interface {
+	Create(ctx context.Context, token models.Token) error
+	TokenByID(ctx context.Context, id string) (models.Token, error)
+	Delete(ctx context.Context, id string) error
+}
+
 type Services struct {
+	Auth       *AuthService
 	Materials  *MaterialService
 	Standards  *StandardService
 	Protocols  *ProtocolService
@@ -91,12 +106,15 @@ func NewServices(
 	protRepo ProtocolRepo,
 	sampRepo SampleRepo,
 	groupRepo ExperimentGroupRepo,
+	tokenRepo TokenRepo,
+	userRepo UserRepo,
 	dimRepo DimensionRepo,
 	fontDir string,
 	templatesDir string,
 	wkhtmltopdfWindows []byte,
 	log *zap.Logger,
 ) *Services {
+	auth := NewAuthService(userRepo, tokenRepo, log)
 	material := NewMaterialService(matRepo, log)
 	standards := NewStandardService(stdRepo, log)
 	sample := NewSampleService(sampRepo, log)
@@ -105,6 +123,7 @@ func NewServices(
 	report := NewReportService(protocol, material, fontDir, templatesDir, wkhtmltopdfWindows, log)
 	dimension := NewDimensionService(dimRepo, log)
 	return &Services{
+		Auth:       auth,
 		Materials:  material,
 		Standards:  standards,
 		Protocols:  protocol,

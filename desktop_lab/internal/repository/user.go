@@ -47,18 +47,18 @@ func (r *UserRepo) GetByID(ctx context.Context, id string) (models.User, error) 
 	return user, err
 }
 
-func (r *UserRepo) Credential(ctx context.Context, email string) (string, error) {
+func (r *UserRepo) Credential(ctx context.Context, email string) (string, string, error) {
 	log := logQuery(ctx, r.log, "SELECT", "users", zap.String("email", email))
 	log.Debug("fetching user by email")
 
-	var password string
-	err := r.db.QueryRowContext(ctx, "SELECT password FROM users WHERE email = ?", email).Scan(&password)
+	var id, password string
+	err := r.db.QueryRowContext(ctx, "SELECT id, password FROM users WHERE email = ?", email).Scan(&id, &password)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	log.Debug("User fetched successfully", zap.String("email", email))
-	return password, err
+	return id, password, err
 }
 
 func (r *UserRepo) Update(ctx context.Context, id string, user models.UpdateUserRequest) (models.User, error) {
