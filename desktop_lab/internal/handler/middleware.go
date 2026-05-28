@@ -5,6 +5,7 @@ import (
 	contextkeys "desktop_lab/internal/contextKey"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -88,6 +89,33 @@ func (s *Handler) loggerWith(c *gin.Context, fields ...zap.Field) *zap.Logger {
 		zap.String("client_ip", c.ClientIP()),
 	}
 	return s.log.With(append(base, fields...)...)
+}
+
+func (h *Handler) authMiddleware(c *gin.Context) {
+	_, err := getRefreshToken(c)
+	if err != nil {
+		c.Redirect(http.StatusSeeOther, "/api/auth/login")
+		c.Abort()
+		return
+	}
+
+	accessToken, err := getAccessToken(c)
+	if err != nil {
+		c.Redirect(http.StatusUnauthorized, "/api/auth/login")
+		c.Abort()
+		return
+	}
+
+	userID, err := h.auth.ParseToken(c.Request.Context(), accessToken)
+	if err != nil {
+		c.Redirect(http.StatusSeeOther, "/api/auth/login")
+		c.Abort()
+		return
+	}
+
+	c.Set(userIDKey, userID)
+
+	c.Next()
 }
 
 func (s *Handler) getRequestID(c *gin.Context) string {

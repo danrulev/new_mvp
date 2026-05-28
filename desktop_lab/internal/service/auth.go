@@ -35,8 +35,16 @@ func NewAuthService(userRepo UserRepo, tokenRepo TokenRepo, log *zap.Logger) *Au
 }
 
 func (s *AuthService) SignUp(ctx context.Context, req models.CreateUserRequest) (string, error) {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "SignUp"),
+		zap.String("name", req.Name),
+		zap.String("email", req.Email),
+	)
+	log.Debug("creating new user")
+
 	hash, err := s.hasher.GenerateHash(req.Password)
 	if err != nil {
+		log.Error("failed to generate hash", zap.Error(err))
 		return "", err
 	}
 
@@ -49,46 +57,58 @@ func (s *AuthService) SignUp(ctx context.Context, req models.CreateUserRequest) 
 	}
 
 	if err := s.user.Create(ctx, user); err != nil {
+		log.Error("error creating user", zap.Error(err))
 		return "", err
 	}
+
+	log.Debug("user created")
 
 	return user.ID, nil
 }
 
 func (s *AuthService) SignIn(ctx context.Context, req models.SignInRequest) (models.TokenResponse, error) {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "SignIn"),
+		zap.String("email", req.Email))
+
+	log.Debug("signing in")
+
 	userID, hashedPassword, err := s.user.Credential(ctx, req.Email)
 	if err != nil {
+		log.Error("error fetching user credentials", zap.Error(err))
 		return models.TokenResponse{}, err
 	}
 
 	if err := s.hasher.ComparePassword(hashedPassword, req.Password); err != nil {
+		log.Error("invalid password", zap.Error(err))
 		return models.TokenResponse{}, err
 	}
 
 	token, err := s.generateAndSaveTokens(ctx, userID)
 	if err != nil {
-		s.log.Error("failed to generate or save tokens",
+		log.Error("failed to generate or save tokens",
 			zap.String("user_id", userID),
 			zap.Error(err),
 		)
 		return models.TokenResponse{}, err
 	}
+	log.Info("user signed in", zap.String("user_id", userID))
 
 	return token, nil
 }
 
 func (a *AuthService) Logout(ctx context.Context, tokenID string) error {
+	log := loggerWith(ctx, a.log, zap.String("service_name", "SignIn"))
+
+	log.Debug("logout")
 	if err := a.token.Delete(ctx, tokenID); err != nil {
-		a.log.Error("failed to delete refresh token during logout",
-			zap.String("token_id", tokenID),
+		log.Error("failed to delete refresh token during logout",
 			zap.Error(err),
 		)
 		return err
 	}
 
-	a.log.Info("user logged out successfully",
-		zap.String("token_id", tokenID),
-	)
+	log.Info("user logged out successfully")
 
 	return nil
 }
@@ -150,9 +170,12 @@ func (a *AuthService) generateRefreshToken(userID string) models.Token {
 }
 
 func (a *AuthService) ParseToken(ctx context.Context, accessToken string) (string, error) {
+	log := loggerWith(ctx, a.log, zap.String("service_name", "ParseToken"))
+
+	log.Debug("parsing token")
 	verified, err := jwt.Parse([]byte(accessToken), jwt.WithKey(jwa.HS256, []byte(a.cfg.JwtSecret)))
 	if err != nil {
-		a.log.Debug("failed to parse or verify access token",
+		log.Debug("failed to parse or verify access token",
 			zap.Error(err),
 		)
 		return "", fmt.Errorf("invalid token")
@@ -160,28 +183,31 @@ func (a *AuthService) ParseToken(ctx context.Context, accessToken string) (strin
 
 	subject, ok := verified.Get(jwt.SubjectKey)
 	if !ok {
-		a.log.Debug("token missing 'sub' claim")
+		log.Debug("token missing 'sub' claim")
 		return "", fmt.Errorf("invalid token")
 	}
 
 	userID, ok := subject.(string)
 	if !ok {
-		a.log.Debug("token 'sub' claim is not a string")
+		log.Debug("token 'sub' claim is not a string")
 		return "", fmt.Errorf("invalid token")
 	}
+
+	log.Debug("token verified", zap.String("user_id", userID))
 
 	return userID, nil
 }
 
 func (a *AuthService) RefreshToken(ctx context.Context, tokenID string) (models.TokenResponse, error) {
+	log := loggerWith(ctx, a.log, zap.String("service_name", "RefreshToken"))
 	tokenDB, err := a.token.TokenByID(ctx, tokenID)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
-			a.log.Warn("refresh token not found (possible reuse or logout)",
+			log.Warn("refresh token not found (possible reuse or logout)",
 				zap.String("token_id", tokenID),
 			)
 		} else {
-			a.log.Error("failed to get refresh token from repo",
+			log.Error("failed to get refresh token from repo",
 				zap.String("token_id", tokenID),
 				zap.Error(err),
 			)
@@ -190,7 +216,7 @@ func (a *AuthService) RefreshToken(ctx context.Context, tokenID string) (models.
 	}
 
 	if err := a.token.Delete(ctx, tokenID); err != nil {
-		a.log.Error("failed to delete old refresh token",
+		log.Error("failed to delete old refresh token",
 			zap.String("token_id", tokenID),
 			zap.Error(err),
 		)
@@ -198,7 +224,7 @@ func (a *AuthService) RefreshToken(ctx context.Context, tokenID string) (models.
 	}
 
 	if tokenDB.ExpiresAt.Before(time.Now()) {
-		a.log.Warn("attempt to refresh expired token",
+		log.Warn("attempt to refresh expired token",
 			zap.String("token_id", tokenID),
 			zap.Time("expires_at", tokenDB.ExpiresAt),
 		)
@@ -207,17 +233,15 @@ func (a *AuthService) RefreshToken(ctx context.Context, tokenID string) (models.
 
 	token, err := a.generateAndSaveTokens(ctx, tokenDB.UserID)
 	if err != nil {
-		a.log.Error("failed to generate new tokens during refresh",
+		log.Error("failed to generate new tokens during refresh",
 			zap.String("user_id", tokenDB.UserID),
 			zap.Error(err),
 		)
 		return models.TokenResponse{}, err
 	}
 
-	a.log.Info("token refreshed successfully",
+	log.Info("token refreshed successfully",
 		zap.String("user_id", tokenDB.UserID),
-		zap.String("old_token_id", tokenID),
-		zap.String("new_refresh_token_id", token.RefreshToken),
 	)
 
 	return token, nil
