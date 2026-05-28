@@ -136,24 +136,19 @@ func getAccessToken(c *gin.Context) (string, error) {
 	return tokenPaths[1], nil
 }
 
-func getUserID(c *gin.Context) (uuid.UUID, error) {
+func getUserID(c *gin.Context) (string, error) {
 	id, exists := c.Get(userIDKey)
 	if !exists {
-		return uuid.Nil, fmt.Errorf("user id not found in context")
+		return "", fmt.Errorf("user id not found in context")
 	}
 
-	t, ok := id.(string)
+	userID, ok := id.(string)
 	if !ok {
-		return uuid.Nil, fmt.Errorf("invalid user id format")
+		return "", fmt.Errorf("invalid user id format")
 	}
 
-	userID, err := uuid.Parse(t)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("user id is not uuid")
-	}
-
-	if userID == uuid.Nil {
-		return uuid.Nil, fmt.Errorf("invalid user id")
+	if userID == "" {
+		return "", fmt.Errorf("invalid user id")
 	}
 
 	return userID, nil

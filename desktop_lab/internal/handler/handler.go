@@ -21,6 +21,7 @@ type Handler struct {
 	auth      *service.AuthService
 	dimension *service.DimensionService
 	material  *service.MaterialService
+	profile   *service.ProfileService
 	group     *service.ExperimentGroupService
 	protocol  *service.ProtocolService
 	report    *service.ReportService

@@ -38,7 +38,7 @@ func (h *Handler) signUp(c *gin.Context) {
 		return
 	}
 
-	newSuccessResponse(c, http.StatusOK, "id", userID)
+	c.JSON(http.StatusOK, gin.H{"user_id": userID})
 }
 
 func (h *Handler) signIn(c *gin.Context) {
@@ -61,7 +61,7 @@ func (h *Handler) signIn(c *gin.Context) {
 	}
 
 	c.SetCookie(refreshToken, token.RefreshToken, int(h.refreshTokenTTL.Seconds()), "/", "", false, true)
-	newSuccessResponse(c, http.StatusOK, accessToken, token.AccessToken)
+	c.JSON(http.StatusOK, gin.H{accessToken: token.AccessToken})
 }
 
 func (h *Handler) logout(c *gin.Context) {
@@ -77,7 +77,7 @@ func (h *Handler) logout(c *gin.Context) {
 	}
 
 	c.SetCookie(refreshToken, "", 0, "/", "", false, true)
-	newSuccessResponse(c, http.StatusOK, "message", "logout")
+	c.JSON(http.StatusOK, "logout")
 }
 
 func (h *Handler) refresh(c *gin.Context) {
@@ -94,5 +94,5 @@ func (h *Handler) refresh(c *gin.Context) {
 	}
 
 	c.SetCookie(refreshToken, token.RefreshToken, int(h.refreshTokenTTL.Seconds()), "/", "", false, true)
-	newSuccessResponse(c, http.StatusOK, accessToken, token.AccessToken)
+	c.JSON(http.StatusOK, gin.H{accessToken: token.AccessToken})
 }
