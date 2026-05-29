@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type Organization struct {
 	ID        string    `json:"id" db:"id"`
@@ -25,4 +27,9 @@ type UpdateOrganizationRequest struct {
 	Address *string `json:"address" db:"address"`
 	Phone   *string `json:"phone" db:"phone"`
 	Email   *string `json:"email" db:"email"`
+}
+
+type OrganizationListResponse struct {
+	Organizations []Organization    `json:"organizations"`
+	Meta          PaginatedMetadata `json:"meta"`
 }

@@ -29,6 +29,32 @@ type MaterialRepo interface {
 	DeleteContextDimensionFromMaterial(ctx context.Context, materialID, dimensionID string) error
 }
 
+type OrganizationUserRepo interface {
+	Create(ctx context.Context, id string, ou models.CreateOrganizationUserRequest) error
+	GetByID(ctx context.Context, id string) (models.OrganizationUser, error)
+	GetByRole(ctx context.Context, role string, limit, offset int64) ([]models.OrganizationUser, int64, error)
+	List(ctx context.Context, organizationID string, limit, offset int64) ([]models.OrganizationUser, int64, error)
+	UpdateUser(ctx context.Context, id string, role *string) (models.OrganizationUser, error)
+	Delete(ctx context.Context, id string) error
+}
+
+type OrganizationRepo interface {
+	Create(ctx context.Context, id string, org models.CreateOrganizationRequest) error
+	GetByID(ctx context.Context, id string) (models.Organization, error)
+	GetOrganizationByName(ctx context.Context, name string) (models.Organization, error)
+	List(ctx context.Context, limit, offset int64) ([]models.Organization, int64, error)
+	Update(ctx context.Context, id string, req models.UpdateOrganizationRequest) (models.Organization, error)
+	Delete(ctx context.Context, id string) error
+}
+
+type OrganizationTestsRepo interface {
+	Create(ctx context.Context, id string, req models.CreateOrganizationTestRequest) error
+	GetOrganizationTest(ctx context.Context, id string) (models.OrganizationTest, error)
+	ListOrganizationTests(ctx context.Context, limit, offset int64) ([]models.OrganizationTest, int64, error)
+	Update(ctx context.Context, id string, req models.UpdateOrganizationTestRequest) (models.OrganizationTest, error)
+	DeleteOrganizationTest(ctx context.Context, id string) error
+}
+
 // StandardRepo управляет стандартами, методами и нормативами
 type StandardRepo interface {
 	CreateFull(ctx context.Context, req models.CreateStandardRequest) (string, error)

@@ -19,15 +19,15 @@ func NewOrganizationUserRepo(db *sqlx.DB, log *zap.Logger) *OrganizationUserRepo
 	return &OrganizationUserRepo{db: db, log: log}
 }
 
-func (r *OrganizationUserRepo) Create(ctx context.Context, ou models.OrganizationUser) error {
+func (r *OrganizationUserRepo) Create(ctx context.Context, id string, ou models.CreateOrganizationUserRequest) error {
 	log := logQuery(ctx, r.log, "INSERT", "organization_users",
-		zap.String("id", ou.ID), zap.String("organization_id", ou.OrganizationID), zap.String("user_id", ou.UserID), zap.String("role", ou.Role),
+		zap.String("id", id), zap.String("organization_id", ou.OrganizationID), zap.String("user_id", ou.UserID), zap.String("role", ou.Role),
 	)
 
 	log.Info("starting creating organization user")
 
 	_, err := r.db.ExecContext(ctx, "INSERT INTO organization_users (id, organization_id, user_id, role) VALUES (?, ?, ?, ?)",
-		ou.ID, ou.OrganizationID, ou.UserID, ou.Role)
+		id, ou.OrganizationID, ou.UserID, ou.Role)
 	if err != nil {
 		return err
 	}
@@ -65,13 +65,14 @@ func (r *OrganizationUserRepo) GetByID(ctx context.Context, id string) (models.O
 	return ou, nil
 }
 
-func (r *OrganizationUserRepo) GetByRole(ctx context.Context, role string, limit, offset int64) ([]models.OrganizationUser, int64, error) {
+func (r *OrganizationUserRepo) GetByRole(ctx context.Context, organizationID, role string, limit, offset int64) ([]models.OrganizationUser, int64, error) {
 	log := logQuery(ctx, r.log, "SELECT", "organization_users",
+		zap.String("organization_id", organizationID),
 		zap.String("role", role))
 
 	log.Debug("fetching paginated organization users by role list")
 	var total int64
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM organization_users WHERE role = ?`, role).Scan(&total)
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM organization_users WHERE role = ? AND organization_id = ?`, role, organizationID).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -83,10 +84,10 @@ func (r *OrganizationUserRepo) GetByRole(ctx context.Context, role string, limit
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, organization_id, user_id, role, created_at, updated_at
          FROM organization_users 
-         WHERE role = ?
+         WHERE role = ? AND organization_id = ?
          ORDER BY created_at DESC 
          LIMIT ? OFFSET ?`,
-		role, limit, offset,
+		role, organizationID, limit, offset,
 	)
 	if err != nil {
 		return nil, 0, err
@@ -123,12 +124,12 @@ func (r *OrganizationUserRepo) GetByRole(ctx context.Context, role string, limit
 	return users, total, nil
 }
 
-func (r *OrganizationUserRepo) List(ctx context.Context, limit, offset int64) ([]models.OrganizationUser, int64, error) {
-	log := logQuery(ctx, r.log, "SELECT", "organization_users", zap.Int64("limit", limit), zap.Int64("offset", offset))
+func (r *OrganizationUserRepo) List(ctx context.Context, organizationID string, limit, offset int64) ([]models.OrganizationUser, int64, error) {
+	log := logQuery(ctx, r.log, "SELECT", "organization_users", zap.String("organization_id", organizationID), zap.Int64("limit", limit), zap.Int64("offset", offset))
 	log.Debug("fetching paginated organization users list")
 
 	var total int64
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM organization_users`).Scan(&total)
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM organization_users WHERE organization_id = ?`, organizationID).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -177,18 +178,22 @@ func (r *OrganizationUserRepo) List(ctx context.Context, limit, offset int64) ([
 	return users, total, nil
 }
 
-func (r *OrganizationUserRepo) UpdateUser(ctx context.Context, id string, role string) error {
-	log := logQuery(ctx, r.log, "UPDATE", "organization_users", zap.String("id", id), zap.String("role", role))
+func (r *OrganizationUserRepo) UpdateUser(ctx context.Context, id string, role *string) (models.OrganizationUser, error) {
+	log := logQuery(ctx, r.log, "UPDATE", "organization_users", zap.String("id", id), zap.String("role", *role))
 	log.Debug("updating organization user")
 
-	_, err := r.db.ExecContext(ctx, "UPDATE organization_users SET role = ? WHERE id = ?", role, id)
+	if role == nil {
+		return r.GetByID(ctx, id)
+	}
+
+	_, err := r.db.ExecContext(ctx, "UPDATE organization_users SET role = ?, updated_at = (datetime('now') WHERE id = ?", role, id)
 	if err != nil {
 		log.Error("update failed", zap.Error(err))
-		return err
+		return models.OrganizationUser{}, err
 	}
 
 	log.Debug("updated organization user")
-	return nil
+	return r.GetByID(ctx, id)
 }
 
 func (r *OrganizationUserRepo) Delete(ctx context.Context, id string) error {

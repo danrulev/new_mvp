@@ -286,6 +286,7 @@ CREATE TABLE IF NOT EXISTS organization_tests (
     organization_id TEXT NOT NULL,
     test_method_id TEXT NOT NULL,
     price REAL NOT NULL,
+    description TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
 

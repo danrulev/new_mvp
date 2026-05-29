@@ -27,9 +27,32 @@ func (r *OrganizationRepo) Create(ctx context.Context, id string, org models.Cre
 
 	log.Debug("creating new organization")
 
-	_, err := r.db.ExecContext(ctx, "INSERT INTO organizations (id, name, email, phone, address) VALUES (?, ?, ?, ?, ?)", id, org.Name, org.Email, org.Phone, org.Address)
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			if rbErr := tx.Rollback(); rbErr != nil {
+				log.Error("transaction rollback failed", zap.Error(rbErr))
+			} else {
+				log.Debug("transaction rolled back")
+			}
+		}
+	}()
+
+	_, err = tx.ExecContext(ctx, "INSERT INTO organizations (id, name, email, phone, address) VALUES (?, ?, ?, ?, ?)", id, org.Name, org.Email, org.Phone, org.Address)
 	if err != nil {
 		return models.MakeError(err, models.ErrFailedToCreate, "organization")
+	}
+
+	if _, err = tx.ExecContext(ctx, "INSERT INTO organization_users (id, organization_id, role) VALUES (?, ?, ?)", id, id, "super_admin"); err != nil {
+		return models.MakeError(err, models.ErrFailedToCreate, "organization")
+	}
+
+	if err = tx.Commit(); err != nil {
+		log.Error("transaction commit failed", zap.Error(err))
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	log.Debug("successfully created new organization")
