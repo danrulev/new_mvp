@@ -1,4 +1,4 @@
-package repository
+package mysql_repo
 
 import (
 	"context"
@@ -304,7 +304,6 @@ func (r *StandardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 				}
 			}
 			if !match {
-
 				break
 			}
 		}

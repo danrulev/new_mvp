@@ -1,4 +1,4 @@
-package repository
+package mysql_repo
 
 import (
 	"context"

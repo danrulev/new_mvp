@@ -238,12 +238,57 @@ CREATE TABLE IF NOT EXISTS users (
     role TEXT NOT NULL, -- 'admin', 'user'
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
+    deleted_at TEXT,
     UNIQUE (email)
 );
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_id ON users(id);
 
 CREATE TABLE IF NOT EXISTS tokens (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     expires_at TEXT DEFAULT (datetime('now')),
     created_at TEXT DEFAULT (datetime('now')) 
+);
+
+CREATE INDEX IF NOT EXISTS idx_tokens_user_id ON tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_tokens_id ON tokens(id); 
+
+CREATE TABLE IF NOT EXISTS organizations (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    address TEXT,
+    phone TEXT,
+    email TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    deleted_at TEXT,
+
+    UNIQUE  (name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_organizations_id ON organizations(id);
+
+CREATE TABLE IF NOT EXISTS ogranization_users (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    role TEXT NOT NULL, -- 'admin', 'editor', 'viewer'
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+);
+
+CREATE TABLE IF NOT EXISTS organization_tests (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    test_method_id TEXT NOT NULL,
+    price REAL NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    FOREIGN KEY (test_method_id) REFERENCES test_methods(id) ON DELETE CASCADE,
 );
