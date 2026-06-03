@@ -152,10 +152,8 @@ CREATE TABLE IF NOT EXISTS samples (
     -- Контекстные параметры пробы (значения Dimensions)
     -- Хранятся как JSON для гибкости: {"climate_zone": "II", "mix_grade": "I", "layer": "upper"}
     context_params TEXT NOT NULL DEFAULT '{}', 
-    
     note TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (group_id) REFERENCES experiment_groups(id) ON DELETE SET NULL
+    created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_samples_group ON samples(group_id);
 -- Индекс для поиска проб по параметрам (потребуется функциональный индекс или поиск по JSON в коде)
