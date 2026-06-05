@@ -4,23 +4,30 @@ package service
 import (
 	"context"
 	"desktop_lab/internal/models"
-	"desktop_lab/internal/repository"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 type SampleService struct {
-	repo repository.SampleRepo
+	repo SampleRepo
 	log  *zap.Logger
 }
 
-func NewSampleService(repo repository.SampleRepo, log *zap.Logger) *SampleService {
+func NewSampleService(repo SampleRepo, log *zap.Logger) *SampleService {
 	return &SampleService{repo: repo, log: log}
 }
 
 // CreateSample создает пробу отдельно (если нужно без протокола сразу)
 func (s *SampleService) CreateSample(ctx context.Context, groupID, number string, context map[string]string, note string) (models.Sample, error) {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "CreateSample"),
+		zap.String("group_id", groupID),
+		zap.String("sample_number", number),
+		zap.Int("context_params_count", len(context)),
+	)
+	log.Debug("creating new sample")
+
 	sample := models.Sample{
 		ID:            uuid.New().String(),
 		GroupID:       groupID,
@@ -28,8 +35,18 @@ func (s *SampleService) CreateSample(ctx context.Context, groupID, number string
 		ContextParams: context,
 		Note:          note,
 	}
+
+	log.Debug("saving sample to repository", zap.String("sample_id", sample.ID))
 	if err := s.repo.Create(ctx, sample); err != nil {
+		log.Error("failed to create sample in repository",
+			zap.Error(err),
+			zap.String("sample_id", sample.ID),
+			zap.String("group_id", groupID))
 		return models.Sample{}, err
 	}
+
+	log.Info("sample successfully created",
+		zap.String("sample_id", sample.ID),
+		zap.String("sample_number", sample.SampleNumber))
 	return sample, nil
 }

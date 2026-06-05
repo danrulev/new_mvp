@@ -1,4 +1,4 @@
-package repository
+package mysql_repo
 
 import (
 	"context"
@@ -13,59 +13,71 @@ import (
 	"go.uber.org/zap"
 )
 
-type standardRepo struct {
+type StandardRepo struct {
 	db  *sqlx.DB
 	log *zap.Logger
 }
 
-func NewStandardRepo(db *sqlx.DB, log *zap.Logger) StandardRepo {
-	return &standardRepo{db: db, log: log}
+func NewStandardRepo(db *sqlx.DB, log *zap.Logger) *StandardRepo {
+	return &StandardRepo{db: db, log: log}
 }
 
 // CreateFull - ОБНОВЛЕННАЯ ВЕРСИЯ для новой схемы БД
-func (r *standardRepo) CreateFull(ctx context.Context, req models.CreateStandardRequest) (string, error) {
+func (r *StandardRepo) CreateFull(ctx context.Context, req models.CreateStandardRequest) (string, error) {
+	log := logQuery(ctx, r.log, "INSERT (TX)", "standards + test_methods + method_inputs + normative_limits + limit_conditions",
+		zap.String("material_id", req.MaterialID),
+		zap.String("standard_name", req.Name),
+		zap.Int("dimensions_count", len(req.Dimensions)),
+		zap.Int("methods_count", len(req.Methods)),
+	)
+	log.Info("starting standard creation transaction")
+
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() {
 		if err != nil {
-			_ = tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				log.Error("transaction rollback failed", zap.Error(rbErr))
+			} else {
+				log.Debug("transaction rolled back")
+			}
 		}
 	}()
 
 	stdID := uuid.New().String()
 
-	// 1. Создаем Стандарт
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO standards (id, material_id, name, description) VALUES (?, ?, ?, ?)`,
 		stdID, req.MaterialID, req.Name, req.Description,
 	)
 	if err != nil {
+		log.Error("failed to insert standard", zap.Error(err))
 		return "", fmt.Errorf("failed to insert standard: %w", err)
 	}
 
-	// 2. Привязываем Контекстные Измерения (Dimensions)
-	// В новой схеме мы не создаем измерения, а привязываем существующие по key_name или ID
 	if len(req.Dimensions) > 0 {
 		stmtLink, err := tx.PreparexContext(ctx,
 			`INSERT INTO standard_context_dims (id, standard_id, dimension_id) 
 			 VALUES (?, ?, ?)`,
 		)
 		if err != nil {
+			log.Error("failed to prepare dimension link statement", zap.Error(err))
 			return "", fmt.Errorf("failed to prepare dimension link statement: %w", err)
 		}
 
-		for _, dimDTO := range req.Dimensions {
-			// Ищем существующее измерение по key_name (глобальный справочник)
+		for i, dimDTO := range req.Dimensions {
+			dimLog := log.With(zap.Int("dimension_index", i), zap.String("dimension_key", dimDTO.KeyName))
+
 			var dimID string
 			err := tx.GetContext(ctx, &dimID, `SELECT id FROM context_dimensions WHERE key_name = ?`, dimDTO.KeyName)
 
 			if err == sql.ErrNoRows {
-				// Если измерения нет, создаем его (опционально, зависит от бизнес-логики)
-				// Для строгости лучше требовать предварительного создания измерений
+				dimLog.Warn("dimension not found in global registry", zap.String("key_name", dimDTO.KeyName))
 				return "", fmt.Errorf("dimension with key_name '%s' not found in global registry", dimDTO.KeyName)
 			} else if err != nil {
+				dimLog.Error("failed to find dimension", zap.Error(err))
 				_ = stmtLink.Close()
 				return "", fmt.Errorf("failed to find dimension %s: %w", dimDTO.KeyName, err)
 			}
@@ -80,7 +92,6 @@ func (r *standardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 		_ = stmtLink.Close()
 	}
 
-	// 3. Создаем Методы и вложенные сущности (без изменений логики, кроме SQL)
 	stmtMethod, err := tx.PreparexContext(ctx,
 		`INSERT INTO test_methods (id, standard_id, code, name, formula_expr, unit, result_type, is_mandatory)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -131,7 +142,6 @@ func (r *standardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 			return "", fmt.Errorf("failed to insert method %s: %w", mReq.Name, err)
 		}
 
-		// Inputs
 		for _, inp := range mReq.Inputs {
 			inpID := uuid.New().String()
 			isReq := 0
@@ -146,7 +156,6 @@ func (r *standardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 			}
 		}
 
-		// Limits + Conditions
 		for _, lim := range mReq.Limits {
 			limitID := uuid.New().String()
 			discreteJSON := "null"
@@ -171,15 +180,21 @@ func (r *standardRepo) CreateFull(ctx context.Context, req models.CreateStandard
 	}
 
 	if err = tx.Commit(); err != nil {
+		log.Error("transaction commit failed", zap.Error(err))
 		return "", fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	r.log.Info("Standard created successfully", zap.String("id", stdID))
+	r.log.Info("Standard created successfully", zap.String("id", stdID), zap.Int("methods_inserted", len(req.Methods)))
 	return stdID, nil
 }
 
-// GetApplicableLimit (без изменений логики, работает с ключами)
-func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, contextParams map[string]string) (models.NormativeLimit, error) {
+func (r *StandardRepo) GetApplicableLimit(ctx context.Context, methodID string, contextParams map[string]string) (models.NormativeLimit, error) {
+	log := logQuery(ctx, r.log, "SELECT (JOIN)", "normative_limits + limit_conditions",
+		zap.String("method_id", methodID),
+		zap.Int("context_params_count", len(contextParams)),
+	)
+	log.Debug("fetching applicable limit for method")
+
 	query := `
 		SELECT 
 			nl.id, nl.method_id, nl.limit_type, nl.min_value, nl.max_value, nl.priority,
@@ -250,6 +265,7 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 	}
 
 	if err := rows.Err(); err != nil {
+		log.Error("rows iteration error", zap.Error(err))
 		return models.NormativeLimit{}, err
 	}
 
@@ -293,14 +309,20 @@ func (r *standardRepo) GetApplicableLimit(ctx context.Context, methodID string, 
 		}
 
 		if match {
+			log.Debug("matching limit found",
+				zap.String("limit_id", limit.ID),
+				zap.String("limit_type", limit.LimitType))
 			return limit, nil
 		}
 	}
 
 	if defaultLimit != nil {
+		log.Debug("using default limit (no conditions)",
+			zap.String("limit_id", defaultLimit.ID))
 		return *defaultLimit, nil
 	}
 
+	log.Debug("no applicable limit found")
 	return models.NormativeLimit{}, nil
 }
 
@@ -313,7 +335,10 @@ func containsCSV(csv, target string) bool {
 	return false
 }
 
-func (r *standardRepo) GetTestMethod(ctx context.Context, methodID string) (models.TestMethod, error) {
+func (r *StandardRepo) GetTestMethod(ctx context.Context, methodID string) (models.TestMethod, error) {
+	log := logQuery(ctx, r.log, "SELECT", "test_methods",
+		zap.String("method_id", methodID))
+	log.Debug("fetching test method by ID")
 	method := models.TestMethod{}
 	err := r.db.QueryRowxContext(ctx,
 		`SELECT id, standard_id, code, name, formula_expr, unit, result_type, is_mandatory 
@@ -322,16 +347,22 @@ func (r *standardRepo) GetTestMethod(ctx context.Context, methodID string) (mode
 	).StructScan(&method)
 
 	if err == sql.ErrNoRows {
+		log.Debug("method not found")
 		return models.TestMethod{}, nil
 	}
 	if err != nil {
 		return models.TestMethod{}, err
 	}
-
+	log.Debug("method retrieved successfully",
+		zap.String("method_name", method.Name))
 	return method, nil
 }
 
-func (r *standardRepo) GetByMaterialID(ctx context.Context, materialID string) ([]models.Standard, error) {
+func (r *StandardRepo) GetByMaterialID(ctx context.Context, materialID string) ([]models.Standard, error) {
+	log := logQuery(ctx, r.log, "SELECT", "standards",
+		zap.String("material_id", materialID))
+	log.Debug("fetching standards for material")
+
 	var standards []models.Standard
 	err := r.db.SelectContext(ctx, &standards,
 		`SELECT id, material_id, name, description, valid_from, valid_to 
@@ -344,10 +375,17 @@ func (r *standardRepo) GetByMaterialID(ctx context.Context, materialID string) (
 	for i := range standards {
 		standards[i].MaterialID = materialID
 	}
+
+	log.Debug("standards retrieved successfully",
+		zap.Int("count", len(standards)))
 	return standards, nil
 }
 
-func (r *standardRepo) GetMethodsByStandardID(ctx context.Context, standardID string) ([]models.TestMethod, error) {
+func (r *StandardRepo) GetMethodsByStandardID(ctx context.Context, standardID string) ([]models.TestMethod, error) {
+	log := logQuery(ctx, r.log, "SELECT", "test_methods",
+		zap.String("standard_id", standardID))
+	log.Debug("fetching methods for standard")
+
 	var methods []models.TestMethod
 	err := r.db.SelectContext(ctx, &methods,
 		`SELECT id, standard_id, code, name, description, formula_expr, unit, result_type, is_mandatory 
@@ -359,10 +397,16 @@ func (r *standardRepo) GetMethodsByStandardID(ctx context.Context, standardID st
 	if err != nil {
 		return nil, fmt.Errorf("failed to query methods: %w", err)
 	}
+	log.Debug("methods retrieved successfully",
+		zap.Int("count", len(methods)))
 	return methods, nil
 }
 
-func (r *standardRepo) GetMethodInputs(ctx context.Context, methodID string) ([]models.MethodInput, error) {
+func (r *StandardRepo) GetMethodInputs(ctx context.Context, methodID string) ([]models.MethodInput, error) {
+	log := logQuery(ctx, r.log, "SELECT", "method_inputs",
+		zap.String("method_id", methodID))
+	log.Debug("fetching inputs for method")
+
 	var inputs []models.MethodInput
 	err := r.db.SelectContext(ctx, &inputs,
 		`SELECT id, method_id, param_key, label, unit, input_type, is_required 
@@ -374,6 +418,8 @@ func (r *standardRepo) GetMethodInputs(ctx context.Context, methodID string) ([]
 	if err != nil {
 		return nil, err
 	}
+	log.Debug("inputs retrieved successfully",
+		zap.Int("count", len(inputs)))
 	return inputs, nil
 }
 
@@ -388,7 +434,11 @@ type NormativeLimitDB struct {
 	Priority       int                    `db:"priority"`
 }
 
-func (r *standardRepo) GetMethodLimits(ctx context.Context, methodID string) ([]models.NormativeLimit, error) {
+func (r *StandardRepo) GetMethodLimits(ctx context.Context, methodID string) ([]models.NormativeLimit, error) {
+	log := logQuery(ctx, r.log, "SELECT", "normative_limits",
+		zap.String("method_id", methodID))
+	log.Debug("fetching limits for method")
+
 	query := `SELECT id, method_id, limit_type, min_value, max_value, discrete_values, note, priority 
 			  FROM normative_limits 
 			  WHERE method_id = ? 
@@ -401,6 +451,7 @@ func (r *standardRepo) GetMethodLimits(ctx context.Context, methodID string) ([]
 	}
 
 	if limits == nil {
+		log.Debug("no limits found for method")
 		return []models.NormativeLimit{}, nil
 	}
 
@@ -409,6 +460,8 @@ func (r *standardRepo) GetMethodLimits(ctx context.Context, methodID string) ([]
 		out[i] = limit.toModel()
 	}
 
+	log.Debug("limits retrieved successfully",
+		zap.Int("count", len(out)))
 	return out, nil
 }
 
@@ -425,7 +478,10 @@ func (nl NormativeLimitDB) toModel() models.NormativeLimit {
 	}
 }
 
-func (r *standardRepo) GetLimitConditions(ctx context.Context, limitID string) ([]models.LimitCondition, error) {
+func (r *StandardRepo) GetLimitConditions(ctx context.Context, limitID string) ([]models.LimitCondition, error) {
+	log := logQuery(ctx, r.log, "SELECT", "limit_conditions",
+		zap.String("limit_id", limitID))
+	log.Debug("fetching conditions for limit")
 	query := `SELECT id, limit_id, dimension_key, condition_operator, expected_value 
 			  FROM limit_conditions WHERE limit_id = ?`
 
@@ -438,12 +494,16 @@ func (r *standardRepo) GetLimitConditions(ctx context.Context, limitID string) (
 	if conditions == nil {
 		conditions = []models.LimitCondition{}
 	}
-
+	log.Debug("conditions retrieved successfully",
+		zap.Int("count", len(conditions)))
 	return conditions, nil
 }
 
-// GetStandardDimensions - ОБНОВЛЕНО: JOIN через таблицу связей standard_context_dims
-func (r *standardRepo) GetStandardDimensions(ctx context.Context, standardID string) ([]models.ContextDimension, error) {
+func (r *StandardRepo) GetStandardDimensions(ctx context.Context, standardID string) ([]models.ContextDimension, error) {
+	log := logQuery(ctx, r.log, "SELECT (JOIN)", "context_dimensions + standard_context_dims",
+		zap.String("standard_id", standardID))
+	log.Debug("fetching dimensions for standard")
+
 	query := `
 		SELECT cd.id, cd.key_name, cd.label, cd.data_type, cd.possible_values, cd.description
 		FROM context_dimensions cd
@@ -484,11 +544,20 @@ func (r *standardRepo) GetStandardDimensions(ctx context.Context, standardID str
 		dimensions = append(dimensions, dim)
 	}
 
+	if err := rows.Err(); err != nil {
+		log.Error("rows iteration error", zap.Error(err))
+		return nil, err
+	}
+
+	log.Debug("dimensions retrieved successfully",
+		zap.Int("count", len(dimensions)))
 	return dimensions, rows.Err()
 }
 
-// GetMethodsFullByStandardID (без изменений, работает корректно)
-func (r *standardRepo) GetMethodsFullByStandardID(ctx context.Context, standardID string) (map[string]models.TestMethodFull, error) {
+func (r *StandardRepo) GetMethodsFullByStandardID(ctx context.Context, standardID string) (map[string]models.TestMethodFull, error) {
+	log := logQuery(ctx, r.log, "SELECT (FULL JOIN)", "test_methods + method_inputs + normative_limits + limit_conditions",
+		zap.String("standard_id", standardID))
+	log.Debug("fetching full methods with cache-friendly query")
 	query := `
 		SELECT 
 			tm.id, tm.code, tm.name, tm.description, tm.formula_expr, tm.unit, tm.result_type, tm.is_mandatory,
@@ -541,6 +610,7 @@ func (r *standardRepo) GetMethodsFullByStandardID(ctx context.Context, standardI
 		}
 
 		if err := rows.StructScan(&row); err != nil {
+			log.Error("failed to scan row", zap.Error(err))
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
@@ -633,10 +703,15 @@ func (r *standardRepo) GetMethodsFullByStandardID(ctx context.Context, standardI
 		resultMap[row.MethodID] = fullMethod
 	}
 
+	log.Info("full methods retrieved successfully",
+		zap.Int("methods_count", len(resultMap)))
 	return resultMap, rows.Err()
 }
 
-func (r *standardRepo) GetStandardFull(ctx context.Context, standardID string) (models.StandardContext, error) {
+func (r *StandardRepo) GetStandardFull(ctx context.Context, standardID string) (models.StandardContext, error) {
+	log := logQuery(ctx, r.log, "SELECT (MULTI)", "standard_context_dims + test_methods + method_inputs",
+		zap.String("standard_id", standardID))
+	log.Debug("fetching full standard context")
 	ctxData := models.StandardContext{
 		StandardID: standardID,
 		Dimensions: []models.ContextDimension{},
@@ -721,15 +796,29 @@ func (r *standardRepo) GetStandardFull(ctx context.Context, standardID string) (
 		ctxData.Methods[row.MethodID] = fullMethod
 	}
 
-	return ctxData, rows.Err()
+	if err := rows.Err(); err != nil {
+		log.Error("rows iteration error for methods", zap.Error(err))
+		return models.StandardContext{}, err
+	}
+	log.Info("full standard context loaded successfully",
+		zap.Int("dimensions_count", len(dims)))
+
+	return ctxData, nil
 }
 
 // LinkDimensionToStandard связывает измерение со стандартом
-func (r *standardRepo) LinkDimensionToStandard(ctx context.Context, standardID, dimensionID string) error {
+func (r *StandardRepo) LinkDimensionToStandard(ctx context.Context, standardID, dimensionID string) error {
+	log := logQuery(ctx, r.log, "INSERT", "standard_context_dims",
+		zap.String("standard_id", standardID),
+		zap.String("dimension_id", dimensionID))
+	log.Debug("linking dimension to standard")
+
 	id := uuid.New().String()
 
-	// Используем INSERT OR IGNORE
 	query := `INSERT OR IGNORE INTO standard_context_dims (id, standard_id, dimension_id) VALUES (?, ?, ?)`
 	_, err := r.db.ExecContext(ctx, query, id, standardID, dimensionID)
+
+	log.Info("dimension linked to standard successfully",
+		zap.String("link_id", id))
 	return err
 }

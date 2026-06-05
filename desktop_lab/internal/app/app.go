@@ -69,7 +69,6 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 			return nil // или верните ошибку, если отмена недопустима
 		}
 
-		// Опционально: проверить существование файла
 		if _, statErr := os.Stat(selectedPath); os.IsNotExist(statErr) {
 			a.log.Warn("Selected database file does not exist, will create new",
 				zap.String("path", selectedPath))
@@ -98,22 +97,15 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 		return fmt.Errorf("migration failed: %w", err)
 	}
 
-	// 6. Репозитории и Сервисы
-	matRepo := repository.NewMaterialRepo(dbConn, a.log)
-	stdRepo := repository.NewStandardRepo(dbConn, a.log)
-	protRepo := repository.NewProtocolRepo(dbConn, a.log)
-	sampRepo := repository.NewSampleRepo(dbConn, a.log)
-	groupRepo := repository.NewExperimentGroupRepo(dbConn, a.log)
-	dimRepo := repository.NewDimensionRepo(dbConn, a.log)
+	repos := repository.NewRepository(dbConn, a.log)
 
 	svc := service.NewServices(
-		matRepo, stdRepo, protRepo, sampRepo, groupRepo, dimRepo,
+		repos.Material, repos.Standard, repos.Protocol, repos.Sample, repos.Group, repos.Token, repos.User, repos.Dimension,
 		a.fontDir, "templates", wkhtmltopdfWindows, a.log,
 	)
 
 	if err := data.SeedData(svc, a.log); err != nil {
 		a.log.Error("Seed failed", zap.Error(err))
-		// Не прерываем запуск, но логируем ошибку
 	} else {
 		a.log.Info("Data seed completed")
 	}
@@ -125,11 +117,12 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 	a.ready = true
 	a.log.Info("Application initialized successfully")
 
+	a.log.Info("Starting server", zap.String("address", cfg.Server.Host+":"+cfg.Server.Port))
 	server := server.NewServer(cfg.Server, handl.Init())
 
 	go func() {
 		if err := server.Start(); err != nil {
-			a.log.Fatal("Failed to start server", zap.Error(err))
+			a.log.Fatal("Stop server", zap.Error(err))
 		}
 	}()
 
@@ -151,24 +144,20 @@ func (a *App) SwitchDatabase(newPath string) error {
 	a.cfgMu.Lock()
 	defer a.cfgMu.Unlock()
 
-	// 1. Закрыть старое соединение
 	if a.dbConn != nil {
 		if err := a.dbConn.Close(); err != nil {
 			a.log.Error("Failed to close old DB", zap.Error(err))
 		}
 	}
 
-	// 2. Обновить путь в конфиге
 	a.cfg.DB.Path = newPath
 
-	// 3. Подключиться к новой БД
 	newConn, err := db.New(newPath, a.log)
 	if err != nil {
 		return fmt.Errorf("failed to connect to new DB: %w", err)
 	}
 	a.dbConn = newConn
 
-	// 4. Применить миграции (опционально)
 	if err := a.runMigrations(newConn); err != nil {
 		return fmt.Errorf("migration on new DB failed: %w", err)
 	}
@@ -190,9 +179,9 @@ func (a *App) runMigrations(dbConn *sqlx.DB) error {
 	}
 	execDir := filepath.Dir(execPath)
 	paths := []string{
-		filepath.Join("internal", "db", "migration"),
-		filepath.Join(execDir, "internal", "db", "migration"),
-		filepath.Join(execDir, "migration"),
+		filepath.Join("internal", "db", "migration_sqlite"),
+		filepath.Join(execDir, "internal", "db", "migration_sqlite"),
+		filepath.Join(execDir, "migration_sqlite"),
 	}
 
 	for _, p := range paths {

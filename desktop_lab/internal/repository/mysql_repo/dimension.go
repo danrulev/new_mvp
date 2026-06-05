@@ -1,4 +1,4 @@
-package repository
+package mysql_repo
 
 import (
 	"context"
@@ -12,17 +12,20 @@ import (
 	"go.uber.org/zap"
 )
 
-type dimensionRepo struct {
+type DimensionRepo struct {
 	db  *sqlx.DB
 	log *zap.Logger
 }
 
-func NewDimensionRepo(db *sqlx.DB, log *zap.Logger) DimensionRepo {
-	return &dimensionRepo{db: db, log: log}
+func NewDimensionRepo(db *sqlx.DB, log *zap.Logger) *DimensionRepo {
+	return &DimensionRepo{db: db, log: log}
 }
 
 // GetAvailableDimensions возвращает все доступные измерения из глобального справочника
-func (r *dimensionRepo) GetAvailableDimensions(ctx context.Context) ([]models.ContextDimension, error) {
+func (r *DimensionRepo) GetAvailableDimensions(ctx context.Context) ([]models.ContextDimension, error) {
+	log := logQuery(ctx, r.log, "SELECT", "context_dimensions")
+	log.Debug("executing query to fetch available dimensions")
+
 	query := `SELECT id, key_name, label, data_type, possible_values FROM context_dimensions ORDER BY label`
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
@@ -36,6 +39,7 @@ func (r *dimensionRepo) GetAvailableDimensions(ctx context.Context) ([]models.Co
 		var possibleValuesRaw sql.NullString
 		err := rows.Scan(&d.ID, &d.KeyName, &d.Label, &d.DataType, &possibleValuesRaw)
 		if err != nil {
+			log.Error("failed to scan row", zap.Error(err))
 			return nil, err
 		}
 		if possibleValuesRaw.Valid && possibleValuesRaw.String != "" && possibleValuesRaw.String != "null" {
@@ -48,11 +52,22 @@ func (r *dimensionRepo) GetAvailableDimensions(ctx context.Context) ([]models.Co
 		}
 		dims = append(dims, d)
 	}
+	if err := rows.Err(); err != nil {
+		log.Error("rows iteration error", zap.Error(err))
+		return nil, err
+	}
+
+	log.Debug("query completed successfully",
+		zap.Int("rows_returned", len(dims)))
+
 	return dims, rows.Err()
 }
 
 // GetDimensionByID получает измерение по ID (полезно для проверки перед обновлением)
-func (r *dimensionRepo) GetDimensionByID(ctx context.Context, id string) (models.ContextDimension, error) {
+func (r *DimensionRepo) GetDimensionByID(ctx context.Context, id string) (models.ContextDimension, error) {
+	log := logQuery(ctx, r.log, "SELECT", "context_dimensions", zap.String("dimension_id", id))
+	log.Debug("fetching dimension by ID")
+
 	query := `SELECT id, key_name, label, data_type, possible_values FROM context_dimensions WHERE id = ?`
 	var d models.ContextDimension
 	var possibleValuesRaw sql.NullString
@@ -73,11 +88,20 @@ func (r *dimensionRepo) GetDimensionByID(ctx context.Context, id string) (models
 		d.PossibleValues = []string{}
 	}
 
+	log.Debug("dimension retrieved successfully",
+		zap.String("key_name", d.KeyName))
 	return d, nil
 }
 
 // AddDimension добавляет новое измерение в глобальный справочник
-func (r *dimensionRepo) AddDimension(ctx context.Context, dim models.ContextDimension) error {
+func (r *DimensionRepo) AddDimension(ctx context.Context, dim models.ContextDimension) error {
+	log := logQuery(ctx, r.log, "INSERT", "context_dimensions",
+		zap.String("key_name", dim.KeyName),
+		zap.String("label", dim.Label),
+		zap.String("data_type", dim.DataType),
+		zap.Int("possible_values_count", len(dim.PossibleValues)))
+	log.Debug("preparing to insert new dimension")
+
 	id := uuid.New().String()
 	valuesJSON := "null"
 	if len(dim.PossibleValues) > 0 {
@@ -92,11 +116,17 @@ func (r *dimensionRepo) AddDimension(ctx context.Context, dim models.ContextDime
 		`INSERT INTO context_dimensions (id, key_name, label, data_type, possible_values) VALUES (?, ?, ?, ?, ?)`,
 		id, dim.KeyName, dim.Label, dim.DataType, valuesJSON,
 	)
+	log.Info("dimension inserted successfully",
+		zap.String("dimension_id", id))
 	return err
 }
 
 // UpdatePossibleValues обновляет список возможных значений для существующего измерения
-func (r *dimensionRepo) UpdatePossibleValues(ctx context.Context, id string, values []string) error {
+func (r *DimensionRepo) UpdatePossibleValues(ctx context.Context, id string, values []string) error {
+	log := logQuery(ctx, r.log, "UPDATE", "context_dimensions",
+		zap.String("dimension_id", id),
+		zap.Int("new_values_count", len(values)))
+	log.Debug("updating possible values for dimension")
 	// Сериализуем слайс в JSON
 	valuesJSON := "null"
 	if len(values) > 0 {
@@ -124,28 +154,38 @@ func (r *dimensionRepo) UpdatePossibleValues(ctx context.Context, id string, val
 	if rowsAffected == 0 {
 		return fmt.Errorf("dimension with id %s not found", id)
 	}
-
+	log.Info("possible values updated successfully",
+		zap.Int64("rows_affected", rowsAffected))
 	return nil
 }
 
-// DeletePossibleValues очищает список возможных значений (устанавливает NULL или пустой массив)
-// Это полезно, если тип измерения меняется с 'enum' на 'text' или значения больше не нужны
-func (r *dimensionRepo) DeletePossibleValues(ctx context.Context, id string) error {
-	// Вариант 1: Установить в NULL
-	// _, err := r.db.ExecContext(ctx, `UPDATE context_dimensions SET possible_values = NULL WHERE id = ?`, id)
-
-	// Вариант 2: Установить в пустой JSON массив (рекомендуется для консистентности)
+// DeletePossibleValues очищает список возможных значений
+func (r *DimensionRepo) DeletePossibleValues(ctx context.Context, id string) error {
+	log := logQuery(ctx, r.log, "UPDATE", "context_dimensions",
+		zap.String("dimension_id", id))
+	log.Debug("clearing possible values for dimension")
 	_, err := r.db.ExecContext(ctx, `UPDATE context_dimensions SET possible_values = '[]' WHERE id = ?`, id)
 
+	log.Info("possible values cleared")
 	return err
 }
 
-func (r *dimensionRepo) DeleteDimension(ctx context.Context, id string) error {
+func (r *DimensionRepo) DeleteDimension(ctx context.Context, id string) error {
+	log := logQuery(ctx, r.log, "DELETE", "context_dimensions",
+		zap.String("dimension_id", id))
+	log.Info("deleting dimension")
+
 	_, err := r.db.ExecContext(ctx, `DELETE FROM context_dimensions WHERE id = ?`, id)
+
+	log.Info("dimension deleted successfully")
 	return err
 }
 
-func (r *dimensionRepo) GetDimensionByKey(ctx context.Context, key string) (models.ContextDimension, error) {
+func (r *DimensionRepo) GetDimensionByKey(ctx context.Context, key string) (models.ContextDimension, error) {
+	log := logQuery(ctx, r.log, "SELECT", "context_dimensions",
+		zap.String("key_name", key))
+	log.Debug("fetching dimension by key")
+
 	var dim models.ContextDimension
 	var possibleValuesRaw sql.NullString
 
@@ -155,19 +195,25 @@ func (r *dimensionRepo) GetDimensionByKey(ctx context.Context, key string) (mode
 		&dim.ID, &dim.KeyName, &dim.Label, &dim.DataType, &possibleValuesRaw,
 	)
 	if err == sql.ErrNoRows {
+		log.Debug("dimension not found by key")
 		return models.ContextDimension{}, nil
 	}
 	if err != nil {
+		log.Error("query execution failed", zap.Error(err))
 		return models.ContextDimension{}, err
 	}
 
 	if possibleValuesRaw.Valid && possibleValuesRaw.String != "" && possibleValuesRaw.String != "null" {
 		if err := json.Unmarshal([]byte(possibleValuesRaw.String), &dim.PossibleValues); err != nil {
+			log.Warn("failed to unmarshal possible_values",
+				zap.Error(err),
+				zap.String("dim_id", dim.ID))
 			dim.PossibleValues = []string{}
 		}
 	} else {
 		dim.PossibleValues = []string{}
 	}
-
+	log.Debug("dimension retrieved successfully",
+		zap.String("dimension_id", dim.ID))
 	return dim, nil
 }

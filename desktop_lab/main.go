@@ -13,7 +13,8 @@ var wkhtmltopdfWindows []byte
 var fontFS embed.FS
 
 //go:embed templates/protocols/*.html
-//go:embed internal/db/migration/*.sql
+//go:embed internal/db/migration_sqlite/*.sql
+//go:embed internal/db/migration_postgresql/*.sql
 //go:embed frontend/*
 var templateFS embed.FS
 
