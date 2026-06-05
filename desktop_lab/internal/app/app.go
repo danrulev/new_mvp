@@ -179,9 +179,9 @@ func (a *App) runMigrations(dbConn *sqlx.DB) error {
 	}
 	execDir := filepath.Dir(execPath)
 	paths := []string{
-		filepath.Join("internal", "db", "migration"),
-		filepath.Join(execDir, "internal", "db", "migration"),
-		filepath.Join(execDir, "migration"),
+		filepath.Join("internal", "db", "migration_sqlite"),
+		filepath.Join(execDir, "internal", "db", "migration_sqlite"),
+		filepath.Join(execDir, "migration_sqlite"),
 	}
 
 	for _, p := range paths {
