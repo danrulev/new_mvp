@@ -1,3 +1,8 @@
+auth:
+  access_token_ttl: 15m
+  refresh_token_ttl: 30m
+  jwt_secret: "secret"
+
 db:
   allow_selection: true
 

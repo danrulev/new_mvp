@@ -162,5 +162,13 @@ func NewServices(
 
 func loggerWith(ctx context.Context, log *zap.Logger, fields ...zap.Field) *zap.Logger {
 	requestID := ctx.Value(contextkeys.RequestIDKey)
-	return log.With(append([]zap.Field{zap.String("request_id", requestID.(string))}, fields...)...)
+
+	// Безопасно проверяем, есть ли request_id в контексте
+	if reqID, ok := requestID.(string); ok && reqID != "" {
+		return log.With(append([]zap.Field{zap.String("request_id", reqID)}, fields...)...)
+	}
+
+	// Если request_id нет (например, при сидировании БД или фоновых задачах),
+	// просто добавляем остальные поля без request_id
+	return log.With(fields...)
 }
