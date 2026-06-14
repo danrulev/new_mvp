@@ -383,9 +383,11 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 			tr.calculated_value, tr.applied_limit_id, tr.is_compliant,
 			tr.deviation_msg, tr.note, tr.created_at,
 			m.name AS method_name,  
-			m.unit AS method_unit
+			m.unit AS method_unit,
+			nl.limit_type, nl.min_value, nl.max_value  -- 🔥 Подтягиваем лимит
 		FROM test_results tr
 		JOIN test_methods m ON tr.method_id = m.id
+		LEFT JOIN normative_limits nl ON tr.applied_limit_id = nl.id -- 🔥 JOIN
 		WHERE tr.protocol_id = ?`,
 		id,
 	)
@@ -399,7 +401,17 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		var rawJSON, createdAt string
 		var compliant *int
 
-		if err := rows.Scan(&res.ID, &res.MethodID, &rawJSON, &res.CalculatedValue, &res.AppliedLimitID, &compliant, &res.DeviationMsg, &res.Note, &createdAt, &res.MethodName, &res.MethodUnit); err != nil {
+		// 🔥 Переменные для сканирования лимита
+		var limitType string
+		var minVal, maxVal sql.NullFloat64
+
+		if err := rows.Scan(
+			&res.ID, &res.MethodID, &rawJSON,
+			&res.CalculatedValue, &res.AppliedLimitID, &compliant,
+			&res.DeviationMsg, &res.Note, &createdAt,
+			&res.MethodName, &res.MethodUnit,
+			&limitType, &minVal, &maxVal, // 🔥 Сканируем лимит
+		); err != nil {
 			return models.ProtocolFull{}, err
 		}
 
@@ -414,6 +426,15 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		if compliant != nil {
 			v := *compliant == 1
 			res.IsCompliant = &v
+		}
+
+		// 🔥 Сохраняем данные лимита в ответ
+		res.LimitType = limitType
+		if minVal.Valid {
+			res.MinValue = &minVal.Float64
+		}
+		if maxVal.Valid {
+			res.MaxValue = &maxVal.Float64
 		}
 
 		full.Results = append(full.Results, res)

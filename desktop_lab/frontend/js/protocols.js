@@ -183,7 +183,20 @@ async function viewProtocol(id) {
         
         for (const res of full.results) {
           let normStr = '—';
-          if (res.applied_limit_id) normStr = 'см. норматив';
+          const unit = res.method_unit || '';
+          
+          // 🔥 Формируем читаемый норматив на основе данных из БД
+          if (res.limit_type) {
+            if (res.limit_type === 'min' && res.min_value != null) {
+              normStr = `≥ ${res.min_value} ${unit}`.trim();
+            } else if (res.limit_type === 'max' && res.max_value != null) {
+              normStr = `≤ ${res.max_value} ${unit}`.trim();
+            } else if (res.limit_type === 'range' && res.min_value != null && res.max_value != null) {
+              normStr = `${res.min_value} – ${res.max_value} ${unit}`.trim();
+            } else {
+              normStr = 'см. норматив'; // Фоллбэк, если тип лимита странный
+            }
+          }
           
           const compliance = res.is_compliant === false 
             ? '<span class="badge badge-danger" title="Не соответствует">✗</span>' 

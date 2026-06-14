@@ -24,6 +24,10 @@ type TestResultResponse struct {
 	TestResult        // встраиваем все поля оригинала
 	MethodName string `json:"method_name" db:"method_name"`           // ← новое поле
 	MethodUnit string `json:"method_unit,omitempty" db:"method_unit"` // опционально
+
+	LimitType string   `json:"limit_type,omitempty"`
+	MinValue  *float64 `json:"min_value,omitempty"`
+	MaxValue  *float64 `json:"max_value,omitempty"`
 }
 
 func (r *TestResult) InputsToJSON() (string, error) {
