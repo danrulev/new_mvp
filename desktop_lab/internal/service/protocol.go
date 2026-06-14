@@ -53,6 +53,11 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		log.Debug("protocol creation workflow completed", zap.Duration("duration_ms", time.Since(start)))
 	}()
 
+	if req.Sample.CollectionDate == nil {
+		now := time.Now()
+		req.Sample.CollectionDate = &now
+	}
+
 	// 1. Создаем Пробу (Sample)
 	sampleID := uuid.New().String()
 	sample := models.Sample{
@@ -61,7 +66,7 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		MaterialID:      req.Sample.MaterialID,
 		CollectionPlace: req.Sample.CollectionPlace,
 		SampleNumber:    req.Sample.SampleNumber,
-		CollectionDate:  req.Sample.CollectionDate,
+		CollectionDate:  *req.Sample.CollectionDate,
 		ContextParams:   req.Sample.ContextParams,
 		Note:            req.Sample.Note,
 	}

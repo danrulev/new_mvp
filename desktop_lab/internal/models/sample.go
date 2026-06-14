@@ -22,7 +22,7 @@ type Sample struct {
 type CreateSampleDTO struct {
 	SampleNumber    string            `json:"sample_number"`
 	MaterialID      string            `json:"material_id"`
-	CollectionDate  time.Time         `json:"collection_date,omitempty"`
+	CollectionDate  *time.Time        `json:"collection_date,omitempty"`
 	CollectionPlace string            `json:"collection_place,omitempty"`
 	ContextParams   map[string]string `json:"context_params"`
 	Note            string            `json:"note,omitempty"`
