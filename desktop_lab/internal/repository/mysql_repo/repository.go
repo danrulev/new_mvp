@@ -36,6 +36,9 @@ func NewRepository(db *sqlx.DB, log *zap.Logger) *Repository {
 
 func loggerWith(ctx context.Context, log *zap.Logger, fields ...zap.Field) *zap.Logger {
 	requestID := ctx.Value(contextkeys.RequestIDKey)
+	if requestID == nil {
+		return log.With(fields...)
+	}
 	return log.With(append([]zap.Field{zap.String("request_id", requestID.(string))}, fields...)...)
 }
 

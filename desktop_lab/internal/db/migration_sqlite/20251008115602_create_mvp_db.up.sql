@@ -277,7 +277,7 @@ CREATE TABLE IF NOT EXISTS ogranization_users (
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
     
-    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS organization_tests (
@@ -290,5 +290,5 @@ CREATE TABLE IF NOT EXISTS organization_tests (
     updated_at TEXT DEFAULT (datetime('now')),
 
     FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
-    FOREIGN KEY (test_method_id) REFERENCES test_methods(id) ON DELETE CASCADE,
+    FOREIGN KEY (test_method_id) REFERENCES test_methods(id) ON DELETE CASCADE
 );
