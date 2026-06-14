@@ -402,7 +402,7 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		var compliant *int
 
 		// 🔥 Переменные для сканирования лимита
-		var limitType string
+		var limitType sql.NullString // <-- ИСПРАВЛЕНИЕ: используем sql.NullString вместо string
 		var minVal, maxVal sql.NullFloat64
 
 		if err := rows.Scan(
@@ -429,7 +429,12 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		}
 
 		// 🔥 Сохраняем данные лимита в ответ
-		res.LimitType = limitType
+		if limitType.Valid { // <-- ИСПРАВЛЕНИЕ: проверяем валидность перед присваиванием
+			res.LimitType = limitType.String
+		} else {
+			res.LimitType = "" // Если в БД NULL, оставляем пустую строку
+		}
+
 		if minVal.Valid {
 			res.MinValue = &minVal.Float64
 		}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -379,6 +380,7 @@ func (s *ProtocolService) createProtocolLegacy(
 }
 
 // findMatchingLimit - поиск лимита в памяти (без логирования, чистая функция)
+// findMatchingLimit - поиск лимита в памяти с подробным логированием
 func (s *ProtocolService) findMatchingLimit(
 	limits []models.NormativeLimit,
 	conditionsMap map[string][]models.LimitCondition,
@@ -386,13 +388,24 @@ func (s *ProtocolService) findMatchingLimit(
 ) models.NormativeLimit {
 	var defaultLimit *models.NormativeLimit
 
+	s.log.Debug("findMatchingLimit: starting search",
+		zap.Int("limits_count", len(limits)),
+		zap.Any("context_params", contextParams))
+
 	for i := range limits {
 		limit := limits[i]
 		conds := conditionsMap[limit.ID]
 
+		s.log.Debug("findMatchingLimit: checking limit",
+			zap.String("limit_id", limit.ID),
+			zap.String("limit_type", limit.LimitType),
+			zap.Int("conditions_count", len(conds)))
+
 		if len(conds) == 0 {
 			if defaultLimit == nil {
 				defaultLimit = &limit
+				s.log.Debug("findMatchingLimit: set as default limit",
+					zap.String("limit_id", limit.ID))
 			}
 			continue
 		}
@@ -400,22 +413,43 @@ func (s *ProtocolService) findMatchingLimit(
 		match := true
 		for _, cond := range conds {
 			actualVal, exists := contextParams[cond.DimensionKey]
+
+			s.log.Debug("findMatchingLimit: checking condition",
+				zap.String("limit_id", limit.ID),
+				zap.String("dimension_key", cond.DimensionKey),
+				zap.String("operator", cond.ConditionOperator),
+				zap.String("expected_value", cond.ExpectedValue),
+				zap.Bool("exists_in_context", exists),
+				zap.String("actual_value", actualVal))
+
 			if !exists {
 				match = false
+				s.log.Debug("findMatchingLimit: dimension key not found in context",
+					zap.String("dimension_key", cond.DimensionKey))
 				break
 			}
+
 			switch cond.ConditionOperator {
 			case "=":
 				if actualVal != cond.ExpectedValue {
 					match = false
+					s.log.Debug("findMatchingLimit: equality check failed",
+						zap.String("expected", cond.ExpectedValue),
+						zap.String("actual", actualVal))
 				}
 			case "!=":
 				if actualVal == cond.ExpectedValue {
 					match = false
+					s.log.Debug("findMatchingLimit: inequality check failed",
+						zap.String("expected", cond.ExpectedValue),
+						zap.String("actual", actualVal))
 				}
 			case "IN":
 				if !containsValue(cond.ExpectedValue, actualVal) {
 					match = false
+					s.log.Debug("findMatchingLimit: IN check failed",
+						zap.String("expected_csv", cond.ExpectedValue),
+						zap.String("actual", actualVal))
 				}
 			}
 			if !match {
@@ -424,14 +458,20 @@ func (s *ProtocolService) findMatchingLimit(
 		}
 
 		if match {
+			s.log.Debug("findMatchingLimit: limit matched",
+				zap.String("limit_id", limit.ID))
 			return limit
 		}
 	}
 
 	if defaultLimit != nil {
+		s.log.Debug("findMatchingLimit: returning default limit",
+			zap.String("limit_id", defaultLimit.ID))
 		return *defaultLimit
 	}
 
+	s.log.Warn("findMatchingLimit: no limit found for any conditions",
+		zap.Int("limits_checked", len(limits)))
 	return models.NormativeLimit{}
 }
 
@@ -450,14 +490,14 @@ func splitCSV(s string) []string {
 	var current string
 	for _, r := range s {
 		if r == ',' {
-			result = append(result, current)
+			result = append(result, strings.TrimSpace(current)) // Убираем пробелы
 			current = ""
 		} else {
 			current += string(r)
 		}
 	}
 	if current != "" {
-		result = append(result, current)
+		result = append(result, strings.TrimSpace(current)) // Убираем пробелы
 	}
 	return result
 }

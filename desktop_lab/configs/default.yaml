@@ -8,7 +8,7 @@ db:
 
 server:
   host: localhost
-  port: 8080
+  port: 8081
   max_header_bytes:  1048576
   read_timeout: 5s
   write_timeout: 10s
