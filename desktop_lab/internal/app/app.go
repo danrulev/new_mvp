@@ -24,6 +24,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// App представляет основное приложение с управлением состоянием.
 type App struct {
 	dbConn  *sqlx.DB
 	cfgMu   sync.RWMutex
@@ -34,9 +35,7 @@ type App struct {
 	ready   bool
 }
 
-// ============================================================================
-// ИНИЦИАЛИЗАЦИЯ
-// ============================================================================
+// NewApp инициализирует и запускает приложение.
 func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 	a := &App{}
 
@@ -55,50 +54,71 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 	a.log = logInstance
 	a.log.Info("Starting Lab Desktop Application (HTTP Mode)")
 
+	// 3. Выбор БД (если разрешено)
 	if a.cfg.DB.AllowSelection {
-		selectedPath, ok, err := dlgs.File(
-			"Выберите файл базы данных",
-			"*.db *.sqlite",
-			false, // ← важно: false для выбора файла
-		)
-		if err != nil {
-			return fmt.Errorf("file dialog error: %w", err)
+		if err := a.selectDatabase(); err != nil {
+			return err
 		}
-		if !ok {
-			a.log.Info("Database selection cancelled by user")
-			return nil // или верните ошибку, если отмена недопустима
-		}
-
-		if _, statErr := os.Stat(selectedPath); os.IsNotExist(statErr) {
-			a.log.Warn("Selected database file does not exist, will create new",
-				zap.String("path", selectedPath))
-		}
-
-		cfg.DB.Path = selectedPath
-		a.log.Info("Database selected", zap.String("path", selectedPath))
 	}
 
-	// 3. Шрифты
+	// 4. Шрифты
 	fontDir, err := font.ExtractFonts(fontFS)
 	if err != nil {
 		return fmt.Errorf("failed to extract fonts: %w", err)
 	}
 	a.fontDir = fontDir
 
-	// 4. БД
-	dbConn, err := db.New(cfg.DB.Path, a.log)
+	// 5. Подключение к БД
+	dbConn, err := db.New(a.cfg.DB.Path, a.log)
 	if err != nil {
 		return fmt.Errorf("db connection failed: %w", err)
 	}
 	a.dbConn = dbConn
 
-	// 5. Миграции
+	// 6. Миграции
 	if err := a.runMigrations(dbConn); err != nil {
 		return fmt.Errorf("migration failed: %w", err)
 	}
 
+	// 7. Инициализация слоев приложения
 	repos := repository.NewRepository(dbConn, a.log)
+	svc := a.initServices(repos, wkhtmltopdfWindows)
+	handl := a.initHandlers(svc, frontendFS)
 
+	a.ready = true
+	a.log.Info("Application initialized successfully")
+
+	// 8. Запуск сервера
+	return a.runServer(handl)
+}
+
+// selectDatabase открывает диалог выбора файла БД.
+func (a *App) selectDatabase() error {
+	selectedPath, ok, err := dlgs.File(
+		"Выберите файл базы данных",
+		"*.db *.sqlite",
+		false,
+	)
+	if err != nil {
+		return fmt.Errorf("file dialog error: %w", err)
+	}
+	if !ok {
+		a.log.Info("Database selection cancelled by user")
+		return nil
+	}
+
+	if _, statErr := os.Stat(selectedPath); os.IsNotExist(statErr) {
+		a.log.Warn("Selected database file does not exist, will create new",
+			zap.String("path", selectedPath))
+	}
+
+	a.cfg.DB.Path = selectedPath
+	a.log.Info("Database selected", zap.String("path", selectedPath))
+	return nil
+}
+
+// initServices инициализирует сервисы.
+func (a *App) initServices(repos *repository.Repositories, wkhtmltopdfWindows []byte) *service.Services {
 	svc := service.NewServices(
 		repos.Material, repos.Standard, repos.Protocol, repos.Sample, repos.Group, repos.Token, repos.User, repos.Dimension,
 		a.fontDir, "templates", wkhtmltopdfWindows, *a.cfg, a.log,
@@ -110,18 +130,23 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 		a.log.Info("Data seed completed")
 	}
 
+	return svc
+}
+
+// initHandlers инициализирует обработчики.
+func (a *App) initHandlers(svc *service.Services, frontendFS embed.FS) *handler.Handler {
 	handl := handler.NewHandler(
 		svc.Auth, svc.Dimensions, svc.Materials, svc.Groups, svc.Protocols, svc.Reports, svc.Samples, svc.Standards,
 		a, a.log, a.cfg.Auth.RefreshTokenTTL,
 	)
-
 	handl.SetFrontendFS(frontendFS)
+	return handl
+}
 
-	a.ready = true
-	a.log.Info("Application initialized successfully")
-
-	a.log.Info("Starting server", zap.String("address", cfg.Server.Host+":"+cfg.Server.Port))
-	server := server.NewServer(cfg.Server, handl.Init())
+// runServer запускает HTTP-сервер и обрабатывает сигналы завершения.
+func (a *App) runServer(h *handler.Handler) error {
+	a.log.Info("Starting server", zap.String("address", a.cfg.Server.Host+":"+a.cfg.Server.Port))
+	server := server.NewServer(a.cfg.Server, h.Init())
 
 	go func() {
 		if err := server.Start(); err != nil {
@@ -138,11 +163,10 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 	}
 
 	a.log.Info("Shutting down")
-
 	return nil
 }
 
-// Метод для безопасной смены БД
+// SwitchDatabase безопасно переключает подключение к новой БД.
 func (a *App) SwitchDatabase(newPath string) error {
 	a.cfgMu.Lock()
 	defer a.cfgMu.Unlock()
@@ -169,12 +193,14 @@ func (a *App) SwitchDatabase(newPath string) error {
 	return nil
 }
 
+// IsReady возвращает статус готовности приложения.
 func (a *App) IsReady() bool {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return a.ready
 }
 
+// runMigrations выполняет миграции БД.
 func (a *App) runMigrations(dbConn *sqlx.DB) error {
 	execPath, err := os.Executable()
 	if err != nil {
@@ -200,6 +226,7 @@ func (a *App) runMigrations(dbConn *sqlx.DB) error {
 	return nil
 }
 
+// GetDBPath возвращает текущий путь к БД.
 func (a *App) GetDBPath() string {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
