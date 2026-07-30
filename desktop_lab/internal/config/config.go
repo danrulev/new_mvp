@@ -27,35 +27,28 @@ type ServerConfig struct {
 }
 
 type DBConfig struct {
-	Path           string `mapstructure:"path" validate:"required"` // Путь к файлу, например: "./data/app.db"
-	AllowSelection bool
+	Path           string `mapstructure:"path" validate:"required"`
+	AllowSelection bool   `mapstructure:"allow_selection"`
 }
 
 type LoggerConfig struct {
-	Level             string   `mapstructure:"level"`
+	Level             string   `mapstructure:"level" validate:"required"`
 	Development       bool     `mapstructure:"development"`
 	DisableCaller     bool     `mapstructure:"disable_caller"`
 	DisableStacktrace bool     `mapstructure:"disable_stacktrace"`
-	Encoding          string   `mapstructure:"encoding"`
+	Encoding          string   `mapstructure:"encoding" validate:"required"`
 	OutputPaths       []string `mapstructure:"output_paths"`
 	ErrorOutputPaths  []string `mapstructure:"error_output_paths"`
 }
 
 type Config struct {
-	Auth   AuthCfg
+	Auth   AuthCfg      `mapstructure:"auth"`
 	Server ServerConfig `mapstructure:"server"`
 	DB     DBConfig     `mapstructure:"db"`
 	Logger LoggerConfig `mapstructure:"logger"`
 }
 
 func NewConfig() (*Config, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get working directory: %w", err)
-	}
-
-	dbPath := filepath.Join(wd, "lab_data.db")
-
 	if err := godotenv.Load(); err != nil {
 		if !os.IsNotExist(err) {
 			return nil, fmt.Errorf("error loading .env file: %w", err)
@@ -65,23 +58,33 @@ func NewConfig() (*Config, error) {
 	v := viper.New()
 	v.AutomaticEnv()
 	v.AddConfigPath("./configs")
+	v.AddConfigPath(".")
+	v.SetConfigType("yaml")
 
-	name := v.GetString("CONFIG_NAME")
-	if name == "" {
-		name = "default"
+	configName := v.GetString("CONFIG_NAME")
+	if configName == "" {
+		configName = "default"
 	}
-	v.SetConfigName(name)
+	v.SetConfigName(configName)
 
 	if err := v.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return nil, fmt.Errorf("failed to read config file: %w", err)
+		}
 	}
 
 	cfg := Config{}
-	err = v.Unmarshal(&cfg)
-	if err != nil {
+	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	cfg.DB.Path = dbPath
+	if cfg.DB.Path == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get working directory: %w", err)
+		}
+		cfg.DB.Path = filepath.Join(wd, "lab_data.db")
+	}
 
 	if err := valid.ValidateStruct(cfg); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
