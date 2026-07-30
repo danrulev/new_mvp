@@ -166,27 +166,40 @@ func (a *App) runServer(h *handler.Handler) error {
 	return nil
 }
 
-// SwitchDatabase безопасно переключает подключение к новой БД.
+// SwitchDatabase безопасно переключает подключение к новой БД с атомарностью.
 func (a *App) SwitchDatabase(newPath string) error {
 	a.cfgMu.Lock()
 	defer a.cfgMu.Unlock()
 
-	if a.dbConn != nil {
-		if err := a.dbConn.Close(); err != nil {
-			a.log.Error("Failed to close old DB", zap.Error(err))
-		}
+	// Проверяем, что newPath отличается от текущего пути
+	if a.cfg.DB.Path == newPath {
+		a.log.Debug("database path unchanged", zap.String("path", newPath))
+		return nil
 	}
 
-	a.cfg.DB.Path = newPath
+	oldConn := a.dbConn
 
+	// Создаем новое подключение
 	newConn, err := db.New(newPath, a.log)
 	if err != nil {
 		return fmt.Errorf("failed to connect to new DB: %w", err)
 	}
-	a.dbConn = newConn
 
+	// Выполняем миграции на новом подключении перед переключением
 	if err := a.runMigrations(newConn); err != nil {
+		newConn.Close()
 		return fmt.Errorf("migration on new DB failed: %w", err)
+	}
+
+	// Атомарно переключаем подключение
+	a.dbConn = newConn
+	a.cfg.DB.Path = newPath
+
+	// Закрываем старое подключение после успешного переключения
+	if oldConn != nil {
+		if err := oldConn.Close(); err != nil {
+			a.log.Error("Failed to close old DB", zap.Error(err))
+		}
 	}
 
 	a.log.Info("Database switched successfully", zap.String("path", newPath))

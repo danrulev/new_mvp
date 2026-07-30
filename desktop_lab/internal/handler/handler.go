@@ -2,6 +2,7 @@ package handler
 
 import (
 	"desktop_lab/internal/service"
+	"desktop_lab/pkg/ratelimiter"
 	"embed"
 	"net/http"
 	"strings"
@@ -33,6 +34,7 @@ type Handler struct {
 	frontendFS      embed.FS
 	frontendFSReady bool
 	refreshTokenTTL time.Duration
+	rateLimiter     *ratelimiter.RateLimiter
 }
 
 // NewHandler создает новый экземпляр Handler.
@@ -49,6 +51,9 @@ func NewHandler(
 	log *zap.Logger,
 	refreshTokenTTL time.Duration,
 ) *Handler {
+	// Создаем rate limiter: 10 запросов в секунду с burst до 20
+	rateLimiter := ratelimiter.NewRateLimiter(20, 10)
+
 	return &Handler{
 		auth:            auth,
 		dimension:       dimension,
@@ -61,6 +66,7 @@ func NewHandler(
 		appRef:          appRef,
 		log:             log,
 		refreshTokenTTL: refreshTokenTTL,
+		rateLimiter:     rateLimiter,
 	}
 }
 
@@ -74,7 +80,7 @@ func (h *Handler) SetFrontendFS(fs embed.FS) {
 func (h *Handler) Init() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
-	router.Use(gin.Recovery(), h.logging())
+	router.Use(gin.Recovery(), h.logging(), h.rateLimitMiddleware(h.rateLimiter))
 
 	// Health check
 	router.GET("/health", func(c *gin.Context) {

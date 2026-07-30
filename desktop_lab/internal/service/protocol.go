@@ -40,7 +40,8 @@ func NewProtocolService(
 	}
 }
 
-// CreateProtocolWithSample создает пробу, затем протокол с результатами
+// CreateProtocolWithSample создает пробу и протокол с результатами в одной транзакции.
+// Это обеспечивает атомарность: либо создаются оба объекта, либо ни одного.
 func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req models.CreateProtocolRequest) (models.Protocol, error) {
 	log := loggerWith(ctx, s.log,
 		zap.String("service_name", "CreateProtocolWithSample"),
@@ -48,7 +49,7 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		zap.String("material_id", req.Sample.MaterialID),
 		zap.String("lab_name", req.LabName),
 	)
-	log.Info("starting protocol creation workflow")
+	log.Info("starting protocol creation workflow with transaction")
 	start := time.Now()
 	defer func() {
 		log.Debug("protocol creation workflow completed", zap.Duration("duration_ms", time.Since(start)))
@@ -59,8 +60,19 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		req.Sample.CollectionDate = &now
 	}
 
-	// 1. Создаем Пробу (Sample)
+	// Генерируем ID заранее для использования в транзакции
 	sampleID := uuid.New().String()
+	protocolID := uuid.New().String()
+	now := time.Now()
+
+	log.Debug("generating protocol number")
+	protocolNumber, err := s.generateProtocolNumber(ctx, protocolID, req.Sample.MaterialID, req.GroupID, sampleID, now)
+	if err != nil {
+		log.Error("failed to generate protocol number", zap.Error(err))
+		return models.Protocol{}, fmt.Errorf("ошибка генерации номера протокола: %w", err)
+	}
+
+	// Подготавливаем данные для транзакции
 	sample := models.Sample{
 		ID:              sampleID,
 		GroupID:         req.GroupID,
@@ -70,24 +82,6 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		CollectionDate:  *req.Sample.CollectionDate,
 		ContextParams:   req.Sample.ContextParams,
 		Note:            req.Sample.Note,
-	}
-
-	log.Debug("creating sample", zap.String("sample_id", sampleID))
-	if err := s.sampleRepo.Create(ctx, sample); err != nil {
-		log.Error("failed to create sample in repo", zap.Error(err))
-		return models.Protocol{}, fmt.Errorf("ошибка создания пробы: %w", err)
-	}
-	log.Debug("sample created successfully")
-
-	// 2. Подготавливаем Протокол
-	protocolID := uuid.New().String()
-	now := time.Now()
-
-	log.Debug("generating protocol number")
-	protocolNumber, err := s.generateProtocolNumber(ctx, protocolID, req.Sample.MaterialID, req.GroupID, sampleID, now)
-	if err != nil {
-		log.Error("failed to generate protocol number", zap.Error(err))
-		return models.Protocol{}, fmt.Errorf("ошибка генерации номера протокола: %w", err)
 	}
 
 	protocol := models.Protocol{
@@ -101,32 +95,19 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		Note:           req.Note,
 	}
 
-	// Предзагрузка всех методов стандарта (оптимизация)
-	if len(req.Results) > 0 {
-		firstMethodID := req.Results[0].MethodID
-		log.Debug("preloading standard methods cache", zap.String("first_method_id", firstMethodID))
+	log.Debug("executing transactional protocol creation")
 
-		firstMethod, err := s.standardRepo.GetTestMethod(ctx, firstMethodID)
-		if err != nil {
-			log.Error("failed to determine standard from first method", zap.Error(err), zap.String("method_id", firstMethodID))
-			return models.Protocol{}, fmt.Errorf("не удалось определить стандарт: %w", err)
-		}
-		standardID := firstMethod.StandardID
-
-		methodsCache, err := s.standardRepo.GetMethodsFullByStandardID(ctx, standardID)
-		if err != nil {
-			log.Warn("failed to preload methods cache, falling back to individual queries",
-				zap.Error(err), zap.String("standard_id", standardID))
-			// Продолжаем работу в режиме legacy
-		} else {
-			log.Info("using optimized path with methods cache",
-				zap.Int("methods_cached", len(methodsCache)))
-			return s.createProtocolWithCache(ctx, protocol, sample, req.Results, methodsCache)
-		}
+	// Используем репозиторий для выполнения всей операции в транзакции
+	if err := s.protocolRepo.CreateWithSample(ctx, sample, protocol, req.Results); err != nil {
+		log.Error("failed to create protocol with sample in transaction", zap.Error(err))
+		return models.Protocol{}, fmt.Errorf("ошибка создания протокола с пробой: %w", err)
 	}
 
-	log.Info("using legacy path with individual queries")
-	return s.createProtocolLegacy(ctx, protocol, sample, req.Results)
+	log.Info("protocol and sample created successfully in transaction",
+		zap.String("protocol_number", protocol.ProtocolNumber),
+		zap.String("sample_id", sampleID))
+
+	return protocol, nil
 }
 
 // createProtocolWithCache - оптимизированная версия с кэшированием
