@@ -39,13 +39,13 @@ func (h *Handler) createProtocol(c *gin.Context) {
 }
 
 func (h *Handler) getProtocolList(c *gin.Context) {
-	var p models.Paginated
+	var p models.ProtocolListFilter
 	if err := c.BindQuery(&p); err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "getProtocolList", "invalid data", err)
 		return
 	}
 
-	data, err := h.protocol.GetList(c.Request.Context(), p.Limit, p.Offset)
+	data, err := h.protocol.GetList(c.Request.Context(), p, p.Limit, p.Offset)
 	if err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "getProtocolList", "service error", err)
 		return

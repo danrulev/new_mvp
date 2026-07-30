@@ -63,6 +63,16 @@ type FullProtocolResponse struct {
 	Samples  []Sample     `json:"samples" db:"-"`
 }
 
+type ProtocolListFilter struct {
+	ProtocolID    *string    `json:"protocol_id"`
+	LabName       *string    `json:"lab_name"`
+	OperatorName  *string    `json:"operator_name"`
+	Status        *string    `json:"status"`
+	StartTestDate *time.Time `json:"start_test_date"`
+	EndTestDate   *time.Time `json:"end_test_date"`
+	Paginated
+}
+
 type ProtocolListResponse struct {
 	Items []Protocol        `json:"items"`
 	Meta  PaginatedMetadata `json:"meta"`

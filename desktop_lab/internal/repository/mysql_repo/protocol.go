@@ -432,69 +432,127 @@ func (r *ProtocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]mode
 	return protocols, nil
 }
 
-func (r *ProtocolRepo) GetList(ctx context.Context, limit, offset int64) ([]models.Protocol, int64, error) {
-	log := logQuery(ctx, r.log, "SELECT", "protocols", zap.Int64("limit", limit),
-		zap.Int64("offset", offset))
+func (r *ProtocolRepo) GetList(ctx context.Context, filter models.ProtocolListFilter, limit, offset int64) ([]models.Protocol, int64, error) {
+	log := logQuery(ctx, r.log, "SELECT", "protocols", zap.Int64("limit", limit), zap.Int64("offset", offset))
 	log.Debug("fetching paginated protocols list")
 
-	// Проверка входных параметров для защиты от некорректных значений
+	// 1. Валидация входных параметров
 	if limit <= 0 || limit > 1000 {
-		limit = 50 // Значение по умолчанию
+		limit = 50
 	}
 	if offset < 0 {
 		offset = 0
 	}
 
-	var total int64
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM protocols`).Scan(&total)
-	if err != nil {
-		return nil, 0, err
+	var (
+		filterFields []string
+		filterArgs   []interface{}
+	)
+
+	// 2. Построение условий фильтрации
+	if filter.LabName != nil {
+		filterFields = append(filterFields, "lab_name LIKE ?")
+		filterArgs = append(filterArgs, "%"+*filter.LabName+"%") // ИСПРАВЛЕНО: % добавляются к аргументу
 	}
 
-	// Оптимизированный запрос с явным указанием полей
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, sample_id, protocol_number, lab_name, operator_name, test_date, status, created_at, updated_at 
-         FROM protocols 
-         ORDER BY created_at DESC 
-         LIMIT ? OFFSET ?`,
-		limit, offset,
-	)
+	if filter.OperatorName != nil {
+		filterFields = append(filterFields, "operator_name LIKE ?")
+		filterArgs = append(filterArgs, "%"+*filter.OperatorName+"%") // ИСПРАВЛЕНО
+	}
+
+	if filter.ProtocolID != nil {
+		// РЕКОМЕНДАЦИЯ: Для ID обычно используется точное совпадение (=), а не LIKE.
+		// Если вам нужен именно частичный поиск, оставьте LIKE, но синтаксис исправлен.
+		filterFields = append(filterFields, "id LIKE ?")
+		filterArgs = append(filterArgs, "%"+*filter.ProtocolID+"%") // ИСПРАВЛЕНО
+	}
+
+	if filter.StartTestDate != nil {
+		filterFields = append(filterFields, "test_date >= ?")
+		// Форматируем время в строку для надежности работы с MySQL DATETIME/DATE
+		filterArgs = append(filterArgs, filter.StartTestDate.Format(timeLayout))
+	}
+
+	if filter.EndTestDate != nil {
+		filterFields = append(filterFields, "test_date <= ?")
+		filterArgs = append(filterArgs, filter.EndTestDate.Format(timeLayout))
+	}
+
+	if filter.Status != nil {
+		filterFields = append(filterFields, "status = ?")
+		filterArgs = append(filterArgs, *filter.Status)
+	}
+
+	// 3. Формирование WHERE-клаузы
+	var whereClause string
+	if len(filterFields) > 0 {
+		whereClause = " WHERE " + strings.Join(filterFields, " AND ")
+	}
+
+	// 4. Запрос общего количества (с учетом фильтров, но БЕЗ LIMIT/OFFSET)
+	countQuery := "SELECT COUNT(*) FROM protocols" + whereClause
+
+	var total int64
+	err := r.db.QueryRowContext(ctx, countQuery, filterArgs...).Scan(&total)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("failed to count protocols: %w", err)
+	}
+
+	// Если записей нет, сразу возвращаем пустой результат, чтобы не делать лишний запрос
+	if total == 0 {
+		return []models.Protocol{}, 0, nil
+	}
+
+	// 5. Запрос данных (с фильтрами И с LIMIT/OFFSET)
+	// Копируем filterArgs, чтобы не мутировать исходный слайс перед добавлением limit/offset
+	selectArgs := append([]interface{}{}, filterArgs...)
+	selectArgs = append(selectArgs, limit, offset)
+
+	selectQuery := `
+		SELECT id, sample_id, protocol_number, lab_name, operator_name, test_date, status, created_at, updated_at 
+		FROM protocols 
+	` + whereClause + `
+		ORDER BY created_at DESC 
+		LIMIT ? OFFSET ?`
+
+	rows, err := r.db.QueryContext(ctx, selectQuery, selectArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query protocols list: %w", err)
 	}
 	defer rows.Close()
 
-	// Предварительное выделение памяти (оптимизация)
+	// 6. Чтение результатов
 	protocols := make([]models.Protocol, 0, limit)
 
 	for rows.Next() {
 		var p models.Protocol
 		var testDateStr, createdAt, updatedAt string
 
-		err := rows.Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.LabName, &p.OperatorName, &testDateStr, &p.Status, &createdAt, &updatedAt)
-		if err != nil {
-			return nil, 0, err
+		if scanErr := rows.Scan(&p.ID, &p.SampleID, &p.ProtocolNumber, &p.LabName, &p.OperatorName, &testDateStr, &p.Status, &createdAt, &updatedAt); scanErr != nil {
+			return nil, 0, fmt.Errorf("failed to scan protocol row: %w", scanErr)
 		}
 
-		p.CreatedAt, err = parseTime(createdAt)
-		if err != nil {
+		p.CreatedAt, _ = parseTime(createdAt)
+		if p.CreatedAt.IsZero() {
 			p.CreatedAt = time.Now()
 		}
-		p.UpdatedAt, err = parseTime(updatedAt)
-		if err != nil {
+
+		p.UpdatedAt, _ = parseTime(updatedAt)
+		if p.UpdatedAt.IsZero() {
 			p.UpdatedAt = time.Now()
 		}
 
-		p.TestDate, err = parseTime(testDateStr)
-		if err != nil {
+		p.TestDate, _ = parseTime(testDateStr)
+		if p.TestDate.IsZero() {
 			p.TestDate = time.Now()
 		}
 
 		protocols = append(protocols, p)
 	}
+
 	if err := rows.Err(); err != nil {
 		log.Error("rows iteration error", zap.Error(err))
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("rows iteration error: %w", err)
 	}
 
 	log.Debug("protocols retrieved successfully",
