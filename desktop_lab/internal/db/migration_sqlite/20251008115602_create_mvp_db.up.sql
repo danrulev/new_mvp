@@ -153,7 +153,8 @@ CREATE TABLE IF NOT EXISTS samples (
     -- Хранятся как JSON для гибкости: {"climate_zone": "II", "mix_grade": "I", "layer": "upper"}
     context_params TEXT NOT NULL DEFAULT '{}', 
     note TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_samples_group ON samples(group_id);
 -- Индекс для поиска проб по параметрам (потребуется функциональный индекс или поиск по JSON в коде)
