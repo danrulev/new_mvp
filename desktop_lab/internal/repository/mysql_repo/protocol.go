@@ -6,9 +6,6 @@ import (
 	"desktop_lab/internal/models"
 	"encoding/json"
 	"fmt"
-	"math"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,24 +13,13 @@ import (
 	"go.uber.org/zap"
 )
 
-// formulaEvaluator интерфейс для вычисления формул
-type formulaEvaluator interface {
-	CalculateFormula(expr string, params map[string]interface{}) (float64, error)
-}
-
 type ProtocolRepo struct {
-	db        *sqlx.DB
-	log       *zap.Logger
-	evaluator formulaEvaluator
+	db  *sqlx.DB
+	log *zap.Logger
 }
 
 func NewProtocolRepo(db *sqlx.DB, log *zap.Logger) *ProtocolRepo {
 	return &ProtocolRepo{db: db, log: log}
-}
-
-// SetFormulaEvaluator устанавливает evaluator формул (внедряется из сервиса)
-func (r *ProtocolRepo) SetFormulaEvaluator(e formulaEvaluator) {
-	r.evaluator = e
 }
 
 // CreateFull создает протокол и результаты в одной транзакции с batch insert
@@ -156,7 +142,8 @@ func (r *ProtocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 
 // CreateWithSample создает пробу и протокол с результатами в одной транзакции.
 // Обеспечивает атомарность: либо создаются все записи, либо ни одной.
-func (r *ProtocolRepo) CreateWithSample(ctx context.Context, sample models.Sample, protocol models.Protocol, results []models.CreateResultDTO) error {
+// Принимает уже подготовленные результаты с вычисленными значениями.
+func (r *ProtocolRepo) CreateWithSample(ctx context.Context, sample models.Sample, protocol models.Protocol, results []models.TestResult) error {
 	log := logQuery(ctx, r.log, "INSERT (TX)", "samples + protocols + test_results",
 		zap.String("sample_id", sample.ID),
 		zap.String("protocol_id", protocol.ID),
@@ -225,18 +212,6 @@ func (r *ProtocolRepo) CreateWithSample(ctx context.Context, sample models.Sampl
 
 	// 3. Создаем результаты тестов (TestResults)
 	if len(results) > 0 {
-		// Предзагружаем методы стандарта для оптимизации
-		methodsCache := make(map[string]models.TestMethodFull)
-		if len(results) > 0 {
-			firstMethodID := results[0].MethodID
-			firstMethod, getErr := r.getTestMethod(tx, firstMethodID)
-			if getErr == nil {
-				standardID := firstMethod.StandardID
-				methodsCache, _ = r.getMethodsByStandardID(tx, standardID)
-				log.Debug("using methods cache for validation", zap.Int("methods_cached", len(methodsCache)))
-			}
-		}
-
 		resultStmt, prepErr := tx.PrepareContext(ctx,
 			`INSERT INTO test_results 
 			 (id, protocol_id, method_id, input_data, calculated_value, applied_limit_id, is_compliant, deviation_msg, note, created_at)
@@ -246,7 +221,7 @@ func (r *ProtocolRepo) CreateWithSample(ctx context.Context, sample models.Sampl
 		}
 		defer resultStmt.Close()
 
-		for i, inputRes := range results {
+		for i, res := range results {
 			// Проверка контекста в цикле
 			select {
 			case <-ctx.Done():
@@ -256,115 +231,40 @@ func (r *ProtocolRepo) CreateWithSample(ctx context.Context, sample models.Sampl
 
 			resultID := uuid.New().String()
 
-			// Получаем метод из кэша или БД
-			var fullMethod models.TestMethodFull
-			var exists bool
-			if fullMethod, exists = methodsCache[inputRes.MethodID]; !exists {
-				fullMethod, err = r.getMethodFull(tx, inputRes.MethodID)
-				if err != nil {
-					return fmt.Errorf("method %s not found: %w", inputRes.MethodID, err)
-				}
-			}
+			res.ID = resultID
+			res.ProtocolID = protocol.ID
+			res.CreatedAt = nowUTC
 
-			method := fullMethod.Method
-			inputs := fullMethod.Inputs
-
-			// Вычисляем значение
-			var calculatedValue float64
-			inputDataMap := make(map[string]interface{})
-
-			if method.FormulaExpr != "" {
-				params := make(map[string]interface{})
-				for _, inp := range inputs {
-					valStr, exists := inputRes.RawInputs[inp.ParamKey]
-					if inp.IsRequired && (!exists || valStr == "") {
-						return fmt.Errorf("требуется параметр '%s' (%s) для метода '%s'", inp.Label, inp.ParamKey, method.Name)
-					}
-					if !exists || valStr == "" {
-						continue
-					}
-					val, parseErr := strconv.ParseFloat(valStr, 64)
-					if parseErr != nil {
-						return fmt.Errorf("некорректное число '%s' для параметра '%s': %w", valStr, inp.Label, parseErr)
-					}
-					params[inp.ParamKey] = val
-					inputDataMap[inp.ParamKey] = val
-				}
-
-				calcVal, calcErr := r.calculateFormula(method.FormulaExpr, params)
-				if calcErr != nil {
-					return fmt.Errorf("ошибка расчета формулы '%s': %w", method.Name, calcErr)
-				}
-				calculatedValue = math.Round(calcVal*100) / 100
-			} else {
-				// Ручное значение
-				if valStr, exists := inputRes.RawInputs["value"]; exists && valStr != "" {
-					val, parseErr := strconv.ParseFloat(valStr, 64)
-					if parseErr != nil {
-						return fmt.Errorf("некорректное ручное значение '%s': %w", valStr, parseErr)
-					}
-					calculatedValue = math.Round(val*100) / 100
-				}
-			}
-
-			// Валидация лимитов
-			applicableLimit := r.findMatchingLimit(fullMethod.Limits, fullMethod.LimitConditions, sample.ContextParams)
-			isCompliant := true
-			var deviationMsg string
-			var appliedLimitID *string
-
-			if applicableLimit.ID != "" {
-				appliedLimitID = &applicableLimit.ID
-				switch applicableLimit.LimitType {
-				case "min":
-					if applicableLimit.MinValue != nil && calculatedValue < *applicableLimit.MinValue {
-						isCompliant = false
-						deviationMsg = fmt.Sprintf("Ниже нормы на %.2f %s", *applicableLimit.MinValue-calculatedValue, method.Unit)
-					}
-				case "max":
-					if applicableLimit.MaxValue != nil && calculatedValue > *applicableLimit.MaxValue {
-						isCompliant = false
-						deviationMsg = fmt.Sprintf("Выше нормы на %.2f %s", calculatedValue-*applicableLimit.MaxValue, method.Unit)
-					}
-				case "range":
-					if applicableLimit.MinValue != nil && applicableLimit.MaxValue != nil {
-						if calculatedValue < *applicableLimit.MinValue || calculatedValue > *applicableLimit.MaxValue {
-							isCompliant = false
-							if calculatedValue < *applicableLimit.MinValue {
-								deviationMsg = fmt.Sprintf("Ниже диапазона [%.2f; %.2f]", *applicableLimit.MinValue, *applicableLimit.MaxValue)
-							} else {
-								deviationMsg = fmt.Sprintf("Выше диапазона [%.2f; %.2f]", *applicableLimit.MinValue, *applicableLimit.MaxValue)
-							}
-						}
-					}
-				}
-			} else {
-				deviationMsg = "Норматив не применён"
-			}
-
-			// Сериализуем inputData
 			inputJSON := "{}"
-			if len(inputDataMap) > 0 {
-				b, marshalErr := json.Marshal(inputDataMap)
+			if len(res.InputData) > 0 {
+				b, marshalErr := json.Marshal(res.InputData)
 				if marshalErr != nil {
 					return fmt.Errorf("failed to marshal input data: %w", marshalErr)
 				}
 				inputJSON = string(b)
 			}
 
-			var compliant *int
-			v := 0
-			if isCompliant {
-				v = 1
+			var calcVal *float64 = res.CalculatedValue
+			var compliant *int = nil
+			if res.IsCompliant != nil {
+				v := 0
+				if *res.IsCompliant {
+					v = 1
+				}
+				compliant = &v
 			}
-			compliant = &v
 
 			_, execErr := resultStmt.ExecContext(ctx,
-				resultID, protocol.ID, method.ID, inputJSON, calculatedValue,
-				appliedLimitID, compliant, deviationMsg, inputRes.Note, nowStr,
+				resultID, res.ProtocolID, res.MethodID, inputJSON, calcVal,
+				res.AppliedLimitID, compliant, res.DeviationMsg, res.Note, nowStr,
 			)
 			if execErr != nil {
-				return fmt.Errorf("failed to insert result for method %s: %w", method.ID, execErr)
+				return fmt.Errorf("failed to insert result for method %s: %w", res.MethodID, execErr)
+			}
+
+			// Лог прогресса
+			if (i+1)%100 == 0 {
+				log.Debug("batch insert progress", zap.Int("inserted", i+1))
 			}
 		}
 	}
@@ -378,134 +278,6 @@ func (r *ProtocolRepo) CreateWithSample(ctx context.Context, sample models.Sampl
 		zap.String("protocol_number", protocol.ProtocolNumber),
 		zap.Int("results_inserted", len(results)))
 	return nil
-}
-
-// Вспомогательные методы для работы внутри транзакции
-func (r *ProtocolRepo) getTestMethod(tx *sql.Tx, methodID string) (models.TestMethod, error) {
-	var m models.TestMethod
-	err := tx.QueryRow(`SELECT id, standard_id, name, unit, formula_expr, is_mandatory FROM test_methods WHERE id = ?`, methodID).
-		Scan(&m.ID, &m.StandardID, &m.Name, &m.Unit, &m.FormulaExpr, &m.IsMandatory)
-	return m, err
-}
-
-func (r *ProtocolRepo) getMethodsByStandardID(tx *sql.Tx, standardID string) (map[string]models.TestMethodFull, error) {
-	rows, err := tx.Query(`SELECT id, standard_id, name, unit, formula_expr, is_mandatory FROM test_methods WHERE standard_id = ?`, standardID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	cache := make(map[string]models.TestMethodFull)
-	for rows.Next() {
-		var m models.TestMethod
-		if err := rows.Scan(&m.ID, &m.StandardID, &m.Name, &m.Unit, &m.FormulaExpr, &m.IsMandatory); err != nil {
-			return nil, err
-		}
-		cache[m.ID] = models.TestMethodFull{Method: m}
-	}
-	return cache, rows.Err()
-}
-
-func (r *ProtocolRepo) getMethodFull(tx *sql.Tx, methodID string) (models.TestMethodFull, error) {
-	full := models.TestMethodFull{}
-
-	// Получаем метод
-	err := tx.QueryRow(`SELECT id, standard_id, name, unit, formula_expr, is_mandatory FROM test_methods WHERE id = ?`, methodID).
-		Scan(&full.Method.ID, &full.Method.StandardID, &full.Method.Name, &full.Method.Unit, &full.Method.FormulaExpr, &full.Method.IsMandatory)
-	if err != nil {
-		return full, err
-	}
-
-	// Получаем инпуты
-	inputRows, err := tx.Query(`SELECT id, method_id, param_key, label, is_required FROM method_inputs WHERE method_id = ?`, methodID)
-	if err != nil {
-		return full, err
-	}
-	defer inputRows.Close()
-
-	full.Inputs = make([]models.MethodInput, 0)
-	for inputRows.Next() {
-		var inp models.MethodInput
-		if err := inputRows.Scan(&inp.ID, &inp.MethodID, &inp.ParamKey, &inp.Label, &inp.IsRequired); err != nil {
-			return full, err
-		}
-		full.Inputs = append(full.Inputs, inp)
-	}
-
-	// Получаем лимиты и условия (упрощенно)
-	full.Limits = make([]models.NormativeLimit, 0)
-	full.LimitConditions = make(map[string][]models.LimitCondition)
-
-	return full, nil
-}
-
-func (r *ProtocolRepo) findMatchingLimit(limits []models.NormativeLimit, conditionsMap map[string][]models.LimitCondition, contextParams map[string]string) models.NormativeLimit {
-	var defaultLimit *models.NormativeLimit
-
-	for i := range limits {
-		limit := limits[i]
-		conds := conditionsMap[limit.ID]
-
-		if len(conds) == 0 {
-			if defaultLimit == nil {
-				defaultLimit = &limit
-			}
-			continue
-		}
-
-		match := true
-		for _, cond := range conds {
-			actualVal, exists := contextParams[cond.DimensionKey]
-			if !exists {
-				match = false
-				break
-			}
-
-			switch cond.ConditionOperator {
-			case "=":
-				if actualVal != cond.ExpectedValue {
-					match = false
-				}
-			case "!=":
-				if actualVal == cond.ExpectedValue {
-					match = false
-				}
-			case "IN":
-				if !strings.Contains(cond.ExpectedValue, actualVal) {
-					match = false
-				}
-			}
-			if !match {
-				break
-			}
-		}
-
-		if match {
-			return limit
-		}
-	}
-
-	if defaultLimit != nil {
-		return *defaultLimit
-	}
-	return models.NormativeLimit{}
-}
-
-func (r *ProtocolRepo) calculateFormula(expr string, params map[string]interface{}) (float64, error) {
-	// Используем внедренный evaluator если доступен
-	if r.evaluator != nil {
-		return r.evaluator.CalculateFormula(expr, params)
-	}
-
-	// Fallback: простая реализация для базовых случаев
-	// Заменяем параметры в выражении
-	resultExpr := expr
-	for key, val := range params {
-		resultExpr = strings.ReplaceAll(resultExpr, key, fmt.Sprintf("%v", val))
-	}
-
-	// Для полноценной поддержки нужно подключить github.com/antonmedv/expr или similar
-	return 0, fmt.Errorf("формула '%s' требует внешнего eval-пакета или evaluator не настроен", expr)
 }
 
 // GetByID загружает протокол с данными пробы
