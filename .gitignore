@@ -1,5 +1,5 @@
 ```
-# Compiled and binary files
+# Compiled and build artifacts
 *.o
 *.obj
 *.out
@@ -10,6 +10,7 @@ vendor/
 # Logs and temp files
 *.log
 *.tmp
+*.swp
 
 # Environment
 .env
@@ -19,5 +20,14 @@ vendor/
 # Editors
 .vscode/
 .idea/
-*.swp
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Build directories (if any)
+dist/
+build/
+target/
 ```

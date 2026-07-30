@@ -499,6 +499,43 @@ func (r *StandardRepo) GetLimitConditions(ctx context.Context, limitID string) (
 	return conditions, nil
 }
 
+// GetLimitConditionsForMethod загружает все условия лимитов для метода
+func (r *StandardRepo) GetLimitConditionsForMethod(ctx context.Context, methodID string) (map[string][]models.LimitCondition, error) {
+	log := logQuery(ctx, r.log, "SELECT (JOIN)", "limit_conditions + normative_limits",
+		zap.String("method_id", methodID))
+	log.Debug("fetching all limit conditions for method")
+
+	query := `
+		SELECT lc.id, lc.limit_id, lc.dimension_key, lc.condition_operator, lc.expected_value
+		FROM limit_conditions lc
+		INNER JOIN normative_limits nl ON lc.limit_id = nl.id
+		WHERE nl.method_id = ?
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, methodID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string][]models.LimitCondition)
+	for rows.Next() {
+		var cond models.LimitCondition
+		if err := rows.Scan(&cond.ID, &cond.LimitID, &cond.DimensionKey, &cond.ConditionOperator, &cond.ExpectedValue); err != nil {
+			return nil, err
+		}
+		result[cond.LimitID] = append(result[cond.LimitID], cond)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	log.Debug("limit conditions retrieved successfully",
+		zap.Int("limits_count", len(result)))
+	return result, nil
+}
+
 func (r *StandardRepo) GetStandardDimensions(ctx context.Context, standardID string) ([]models.ContextDimension, error) {
 	log := logQuery(ctx, r.log, "SELECT (JOIN)", "context_dimensions + standard_context_dims",
 		zap.String("standard_id", standardID))
