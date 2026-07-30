@@ -1,33 +1,32 @@
 ```
-# Compiled and build artifacts
+# Go-specific ignores
 *.o
-*.obj
+*.a
 *.out
+*.test
+*.prof
+coverage.out
+coverprofile
 
 # Dependencies
 vendor/
 
-# Logs and temp files
-*.log
-*.tmp
-*.swp
+# Build artifacts
+bin/
+pkg/
 
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
 
-# Editors
+# Logs
+*.log
+
+# Editor/IDE
 .vscode/
 .idea/
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# Build directories (if any)
-dist/
-build/
-target/
+*.swp
+*.swo
+*~
 ```

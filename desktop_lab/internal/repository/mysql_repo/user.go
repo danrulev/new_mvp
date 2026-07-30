@@ -162,7 +162,7 @@ func (r *UserRepo) List(ctx context.Context, limit, offset int64) ([]models.User
 		}
 
 		if createdAt.Valid {
-			if t, err := helperParseTime(createdAt.String); err == nil {
+			if t, err := parseTime(createdAt.String); err == nil {
 				u.CreatedAt = t
 			} else {
 				r.log.Warn("failed to parse created_at", zap.String("val", createdAt.String), zap.Error(err))
@@ -170,7 +170,7 @@ func (r *UserRepo) List(ctx context.Context, limit, offset int64) ([]models.User
 		}
 
 		if updatedAt.Valid {
-			if t, err := helperParseTime(updatedAt.String); err == nil {
+			if t, err := parseTime(updatedAt.String); err == nil {
 				u.UpdatedAt = t
 			} else {
 				r.log.Warn("failed to parse updated_at", zap.String("val", updatedAt.String), zap.Error(err))
@@ -178,7 +178,7 @@ func (r *UserRepo) List(ctx context.Context, limit, offset int64) ([]models.User
 		}
 
 		if deletedAt.Valid {
-			if t, err := helperParseTime(deletedAt.String); err == nil {
+			if t, err := parseTime(deletedAt.String); err == nil {
 				u.DeletedAt = &t // или u.DeletedAt = t, зависит от вашей модели
 			} else {
 				r.log.Warn("failed to parse deleted_at", zap.String("val", deletedAt.String), zap.Error(err))

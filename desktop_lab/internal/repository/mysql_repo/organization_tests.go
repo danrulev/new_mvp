@@ -54,13 +54,13 @@ func (r *OrganizationTestsRepo) GetOrganizationTest(ctx context.Context, id stri
 		return models.OrganizationTest{}, err
 	}
 
-	organizationTest.CreatedAt, err = helperParseTime(createdAt)
+	organizationTest.CreatedAt, err = parseTime(createdAt)
 	if err != nil {
 		r.log.Warn("failed parse created at date", zap.Error(err), zap.String("val", createdAt))
 		organizationTest.CreatedAt = time.Now()
 	}
 
-	organizationTest.UpdatedAt, err = helperParseTime(updatedAt)
+	organizationTest.UpdatedAt, err = parseTime(updatedAt)
 	if err != nil {
 		r.log.Warn("failed parse updated at date", zap.Error(err), zap.String("val", updatedAt))
 		organizationTest.UpdatedAt = time.Now()
@@ -104,13 +104,13 @@ func (r *OrganizationTestsRepo) ListOrganizationTests(ctx context.Context, limit
 			return nil, 0, err
 		}
 
-		ot.CreatedAt, err = helperParseTime(createdAt)
+		ot.CreatedAt, err = parseTime(createdAt)
 		if err != nil {
 			r.log.Warn("failed parse created at date", zap.Error(err), zap.String("val", createdAt))
 			ot.CreatedAt = time.Now()
 		}
 
-		ot.UpdatedAt, err = helperParseTime(updatedAt)
+		ot.UpdatedAt, err = parseTime(updatedAt)
 		if err != nil {
 			r.log.Warn("failed parse updated at date", zap.Error(err), zap.String("val", updatedAt))
 			ot.UpdatedAt = time.Now()

@@ -1,6 +1,6 @@
 module desktop_lab
 
-go 1.25.0
+go 1.19
 
 require (
 	github.com/SebastiaanKlippert/go-wkhtmltopdf v1.9.3

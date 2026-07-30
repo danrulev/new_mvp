@@ -74,7 +74,7 @@ func (r *MaterialRepo) GetAll(ctx context.Context) ([]models.Material, error) {
 		}
 
 		if createdAtRaw != "" {
-			t, err := helperParseTimeMaterial(createdAtRaw)
+			t, err := parseTime(createdAtRaw)
 			if err == nil {
 				m.CreatedAt = t
 			} else {
@@ -112,7 +112,7 @@ func (r *MaterialRepo) GetByID(ctx context.Context, id string) (models.Material,
 	}
 
 	if createdAtRaw != "" {
-		t, err := helperParseTimeMaterial(createdAtRaw)
+		t, err := parseTime(createdAtRaw)
 		if err == nil {
 			m.CreatedAt = t
 		}
@@ -142,7 +142,7 @@ func (r *MaterialRepo) GetByName(ctx context.Context, name string) (models.Mater
 	}
 
 	if createdAtRaw != "" {
-		t, err := helperParseTimeMaterial(createdAtRaw)
+		t, err := parseTime(createdAtRaw)
 		if err == nil {
 			m.CreatedAt = t
 		}

@@ -303,19 +303,19 @@ func (r *ProtocolRepo) GetByID(ctx context.Context, id string) (models.Protocol,
 		return models.Protocol{}, err
 	}
 
-	p.TestDate, err = helperParseTime(testDateStr)
+	p.TestDate, err = parseTime(testDateStr)
 	if err != nil {
 		r.log.Warn("failed to parse test_date for protocol", zap.String("id", id), zap.Error(err))
 		p.TestDate = time.Now()
 	}
 
-	p.CreatedAt, err = helperParseTime(createdAt)
+	p.CreatedAt, err = parseTime(createdAt)
 	if err != nil {
 		r.log.Warn("failed to parse created_at", zap.String("val", createdAt), zap.Error(err))
 		p.CreatedAt = time.Now() // Fallback
 	}
 
-	p.UpdatedAt, err = helperParseTime(updatedAt)
+	p.UpdatedAt, err = parseTime(updatedAt)
 	if err != nil {
 		r.log.Warn("failed to parse updated_at", zap.String("val", updatedAt), zap.Error(err))
 		p.UpdatedAt = time.Now() // Fallback
@@ -366,7 +366,7 @@ func (r *ProtocolRepo) GetResultsByProtocolID(ctx context.Context, protocolID st
 			r.IsCompliant = &v
 		}
 
-		r.CreatedAt, err = helperParseTime(createdAt)
+		r.CreatedAt, err = parseTime(createdAt)
 		if err != nil {
 			r.CreatedAt = time.Now()
 		}
@@ -415,7 +415,7 @@ func (r *ProtocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]mode
 			return nil, err
 		}
 
-		p.CreatedAt, err = helperParseTime(createdAt)
+		p.CreatedAt, err = parseTime(createdAt)
 		if err != nil {
 			p.CreatedAt = time.Now()
 		}
@@ -476,16 +476,16 @@ func (r *ProtocolRepo) GetList(ctx context.Context, limit, offset int64) ([]mode
 			return nil, 0, err
 		}
 
-		p.CreatedAt, err = helperParseTime(createdAt)
+		p.CreatedAt, err = parseTime(createdAt)
 		if err != nil {
 			p.CreatedAt = time.Now()
 		}
-		p.UpdatedAt, err = helperParseTime(updatedAt)
+		p.UpdatedAt, err = parseTime(updatedAt)
 		if err != nil {
 			p.UpdatedAt = time.Now()
 		}
 
-		p.TestDate, err = helperParseTime(testDateStr)
+		p.TestDate, err = parseTime(testDateStr)
 		if err != nil {
 			p.TestDate = time.Now()
 		}
@@ -543,13 +543,13 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		return models.ProtocolFull{}, err
 	}
 
-	full.Protocol.TestDate, _ = helperParseTime(testDateStr)
-	full.Sample.CollectionDate, _ = helperParseTime(collDateStr)
+	full.Protocol.TestDate, _ = parseTime(testDateStr)
+	full.Sample.CollectionDate, _ = parseTime(collDateStr)
 
-	full.Protocol.CreatedAt, _ = helperParseTime(protCreatedAt)
-	full.Protocol.UpdatedAt, _ = helperParseTime(protUpdatedAt)
-	full.Sample.CreatedAt, _ = helperParseTime(sampCreatedAt)
-	full.Material.CreatedAt, _ = helperParseTime(matCreatedAt)
+	full.Protocol.CreatedAt, _ = parseTime(protCreatedAt)
+	full.Protocol.UpdatedAt, _ = parseTime(protUpdatedAt)
+	full.Sample.CreatedAt, _ = parseTime(sampCreatedAt)
+	full.Material.CreatedAt, _ = parseTime(matCreatedAt)
 
 	if rawContext.Valid {
 		if err := full.Sample.FromJSON(rawContext.String); err != nil {
@@ -614,7 +614,7 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 			res.InputData = make(map[string]interface{})
 		}
 
-		res.CreatedAt, _ = helperParseTime(createdAt)
+		res.CreatedAt, _ = parseTime(createdAt)
 
 		if compliant != nil {
 			v := *compliant == 1

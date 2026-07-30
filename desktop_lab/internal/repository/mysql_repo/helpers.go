@@ -8,11 +8,11 @@ import (
 	"go.uber.org/zap"
 )
 
-// timeLayout - единый формат времени для всех репозиториев
+// timeLayout - единый формат времени для всех репозиториев (UTC)
 const timeLayout = "2006-01-02 15:04:05"
 
-// helperParseTime безопасно парсит время из строки (ожидается UTC в БД) и возвращает локальное время
-func helperParseTime(raw interface{}) (time.Time, error) {
+// parseTime парсит время из строки в формате UTC и возвращает локальное время
+func parseTime(raw interface{}) (time.Time, error) {
 	if raw == nil {
 		return time.Time{}, nil
 	}
@@ -22,16 +22,11 @@ func helperParseTime(raw interface{}) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("expected string for time, got %T", raw)
 	}
 
-	return time.Parse(timeLayout, str)
-}
-
-// helperParseTimeMaterial безопасно парсит время из строки (ожидается UTC в БД) и возвращает локальное время
-func helperParseTimeMaterial(timeStr string) (time.Time, error) {
-	if timeStr == "" {
+	if str == "" {
 		return time.Time{}, nil
 	}
 
-	t, err := time.ParseInLocation(timeLayout, timeStr, time.UTC)
+	t, err := time.ParseInLocation(timeLayout, str, time.UTC)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -39,31 +34,63 @@ func helperParseTimeMaterial(timeStr string) (time.Time, error) {
 	return t.Local(), nil
 }
 
-// helperParseTimeWithLog парсит время с логированием ошибок
-func helperParseTimeWithLog(ctx context.Context, log *zap.Logger, raw string, fieldName, fallbackReason string) time.Time {
-	if raw == "" {
-		return time.Time{}
-	}
-
-	t, err := time.Parse(timeLayout, raw)
-	if err != nil {
-		log.Warn("failed to parse time field",
-			zap.String("field", fieldName),
-			zap.String("raw_value", raw),
-			zap.Error(err),
-			zap.String("fallback_reason", fallbackReason))
-		return time.Now()
-	}
-
-	return t
-}
-
-// helperCheckContext проверяет контекст на отмену перед выполнением операции
-func helperCheckContext(ctx context.Context) error {
+// checkContext проверяет контекст на отмену перед выполнением операции
+func checkContext(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
-		return fmt.Errorf("context cancelled: %w", ctx.Err())
+		return ctx.Err()
 	default:
 		return nil
+	}
+}
+
+// repoLogger создает логгер с полями репозитория и операции
+type repoLogger struct {
+	log    *zap.Logger
+	repo   string
+	ctx    context.Context
+}
+
+func newRepoLogger(ctx context.Context, log *zap.Logger, repoName string) *repoLogger {
+	requestID, _ := ctx.Value("request_id").(string)
+	
+	var logger *zap.Logger
+	if requestID != "" {
+		logger = log.With(
+			zap.String("request_id", requestID),
+			zap.String("repo", repoName),
+		)
+	} else {
+		logger = log.With(zap.String("repo", repoName))
+	}
+	
+	return &repoLogger{
+		log:  logger,
+		repo: repoName,
+		ctx:  ctx,
+	}
+}
+
+func (rl *repoLogger) debug(msg string, fields ...zap.Field) {
+	rl.log.Debug(msg, fields...)
+}
+
+func (rl *repoLogger) info(msg string, fields ...zap.Field) {
+	rl.log.Info(msg, fields...)
+}
+
+func (rl *repoLogger) warn(msg string, fields ...zap.Field) {
+	rl.log.Warn(msg, fields...)
+}
+
+func (rl *repoLogger) error(msg string, fields ...zap.Field) {
+	rl.log.Error(msg, fields...)
+}
+
+func (rl *repoLogger) with(fields ...zap.Field) *repoLogger {
+	return &repoLogger{
+		log:  rl.log.With(fields...),
+		repo: rl.repo,
+		ctx:  rl.ctx,
 	}
 }

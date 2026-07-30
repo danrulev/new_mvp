@@ -75,13 +75,13 @@ func (r *SampleRepo) GetByID(ctx context.Context, id string) (models.Sample, err
 		return models.Sample{}, err
 	}
 
-	s.CreatedAt, err = helperParseTime(createdAt)
+	s.CreatedAt, err = parseTime(createdAt)
 	if err != nil {
 		r.log.Warn("failed parse created at date", zap.Error(err), zap.String("val", createdAt))
 		s.CreatedAt = time.Now()
 	}
 
-	s.CollectionDate, err = helperParseTime(collDateStr)
+	s.CollectionDate, err = parseTime(collDateStr)
 	if err != nil {
 		r.log.Warn("failed parse collection date", zap.Error(err), zap.String("val", collDateStr))
 		s.CollectionDate = time.Now()
@@ -135,13 +135,13 @@ func (r *SampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 			return nil, fmt.Errorf("failed to scan sample: %w", err)
 		}
 
-		s.CreatedAt, err = helperParseTime(createdAt)
+		s.CreatedAt, err = parseTime(createdAt)
 		if err != nil {
 			r.log.Warn("failed parse created at date", zap.Error(err))
 			s.CreatedAt = time.Now()
 		}
 
-		s.CollectionDate, err = helperParseTime(collDateStr)
+		s.CollectionDate, err = parseTime(collDateStr)
 		if err != nil {
 			r.log.Warn("failed parse collection date", zap.Error(err))
 			s.CollectionDate = time.Now()
