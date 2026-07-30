@@ -64,12 +64,12 @@ type FullProtocolResponse struct {
 }
 
 type ProtocolListFilter struct {
-	ProtocolID    *string    `json:"protocol_id"`
-	LabName       *string    `json:"lab_name"`
-	OperatorName  *string    `json:"operator_name"`
-	Status        *string    `json:"status"`
-	StartTestDate *time.Time `json:"start_test_date"`
-	EndTestDate   *time.Time `json:"end_test_date"`
+	ProtocolID    *string    `json:"protocol_id" form:"protocol_id"`
+	LabName       *string    `json:"lab_name" form:"lab_name"`
+	OperatorName  *string    `json:"operator_name" form:"operator_name"`
+	Status        *string    `json:"status" form:"status"`
+	StartTestDate *time.Time `json:"start_test_date" form:"start_test_date"`
+	EndTestDate   *time.Time `json:"end_test_date" form:"end_test_date"`
 	Paginated
 }
 
