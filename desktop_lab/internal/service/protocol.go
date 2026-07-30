@@ -49,6 +49,7 @@ func NewProtocolService(
 
 // CreateProtocolWithSample создает пробу и протокол с результатами в одной транзакции.
 // Это обеспечивает атомарность: либо создаются оба объекта, либо ни одного.
+// Вся бизнес-логика (вычисление формул, валидация лимитов) выполняется в сервисном слое.
 func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req models.CreateProtocolRequest) (models.Protocol, error) {
 	log := loggerWith(ctx, s.log,
 		zap.String("service_name", "CreateProtocolWithSample"),
@@ -102,10 +103,19 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		Note:           req.Note,
 	}
 
+	// Обрабатываем результаты в сервисном слое (бизнес-логика)
+	log.Debug("processing results in service layer (formula calculation, limit validation)")
+	processedResults, err := s.processResults(ctx, req.Results, sample)
+	if err != nil {
+		log.Error("failed to process results", zap.Error(err))
+		return models.Protocol{}, fmt.Errorf("ошибка обработки результатов: %w", err)
+	}
+
 	log.Debug("executing transactional protocol creation")
 
 	// Используем репозиторий для выполнения всей операции в транзакции
-	if err := s.protocolRepo.CreateWithSample(ctx, sample, protocol, req.Results); err != nil {
+	// Репозиторий только сохраняет данные, вся логика уже выполнена в сервисе
+	if err := s.protocolRepo.CreateWithSample(ctx, sample, protocol, processedResults); err != nil {
 		log.Error("failed to create protocol with sample in transaction", zap.Error(err))
 		return models.Protocol{}, fmt.Errorf("ошибка создания протокола с пробой: %w", err)
 	}
@@ -504,6 +514,179 @@ func (s *ProtocolService) parseManualValue(rawInputs map[string]string, outMap *
 		}
 	}
 	return 0
+}
+
+// processResults обрабатывает результаты тестов: вычисляет формулы и валидирует лимиты.
+// Возвращает готовые для сохранения результаты с вычисленными значениями.
+func (s *ProtocolService) processResults(ctx context.Context, inputResults []models.CreateResultDTO, sample models.Sample) ([]models.TestResult, error) {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "processResults"),
+		zap.Int("results_count", len(inputResults)),
+	)
+	log.Debug("processing results in service layer")
+
+	// Кэшируем методы первого стандарта для оптимизации
+	methodsCache := make(map[string]models.TestMethodFull)
+	if len(inputResults) > 0 {
+		firstMethodID := inputResults[0].MethodID
+		firstMethod, getErr := s.standardRepo.GetTestMethod(ctx, firstMethodID)
+		if getErr == nil {
+			standardID := firstMethod.StandardID
+			methodsByStandard, listErr := s.standardRepo.GetMethodsByStandardID(ctx, standardID)
+			if listErr == nil {
+				for _, m := range methodsByStandard {
+					// Загружаем полные данные метода
+					inputs, inpErr := s.standardRepo.GetMethodInputs(ctx, m.ID)
+					limits, limErr := s.standardRepo.GetApplicableLimits(ctx, m.ID)
+					conditions, condErr := s.standardRepo.GetLimitConditions(ctx, m.ID)
+
+					full := models.TestMethodFull{
+						Method:         m,
+						Inputs:         inputs,
+						Limits:         limits,
+						LimitConditions: conditions,
+					}
+					if inpErr == nil && limErr == nil && condErr == nil {
+						methodsCache[m.ID] = full
+					}
+				}
+				log.Debug("methods cache populated", zap.Int("methods_cached", len(methodsCache)))
+			}
+		}
+	}
+
+	finalResults := make([]models.TestResult, 0, len(inputResults))
+
+	for i, inputRes := range inputResults {
+		methodLog := log.With(zap.Int("result_index", i), zap.String("method_id", inputRes.MethodID))
+
+		fullMethod, exists := methodsCache[inputRes.MethodID]
+		if !exists {
+			// Фоллбэк: загружаем метод индивидуально
+			methodLog.Debug("method not in cache, loading individually")
+			method, err := s.standardRepo.GetTestMethod(ctx, inputRes.MethodID)
+			if err != nil {
+				methodLog.Error("failed to fetch method", zap.Error(err))
+				return nil, fmt.Errorf("метод %s не найден: %w", inputRes.MethodID, err)
+			}
+			inputs, err := s.standardRepo.GetMethodInputs(ctx, inputRes.MethodID)
+			if err != nil {
+				return nil, fmt.Errorf("ошибка загрузки инпутов для %s: %w", inputRes.MethodID, err)
+			}
+			limits, _ := s.standardRepo.GetApplicableLimits(ctx, inputRes.MethodID)
+			conditions, _ := s.standardRepo.GetLimitConditions(ctx, inputRes.MethodID)
+			fullMethod = models.TestMethodFull{
+				Method:          method,
+				Inputs:          inputs,
+				Limits:          limits,
+				LimitConditions: conditions,
+			}
+		}
+
+		method := fullMethod.Method
+		inputs := fullMethod.Inputs
+
+		var calculatedValue float64
+		inputDataMap := make(map[string]interface{})
+
+		if method.FormulaExpr != "" {
+			params := make(map[string]interface{})
+			for _, inp := range inputs {
+				valStr, exists := inputRes.RawInputs[inp.ParamKey]
+
+				if inp.IsRequired && (!exists || valStr == "") {
+					methodLog.Error("missing required parameter",
+						zap.String("param_key", inp.ParamKey),
+						zap.String("param_label", inp.Label))
+					return nil, fmt.Errorf("требуется параметр '%s' (%s) для метода '%s'", inp.Label, inp.ParamKey, method.Name)
+				}
+				if !exists || valStr == "" {
+					methodLog.Debug("skipping optional empty parameter", zap.String("param_key", inp.ParamKey))
+					continue
+				}
+
+				val, err := strconv.ParseFloat(valStr, 64)
+				if err != nil {
+					methodLog.Error("failed to parse parameter value",
+						zap.Error(err),
+						zap.String("param_key", inp.ParamKey),
+						zap.String("raw_value", valStr))
+					return nil, fmt.Errorf("некорректное число '%s' для параметра '%s': %w", valStr, inp.Label, err)
+				}
+
+				params[inp.ParamKey] = val
+				inputDataMap[inp.ParamKey] = val
+			}
+
+			calcVal, err := s.calculateFormula(method.FormulaExpr, params)
+			if err != nil {
+				methodLog.Error("formula calculation failed", zap.Error(err), zap.String("formula", method.FormulaExpr))
+				return nil, fmt.Errorf("ошибка расчета формулы '%s': %w", method.Name, err)
+			}
+
+			calculatedValue = math.Round(calcVal*100) / 100
+			methodLog.Debug("formula calculated", zap.Float64("result", calculatedValue))
+
+		} else {
+			methodLog.Debug("using manual value (no formula)")
+			calculatedValue = s.parseManualValue(inputRes.RawInputs, &inputDataMap)
+			calculatedValue = math.Round(calculatedValue*100) / 100
+		}
+
+		// --- ВАЛИДАЦИЯ ЛИМИТОВ ---
+		applicableLimit := s.findMatchingLimit(fullMethod.Limits, fullMethod.LimitConditions, sample.ContextParams)
+		isCompliant := true
+		var deviationMsg string
+		var appliedLimitID *string
+
+		if applicableLimit.ID != "" {
+			appliedLimitID = &applicableLimit.ID
+			switch applicableLimit.LimitType {
+			case "min":
+				if applicableLimit.MinValue != nil && calculatedValue < *applicableLimit.MinValue {
+					isCompliant = false
+					deviationMsg = fmt.Sprintf("Ниже нормы на %.2f %s", *applicableLimit.MinValue-calculatedValue, method.Unit)
+				}
+			case "max":
+				if applicableLimit.MaxValue != nil && calculatedValue > *applicableLimit.MaxValue {
+					isCompliant = false
+					deviationMsg = fmt.Sprintf("Выше нормы на %.2f %s", calculatedValue-*applicableLimit.MaxValue, method.Unit)
+				}
+			case "range":
+				if applicableLimit.MinValue != nil && applicableLimit.MaxValue != nil {
+					if calculatedValue < *applicableLimit.MinValue || calculatedValue > *applicableLimit.MaxValue {
+						isCompliant = false
+						if calculatedValue < *applicableLimit.MinValue {
+							deviationMsg = fmt.Sprintf("Ниже диапазона [%.2f; %.2f]", *applicableLimit.MinValue, *applicableLimit.MaxValue)
+						} else {
+							deviationMsg = fmt.Sprintf("Выше диапазона [%.2f; %.2f]", *applicableLimit.MinValue, *applicableLimit.MaxValue)
+						}
+					}
+				}
+			}
+			methodLog.Debug("limit applied",
+				zap.String("limit_id", applicableLimit.ID),
+				zap.String("limit_type", applicableLimit.LimitType),
+				zap.Bool("is_compliant", isCompliant))
+		} else {
+			deviationMsg = "Норматив не применён (условия не найдены)"
+			methodLog.Debug("no applicable limit found")
+		}
+
+		result := models.TestResult{
+			MethodID:        method.ID,
+			InputData:       inputDataMap,
+			CalculatedValue: &calculatedValue,
+			AppliedLimitID:  appliedLimitID,
+			IsCompliant:     &isCompliant,
+			DeviationMsg:    deviationMsg,
+			Note:            inputRes.Note,
+		}
+		finalResults = append(finalResults, result)
+	}
+
+	log.Info("all results processed successfully", zap.Int("processed_count", len(finalResults)))
+	return finalResults, nil
 }
 
 // saveProtocol - сохранение протокола с транзакцией

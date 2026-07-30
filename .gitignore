@@ -1,5 +1,5 @@
 ```
-# Compiled and build artifacts
+# Compiled and binary files
 *.o
 *.obj
 *.out
@@ -19,34 +19,5 @@ vendor/
 # Editors
 .vscode/
 .idea/
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# Distribution
-dist/
-build/
-target/
-
-# Python specific
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-
-# Go specific
-*.exe
-*.dll
-*.so
-*.dylib
-*.test
-*.prof
-
-# System files
-.DS_Store
-Thumbs.db
+*.swp
 ```
