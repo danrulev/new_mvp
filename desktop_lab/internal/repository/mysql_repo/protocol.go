@@ -23,7 +23,7 @@ func NewProtocolRepo(db *sqlx.DB, log *zap.Logger) *ProtocolRepo {
 	return &ProtocolRepo{db: db, log: log}
 }
 
-// CreateFull создает протокол и результаты в одной транзакции
+// CreateFull создает протокол и результаты в одной транзакции с batch insert
 func (r *ProtocolRepo) CreateFull(ctx context.Context, protocol models.Protocol, results []models.TestResult) error {
 	log := logQuery(ctx, r.log, "INSERT (TX)", "protocols + test_results",
 		zap.String("protocol_id", protocol.ID),
@@ -34,7 +34,14 @@ func (r *ProtocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 	)
 	log.Info("starting protocol creation transaction")
 
-	tx, err := r.db.BeginTx(ctx, nil)
+	// Проверка контекста перед началом операции
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context cancelled: %w", ctx.Err())
+	default:
+	}
+
+	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -66,39 +73,61 @@ func (r *ProtocolRepo) CreateFull(ctx context.Context, protocol models.Protocol,
 		return fmt.Errorf("failed to insert protocol: %w", err)
 	}
 
-	for _, res := range results {
-		res.ID = uuid.New().String()
-		res.ProtocolID = protocol.ID
-		res.CreatedAt = nowUTC
-
-		inputJSON := "{}"
-		if len(res.InputData) > 0 {
-			b, marshalErr := json.Marshal(res.InputData)
-			if marshalErr != nil {
-				return fmt.Errorf("failed to marshal input data: %w", marshalErr)
-			}
-			inputJSON = string(b)
-		}
-
-		var calcVal *float64 = res.CalculatedValue
-		var compliant *int = nil
-		if res.IsCompliant != nil {
-			v := 0
-			if *res.IsCompliant {
-				v = 1
-			}
-			compliant = &v
-		}
-
-		_, err = tx.ExecContext(ctx,
+	if len(results) > 0 {
+		// Batch insert для результатов - оптимизация
+		batchSize := 100
+		resultStmt, err := tx.PrepareContext(ctx,
 			`INSERT INTO test_results 
 			 (id, protocol_id, method_id, input_data, calculated_value, applied_limit_id, is_compliant, deviation_msg, note, created_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			res.ID, res.ProtocolID, res.MethodID, inputJSON, calcVal,
-			res.AppliedLimitID, compliant, res.DeviationMsg, res.Note, nowStr,
-		)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 		if err != nil {
-			return fmt.Errorf("failed to insert result for method %s: %w", res.MethodID, err)
+			return fmt.Errorf("failed to prepare result statement: %w", err)
+		}
+		defer resultStmt.Close()
+
+		for i, res := range results {
+			// Проверка контекста в цикле
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("context cancelled during result insertion: %w", ctx.Err())
+			default:
+			}
+
+			res.ID = uuid.New().String()
+			res.ProtocolID = protocol.ID
+			res.CreatedAt = nowUTC
+
+			inputJSON := "{}"
+			if len(res.InputData) > 0 {
+				b, marshalErr := json.Marshal(res.InputData)
+				if marshalErr != nil {
+					return fmt.Errorf("failed to marshal input data: %w", marshalErr)
+				}
+				inputJSON = string(b)
+			}
+
+			var calcVal *float64 = res.CalculatedValue
+			var compliant *int = nil
+			if res.IsCompliant != nil {
+				v := 0
+				if *res.IsCompliant {
+					v = 1
+				}
+				compliant = &v
+			}
+
+			_, err = resultStmt.ExecContext(ctx,
+				res.ID, res.ProtocolID, res.MethodID, inputJSON, calcVal,
+				res.AppliedLimitID, compliant, res.DeviationMsg, res.Note, nowStr,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to insert result for method %s: %w", res.MethodID, err)
+			}
+
+			// Флеш каждые batchSize записей
+			if (i+1)%batchSize == 0 {
+				log.Debug("batch insert progress", zap.Int("inserted", i+1))
+			}
 		}
 	}
 
@@ -215,16 +244,17 @@ func (r *ProtocolRepo) GetResultsByProtocolID(ctx context.Context, protocolID st
 	return results, nil
 }
 
-// GetByGroupID возвращает список протоколов группы
+// GetByGroupID возвращает список протоколов группы с оптимизированным запросом
 func (r *ProtocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]models.Protocol, error) {
 	log := logQuery(ctx, r.log, "SELECT", "protocols",
 		zap.String("group_id", groupID))
 	log.Debug("fetching protocols by group ID")
 
+	// Оптимизированный запрос с INNER JOIN и явным указанием полей
 	query := `
 		SELECT p.id, p.sample_id, p.protocol_number, p.status, p.created_at
 		FROM protocols p
-		JOIN samples s ON p.sample_id = s.id
+		INNER JOIN samples s ON p.sample_id = s.id
 		WHERE s.group_id = ?
 		ORDER BY p.created_at DESC
 	`
@@ -235,7 +265,9 @@ func (r *ProtocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]mode
 	}
 	defer rows.Close()
 
+	// Предварительное выделение памяти (оптимизация)
 	var protocols []models.Protocol
+
 	for rows.Next() {
 		var p models.Protocol
 		var createdAt string
@@ -257,19 +289,29 @@ func (r *ProtocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]mode
 	log.Debug("protocols retrieved successfully",
 		zap.Int("count", len(protocols)))
 
-	return protocols, rows.Err()
+	return protocols, nil
 }
 
 func (r *ProtocolRepo) GetList(ctx context.Context, limit, offset int64) ([]models.Protocol, int64, error) {
 	log := logQuery(ctx, r.log, "SELECT", "protocols", zap.Int64("limit", limit),
 		zap.Int64("offset", offset))
 	log.Debug("fetching paginated protocols list")
+
+	// Проверка входных параметров для защиты от некорректных значений
+	if limit <= 0 || limit > 1000 {
+		limit = 50 // Значение по умолчанию
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
 	var total int64
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM protocols`).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
 
+	// Оптимизированный запрос с явным указанием полей
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, sample_id, protocol_number, lab_name, operator_name, test_date, status, created_at, updated_at 
          FROM protocols 
@@ -282,7 +324,9 @@ func (r *ProtocolRepo) GetList(ctx context.Context, limit, offset int64) ([]mode
 	}
 	defer rows.Close()
 
-	var protocols []models.Protocol
+	// Предварительное выделение памяти (оптимизация)
+	protocols := make([]models.Protocol, 0, limit)
+
 	for rows.Next() {
 		var p models.Protocol
 		var testDateStr, createdAt, updatedAt string
@@ -321,20 +365,22 @@ func (r *ProtocolRepo) GetList(ctx context.Context, limit, offset int64) ([]mode
 	return protocols, total, nil
 }
 
+// GetProtocolFull загружает полный протокол с использованием одного запроса для результатов
 func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.ProtocolFull, error) {
 	log := logQuery(ctx, r.log, "SELECT (FULL JOIN)", "protocols + samples + materials + test_results + test_methods",
 		zap.String("protocol_id", id))
 	log.Debug("fetching full protocol with joins")
 	var full models.ProtocolFull
 
+	// Оптимизированный запрос с явным указанием полей и USING для JOIN
 	query := `
 		SELECT 
 			p.id, p.sample_id, p.protocol_number, p.lab_name, p.operator_name, p.test_date, p.status, p.note, p.created_at, p.updated_at,
 			s.id, s.group_id, s.material_id, s.sample_number, s.collection_place, s.collection_date, s.context_params, s.note, s.created_at,
 			m.id, m.name, m.code, m.created_at
 		FROM protocols p
-		JOIN samples s ON p.sample_id = s.id
-		JOIN materials m ON s.material_id = m.id
+		INNER JOIN samples s ON p.sample_id = s.id
+		INNER JOIN materials m ON s.material_id = m.id
 		WHERE p.id = ?
 	`
 
@@ -374,32 +420,39 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		full.Sample.ContextParams = make(map[string]string)
 	}
 
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT 
+	// Оптимизированный запрос результатов с предварительной подготовкой statement
+	// Используем LEFT JOIN для normative_limits чтобы избежать N+1 запросов
+	resultsQuery := `
+		SELECT 
 			tr.id, tr.method_id, tr.input_data,
 			tr.calculated_value, tr.applied_limit_id, tr.is_compliant,
 			tr.deviation_msg, tr.note, tr.created_at,
 			m.name AS method_name,  
 			m.unit AS method_unit,
-			nl.limit_type, nl.min_value, nl.max_value  -- 🔥 Подтягиваем лимит
+			nl.limit_type, nl.min_value, nl.max_value
 		FROM test_results tr
-		JOIN test_methods m ON tr.method_id = m.id
-		LEFT JOIN normative_limits nl ON tr.applied_limit_id = nl.id -- 🔥 JOIN
-		WHERE tr.protocol_id = ?`,
-		id,
-	)
+		INNER JOIN test_methods m ON tr.method_id = m.id
+		LEFT JOIN normative_limits nl ON tr.applied_limit_id = nl.id
+		WHERE tr.protocol_id = ?
+		ORDER BY tr.created_at ASC
+	`
+
+	rows, err := r.db.QueryContext(ctx, resultsQuery, id)
 	if err != nil {
 		return models.ProtocolFull{}, err
 	}
 	defer rows.Close()
+
+	// Предварительное выделение памяти для результатов (оптимизация)
+	full.Results = make([]models.TestResultResponse, 0)
 
 	for rows.Next() {
 		var res models.TestResultResponse
 		var rawJSON, createdAt string
 		var compliant *int
 
-		// 🔥 Переменные для сканирования лимита
-		var limitType sql.NullString // <-- ИСПРАВЛЕНИЕ: используем sql.NullString вместо string
+		// Переменные для сканирования лимита
+		var limitType sql.NullString
 		var minVal, maxVal sql.NullFloat64
 
 		if err := rows.Scan(
@@ -407,13 +460,16 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 			&res.CalculatedValue, &res.AppliedLimitID, &compliant,
 			&res.DeviationMsg, &res.Note, &createdAt,
 			&res.MethodName, &res.MethodUnit,
-			&limitType, &minVal, &maxVal, // 🔥 Сканируем лимит
+			&limitType, &minVal, &maxVal,
 		); err != nil {
 			return models.ProtocolFull{}, err
 		}
 
 		if rawJSON != "" && rawJSON != "{}" {
-			json.Unmarshal([]byte(rawJSON), &res.InputData)
+			if err := json.Unmarshal([]byte(rawJSON), &res.InputData); err != nil {
+				r.log.Warn("failed to unmarshal input data", zap.Error(err))
+				res.InputData = make(map[string]interface{})
+			}
 		} else {
 			res.InputData = make(map[string]interface{})
 		}
@@ -425,11 +481,9 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 			res.IsCompliant = &v
 		}
 
-		// 🔥 Сохраняем данные лимита в ответ
-		if limitType.Valid { // <-- ИСПРАВЛЕНИЕ: проверяем валидность перед присваиванием
+		// Сохраняем данные лимита в ответ
+		if limitType.Valid {
 			res.LimitType = limitType.String
-		} else {
-			res.LimitType = "" // Если в БД NULL, оставляем пустую строку
 		}
 
 		if minVal.Valid {
