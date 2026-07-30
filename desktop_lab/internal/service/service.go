@@ -8,6 +8,14 @@ import (
 	"go.uber.org/zap"
 )
 
+// Logger helper - centralized logging with context support
+func loggerWith(ctx context.Context, log *zap.Logger, fields ...zap.Field) *zap.Logger {
+	if reqID, ok := ctx.Value(contextkeys.RequestIDKey).(string); ok && reqID != "" {
+		return log.With(append([]zap.Field{zap.String("request_id", reqID)}, fields...)...)
+	}
+	return log.With(fields...)
+}
+
 type DimensionRepo interface {
 	GetAvailableDimensions(ctx context.Context) ([]models.ContextDimension, error)
 	GetDimensionByID(ctx context.Context, id string) (models.ContextDimension, error)
@@ -158,17 +166,4 @@ func NewServices(
 		Reports:    report,
 		Dimensions: dimension,
 	}
-}
-
-func loggerWith(ctx context.Context, log *zap.Logger, fields ...zap.Field) *zap.Logger {
-	requestID := ctx.Value(contextkeys.RequestIDKey)
-
-	// Безопасно проверяем, есть ли request_id в контексте
-	if reqID, ok := requestID.(string); ok && reqID != "" {
-		return log.With(append([]zap.Field{zap.String("request_id", reqID)}, fields...)...)
-	}
-
-	// Если request_id нет (например, при сидировании БД или фоновых задачах),
-	// просто добавляем остальные поля без request_id
-	return log.With(fields...)
 }
