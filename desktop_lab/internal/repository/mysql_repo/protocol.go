@@ -6,6 +6,8 @@ import (
 	"desktop_lab/internal/models"
 	"encoding/json"
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,13 +16,24 @@ import (
 	"go.uber.org/zap"
 )
 
+// formulaEvaluator интерфейс для вычисления формул
+type formulaEvaluator interface {
+	CalculateFormula(expr string, params map[string]interface{}) (float64, error)
+}
+
 type ProtocolRepo struct {
-	db  *sqlx.DB
-	log *zap.Logger
+	db        *sqlx.DB
+	log       *zap.Logger
+	evaluator formulaEvaluator
 }
 
 func NewProtocolRepo(db *sqlx.DB, log *zap.Logger) *ProtocolRepo {
 	return &ProtocolRepo{db: db, log: log}
+}
+
+// SetFormulaEvaluator устанавливает evaluator формул (внедряется из сервиса)
+func (r *ProtocolRepo) SetFormulaEvaluator(e formulaEvaluator) {
+	r.evaluator = e
 }
 
 // CreateFull создает протокол и результаты в одной транзакции с batch insert
@@ -479,9 +492,20 @@ func (r *ProtocolRepo) findMatchingLimit(limits []models.NormativeLimit, conditi
 }
 
 func (r *ProtocolRepo) calculateFormula(expr string, params map[string]interface{}) (float64, error) {
-	// Упрощенная реализация - использует сервисную функцию
-	// В реальном приложении лучше вынести в отдельный пакет
-	return service.CalculateFormula(expr, params)
+	// Используем внедренный evaluator если доступен
+	if r.evaluator != nil {
+		return r.evaluator.CalculateFormula(expr, params)
+	}
+
+	// Fallback: простая реализация для базовых случаев
+	// Заменяем параметры в выражении
+	resultExpr := expr
+	for key, val := range params {
+		resultExpr = strings.ReplaceAll(resultExpr, key, fmt.Sprintf("%v", val))
+	}
+
+	// Для полноценной поддержки нужно подключить github.com/antonmedv/expr или similar
+	return 0, fmt.Errorf("формула '%s' требует внешнего eval-пакета или evaluator не настроен", expr)
 }
 
 // GetByID загружает протокол с данными пробы

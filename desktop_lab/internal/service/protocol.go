@@ -30,7 +30,7 @@ func NewProtocolService(
 	mRepo MaterialRepo,
 	log *zap.Logger,
 ) *ProtocolService {
-	return &ProtocolService{
+	s := &ProtocolService{
 		protocolRepo: pRepo,
 		sampleRepo:   sRepo,
 		standardRepo: stdRepo,
@@ -38,6 +38,13 @@ func NewProtocolService(
 		materialRepo: mRepo,
 		log:          log,
 	}
+
+	// Внедряем evaluator формул в репозиторий для использования в транзакциях
+	if repoWithEvaluator, ok := pRepo.(interface{ SetFormulaEvaluator(interface{}) }); ok {
+		repoWithEvaluator.SetFormulaEvaluator(s)
+	}
+
+	return s
 }
 
 // CreateProtocolWithSample создает пробу и протокол с результатами в одной транзакции.

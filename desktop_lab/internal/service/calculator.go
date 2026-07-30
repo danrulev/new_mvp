@@ -208,8 +208,8 @@ var constants = map[string]float64{
 	"φ":  math.Phi,
 }
 
-// calculateFormula - главная точка входа
-func (s *ProtocolService) calculateFormula(exprStr string, params map[string]interface{}) (float64, error) {
+// CalculateFormula - публичный метод для вычисления формул (используется из репозитория)
+func (s *ProtocolService) CalculateFormula(exprStr string, params map[string]interface{}) (float64, error) {
 	if strings.TrimSpace(exprStr) == "" {
 		return 0, errors.New("пустая формула")
 	}
@@ -228,6 +228,11 @@ func (s *ProtocolService) calculateFormula(exprStr string, params map[string]int
 
 	// 3. Вычисление
 	return evalRPN(rpn, params)
+}
+
+// calculateFormula - приватная версия для внутреннего использования
+func (s *ProtocolService) calculateFormula(exprStr string, params map[string]interface{}) (float64, error) {
+	return s.CalculateFormula(exprStr, params)
 }
 
 func tokenize(expr string) ([]token, error) {
