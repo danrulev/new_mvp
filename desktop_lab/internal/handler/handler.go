@@ -37,6 +37,7 @@ type Handler struct {
 }
 
 func NewHandler(
+	auth *service.AuthService,
 	dimension *service.DimensionService,
 	material *service.MaterialService,
 	group *service.ExperimentGroupService,
@@ -48,17 +49,20 @@ func NewHandler(
 	appRef DatabaseSwitcher,
 
 	log *zap.Logger,
+	refreshTokenTTL time.Duration,
 ) *Handler {
 	return &Handler{
-		dimension: dimension,
-		material:  material,
-		group:     group,
-		protocol:  protocol,
-		report:    report,
-		sample:    sample,
-		standard:  standard,
-		appRef:    appRef,
-		log:       log,
+		auth:            auth,
+		dimension:       dimension,
+		material:        material,
+		group:           group,
+		protocol:        protocol,
+		report:          report,
+		sample:          sample,
+		standard:        standard,
+		appRef:          appRef,
+		log:             log,
+		refreshTokenTTL: refreshTokenTTL,
 	}
 }
 
@@ -84,6 +88,7 @@ func (h *Handler) Init() *gin.Engine {
 	// Используем /api/v1 как основной префикс, чтобы соответствовать ожиданиям фронтенда
 	api := router.Group("/api/v1")
 	{
+		h.initAuthRoutes(api)
 		h.initMaterialRoutes(api)
 		h.initStandardRoutes(api)
 		h.initSampleRoutes(api)

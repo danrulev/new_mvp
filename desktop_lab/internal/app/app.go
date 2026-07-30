@@ -101,7 +101,7 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 
 	svc := service.NewServices(
 		repos.Material, repos.Standard, repos.Protocol, repos.Sample, repos.Group, repos.Token, repos.User, repos.Dimension,
-		a.fontDir, "templates", wkhtmltopdfWindows, a.log,
+		a.fontDir, "templates", wkhtmltopdfWindows, *a.cfg, a.log,
 	)
 
 	if err := data.SeedData(svc, a.log); err != nil {
@@ -110,7 +110,10 @@ func NewApp(wkhtmltopdfWindows []byte, fontFS, frontendFS embed.FS) error {
 		a.log.Info("Data seed completed")
 	}
 
-	handl := handler.NewHandler(svc.Dimensions, svc.Materials, svc.Groups, svc.Protocols, svc.Reports, svc.Samples, svc.Standards, a, a.log)
+	handl := handler.NewHandler(
+		svc.Auth, svc.Dimensions, svc.Materials, svc.Groups, svc.Protocols, svc.Reports, svc.Samples, svc.Standards,
+		a, a.log, a.cfg.Auth.RefreshTokenTTL,
+	)
 
 	handl.SetFrontendFS(frontendFS)
 
