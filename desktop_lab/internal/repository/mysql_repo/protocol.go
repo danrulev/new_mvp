@@ -6,6 +6,7 @@ import (
 	"desktop_lab/internal/models"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"

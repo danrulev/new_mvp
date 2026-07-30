@@ -101,6 +101,7 @@ type SampleRepo interface {
 // ProtocolRepo управляет протоколами и результатами
 type ProtocolRepo interface {
 	CreateFull(ctx context.Context, protocol models.Protocol, results []models.TestResult) error
+	CreateWithSample(ctx context.Context, sample models.Sample, protocol models.Protocol, results []models.TestResult) error
 	GetByID(ctx context.Context, id string) (models.Protocol, error)
 	GetByGroupID(ctx context.Context, groupID string) ([]models.Protocol, error)
 	GetResultsByProtocolID(ctx context.Context, protocolID string) ([]models.TestResult, error)

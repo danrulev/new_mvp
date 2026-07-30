@@ -82,8 +82,8 @@ func Do(ctx context.Context, cfg Config, op Operation) (interface{}, error) {
 // DoVoid выполняет операцию без возврата значения с повторными попытками.
 // Удобно для операций записи/обновления/удаления.
 func DoVoid(ctx context.Context, cfg Config, op func() error) error {
-	_, err := Do(ctx, cfg, func() (struct{}, error) {
-		return struct{}{}, op()
+	_, err := Do(ctx, cfg, func() (interface{}, error) {
+		return nil, op()
 	})
 	return err
 }
