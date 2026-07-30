@@ -77,6 +77,7 @@ type StandardRepo interface {
 	GetStandardFull(ctx context.Context, standardID string) (models.StandardContext, error)
 	GetMethodLimits(ctx context.Context, methodID string) ([]models.NormativeLimit, error)
 	GetLimitConditions(ctx context.Context, limitID string) ([]models.LimitCondition, error)
+	GetLimitConditionsForMethod(ctx context.Context, methodID string) (map[string][]models.LimitCondition, error)
 	LinkDimensionToStandard(ctx context.Context, standardID, dimensionID string) error
 }
 

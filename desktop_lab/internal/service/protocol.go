@@ -377,7 +377,6 @@ func (s *ProtocolService) createProtocolLegacy(
 	return s.saveProtocol(ctx, protocol, sample, finalResults)
 }
 
-// findMatchingLimit - поиск лимита в памяти (без логирования, чистая функция)
 // findMatchingLimit - поиск лимита в памяти с подробным логированием
 func (s *ProtocolService) findMatchingLimit(
 	limits []models.NormativeLimit,
@@ -537,13 +536,13 @@ func (s *ProtocolService) processResults(ctx context.Context, inputResults []mod
 				for _, m := range methodsByStandard {
 					// Загружаем полные данные метода
 					inputs, inpErr := s.standardRepo.GetMethodInputs(ctx, m.ID)
-					limits, limErr := s.standardRepo.GetApplicableLimits(ctx, m.ID)
-					conditions, condErr := s.standardRepo.GetLimitConditions(ctx, m.ID)
+					limits, limErr := s.standardRepo.GetMethodLimits(ctx, m.ID)
+					conditions, condErr := s.standardRepo.GetLimitConditionsForMethod(ctx, m.ID)
 
 					full := models.TestMethodFull{
-						Method:         m,
-						Inputs:         inputs,
-						Limits:         limits,
+						Method:          m,
+						Inputs:          inputs,
+						Limits:          limits,
 						LimitConditions: conditions,
 					}
 					if inpErr == nil && limErr == nil && condErr == nil {
@@ -573,8 +572,8 @@ func (s *ProtocolService) processResults(ctx context.Context, inputResults []mod
 			if err != nil {
 				return nil, fmt.Errorf("ошибка загрузки инпутов для %s: %w", inputRes.MethodID, err)
 			}
-			limits, _ := s.standardRepo.GetApplicableLimits(ctx, inputRes.MethodID)
-			conditions, _ := s.standardRepo.GetLimitConditions(ctx, inputRes.MethodID)
+			limits, _ := s.standardRepo.GetMethodLimits(ctx, inputRes.MethodID)
+			conditions, _ := s.standardRepo.GetLimitConditionsForMethod(ctx, inputRes.MethodID)
 			fullMethod = models.TestMethodFull{
 				Method:          method,
 				Inputs:          inputs,
