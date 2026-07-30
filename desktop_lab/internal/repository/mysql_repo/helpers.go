@@ -1,8 +1,11 @@
 package mysql_repo
 
 import (
+	"context"
 	"fmt"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // timeLayout - единый формат времени для всех репозиториев
@@ -34,4 +37,33 @@ func helperParseTimeMaterial(timeStr string) (time.Time, error) {
 	}
 
 	return t.Local(), nil
+}
+
+// helperParseTimeWithLog парсит время с логированием ошибок
+func helperParseTimeWithLog(ctx context.Context, log *zap.Logger, raw string, fieldName, fallbackReason string) time.Time {
+	if raw == "" {
+		return time.Time{}
+	}
+
+	t, err := time.Parse(timeLayout, raw)
+	if err != nil {
+		log.Warn("failed to parse time field",
+			zap.String("field", fieldName),
+			zap.String("raw_value", raw),
+			zap.Error(err),
+			zap.String("fallback_reason", fallbackReason))
+		return time.Now()
+	}
+
+	return t
+}
+
+// helperCheckContext проверяет контекст на отмену перед выполнением операции
+func helperCheckContext(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context cancelled: %w", ctx.Err())
+	default:
+		return nil
+	}
 }

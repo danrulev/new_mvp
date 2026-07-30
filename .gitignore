@@ -1,1 +1,32 @@
-Nothing needs to be added to the .gitignore file based on the provided changes, as only source code files (.go files) were modified and no build artifacts, dependencies, or temporary files were detected in the changes.
+```
+# Compiled and build artifacts
+*.o
+*.obj
+*.out
+
+# Dependencies
+vendor/
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Build directories
+build/
+dist/
+target/
+
+# Go-specific
+*.a
+*.so
+*.dylib
+```
