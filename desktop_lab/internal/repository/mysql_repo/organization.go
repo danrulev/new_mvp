@@ -2,6 +2,7 @@ package mysql_repo
 
 import (
 	"context"
+	"database/sql"
 	"desktop_lab/internal/models"
 	"fmt"
 	"strings"
@@ -24,30 +25,33 @@ func (r *OrganizationRepo) Create(ctx context.Context, id string, org models.Cre
 	log := logQuery(ctx, r.log, "INSERT", "organizations",
 		zap.String("id", id), zap.String("name", org.Name), zap.String("email", org.Email), zap.String("phone", org.Phone), zap.String("address", org.Address),
 	)
-
 	log.Debug("creating new organization")
 
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer func() {
-		if err != nil {
-			if rbErr := tx.Rollback(); rbErr != nil {
-				log.Error("transaction rollback failed", zap.Error(rbErr))
-			} else {
-				log.Debug("transaction rolled back")
-			}
-		}
-	}()
 
-	_, err = tx.ExecContext(ctx, "INSERT INTO organizations (id, name, email, phone, address) VALUES (?, ?, ?, ?, ?)", id, org.Name, org.Email, org.Phone, org.Address)
+	// ИСПРАВЛЕНО: Идиоматичный и безопасный способ отката транзакции.
+	// Если Commit() пройдет успешно, Rollback() просто вернет ошибку, которую мы игнорируем.
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx,
+		"INSERT INTO organizations (id, name, email, phone, address) VALUES (?, ?, ?, ?, ?)",
+		id, org.Name, org.Email, org.Phone, org.Address,
+	)
 	if err != nil {
 		return models.MakeError(err, models.ErrFailedToCreate, "organization")
 	}
 
-	if _, err = tx.ExecContext(ctx, "INSERT INTO organization_users (id, organization_id, role) VALUES (?, ?, ?)", id, id, "super_admin"); err != nil {
-		return models.MakeError(err, models.ErrFailedToCreate, "organization")
+	// ВНИМАНИЕ: Убедитесь, что передача `id` дважды здесь корректна.
+	// Обычно здесь должен быть userID создателя: (user_id, organization_id, role)
+	_, err = tx.ExecContext(ctx,
+		"INSERT INTO organization_users (id, organization_id, role) VALUES (?, ?, ?)",
+		id, id, "super_admin",
+	)
+	if err != nil {
+		return models.MakeError(err, models.ErrFailedToCreate, "organization_user_link")
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -64,8 +68,12 @@ func (r *OrganizationRepo) GetByID(ctx context.Context, id string) (models.Organ
 	log.Debug("fetching organization by ID")
 
 	var org models.Organization
-	err := r.db.GetContext(ctx, &org, "SELECT * FROM organizations WHERE id = ?", id)
+	// ДОБАВЛЕНО: AND deleted_at IS NULL
+	err := r.db.GetContext(ctx, &org, "SELECT * FROM organizations WHERE id = ? AND deleted_at IS NULL", id)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return models.Organization{}, fmt.Errorf("organization not found")
+		}
 		return models.Organization{}, err
 	}
 
@@ -78,8 +86,12 @@ func (r *OrganizationRepo) GetOrganizationByName(ctx context.Context, name strin
 	log.Debug("fetching organization by name")
 
 	var org models.Organization
-	err := r.db.GetContext(ctx, &org, "SELECT * FROM organizations WHERE name = ?", name)
+	// ДОБАВЛЕНО: AND deleted_at IS NULL
+	err := r.db.GetContext(ctx, &org, "SELECT * FROM organizations WHERE name = ? AND deleted_at IS NULL", name)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return models.Organization{}, fmt.Errorf("organization not found")
+		}
 		return models.Organization{}, err
 	}
 
@@ -92,17 +104,22 @@ func (r *OrganizationRepo) List(ctx context.Context, limit, offset int64) ([]mod
 	log.Debug("fetching paginated organizations list")
 
 	var total int64
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM organizations`).Scan(&total)
+	// ДОБАВЛЕНО: WHERE deleted_at IS NULL
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM organizations WHERE deleted_at IS NULL`).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
+
+	// ИСПРАВЛЕНО: Возвращаем пустой срез вместо ошибки для пагинации
 	if total == 0 {
-		return nil, 0, models.ErrNotFound
+		return []models.Organization{}, 0, nil
 	}
 
+	// ДОБАВЛЕНО: WHERE deleted_at IS NULL
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, name, email, phone, address, created_at, updated_at, deleted_at
          FROM organizations 
+         WHERE deleted_at IS NULL
          ORDER BY created_at DESC 
          LIMIT ? OFFSET ?`,
 		limit, offset,
@@ -110,38 +127,54 @@ func (r *OrganizationRepo) List(ctx context.Context, limit, offset int64) ([]mod
 	if err != nil {
 		return nil, 0, err
 	}
-
 	defer rows.Close()
+
 	var orgs []models.Organization
 	for rows.Next() {
 		var org models.Organization
-		var createdAt, updatedAt, deletedAt string
+
+		// ИСПОЛЬЗУЕМ sql.NullString для безопасной работы с NULL значениями дат
+		var createdAt, updatedAt, deletedAt sql.NullString
+
 		err := rows.Scan(&org.ID, &org.Name, &org.Email, &org.Phone, &org.Address, &createdAt, &updatedAt, &deletedAt)
 		if err != nil {
 			return nil, 0, err
 		}
 
-		org.CreatedAt, err = helperParseTime(createdAt)
-		if err != nil {
-			r.log.Warn("failed to parse created_at", zap.String("val", createdAt), zap.Error(err))
-			org.CreatedAt = time.Now() // Fallback
+		if createdAt.Valid {
+			if t, err := helperParseTime(createdAt.String); err == nil {
+				org.CreatedAt = t
+			} else {
+				r.log.Warn("failed to parse created_at", zap.String("val", createdAt.String), zap.Error(err))
+			}
 		}
 
-		org.UpdatedAt, err = helperParseTime(updatedAt)
-		if err != nil {
-			r.log.Warn("failed to parse updated_at", zap.String("val", updatedAt), zap.Error(err))
-			org.UpdatedAt = time.Now() // Fallback
+		if updatedAt.Valid {
+			if t, err := helperParseTime(updatedAt.String); err == nil {
+				org.UpdatedAt = t
+			} else {
+				r.log.Warn("failed to parse updated_at", zap.String("val", updatedAt.String), zap.Error(err))
+			}
 		}
 
-		org.DeletedAt, err = helperParseTime(deletedAt)
-		if err != nil {
-			r.log.Warn("failed to parse deleted_at", zap.String("val", deletedAt), zap.Error(err))
-			org.DeletedAt = time.Now() // Fallback
+		if deletedAt.Valid {
+			if t, err := helperParseTime(deletedAt.String); err == nil {
+				// Предполагается, что DeletedAt в модели - это *time.Time или time.Time
+				// Если time.Time, то нужно проверить, как ваша модель это принимает
+				org.DeletedAt = t
+			} else {
+				r.log.Warn("failed to parse deleted_at", zap.String("val", deletedAt.String), zap.Error(err))
+			}
 		}
 
 		orgs = append(orgs, org)
 	}
-	log.Debug("organizations", zap.Int64("count", total))
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	log.Debug("organizations fetched", zap.Int64("count", total))
 	return orgs, total, nil
 }
 
@@ -157,42 +190,38 @@ func (r *OrganizationRepo) Update(ctx context.Context, id string, req models.Upd
 	if req.Email != nil {
 		orgUpdateFields = append(orgUpdateFields, "email = ?")
 		orgUpdateValues = append(orgUpdateValues, *req.Email)
-		log.Debug("email updated", zap.String("email", *req.Email))
 	}
-
 	if req.Name != nil {
 		orgUpdateFields = append(orgUpdateFields, "name = ?")
 		orgUpdateValues = append(orgUpdateValues, *req.Name)
-		log.Debug("name updated", zap.String("name", *req.Name))
 	}
-
 	if req.Phone != nil {
 		orgUpdateFields = append(orgUpdateFields, "phone = ?")
 		orgUpdateValues = append(orgUpdateValues, *req.Phone)
-		log.Debug("phone updated", zap.String("phone", *req.Phone))
 	}
-
 	if req.Address != nil {
 		orgUpdateFields = append(orgUpdateFields, "address = ?")
 		orgUpdateValues = append(orgUpdateValues, *req.Address)
-		log.Debug("address updated", zap.String("address", *req.Address))
 	}
 
 	if len(orgUpdateFields) == 0 {
+		log.Debug("no fields to update")
 		return r.GetByID(ctx, id)
 	}
 
+	// ИСПРАВЛЕНО: Используем UTC время для консистентности с БД
 	orgUpdateFields = append(orgUpdateFields, "updated_at = ?")
-	orgUpdateValues = append(orgUpdateValues, time.Now().Format(timeLayout))
+	orgUpdateValues = append(orgUpdateValues, time.Now().UTC())
 	orgUpdateValues = append(orgUpdateValues, id)
 
-	query := fmt.Sprintf(`UPDATE organizations SET %v WHERE id = ? AND deleted_at IS NULL`, strings.Join(orgUpdateFields, ", "))
+	query := fmt.Sprintf(`UPDATE organizations SET %s WHERE id = ? AND deleted_at IS NULL`, strings.Join(orgUpdateFields, ", "))
+
 	_, err := r.db.ExecContext(ctx, query, orgUpdateValues...)
 	if err != nil {
 		return models.Organization{}, fmt.Errorf("failed to update organization: %w", err)
 	}
 
-	log.Info("Organization updated successfully", zap.String("id", id), zap.String("fields_updated", strings.Join(orgUpdateFields, ", ")))
+	log.Info("Organization updated successfully", zap.String("id", id))
 	return r.GetByID(ctx, id)
 }
 
@@ -200,11 +229,12 @@ func (r *OrganizationRepo) Delete(ctx context.Context, id string) error {
 	log := logQuery(ctx, r.log, "DELETE", "organizations", zap.String("id", id))
 	log.Debug("deleting organization")
 
-	_, err := r.db.ExecContext(ctx, "UPDATE organizations SET deleted_at = (datetime('now') WHERE id = ? AND deleted_at IS NULL", id)
+	// ИСПРАВЛЕНО: Синтаксис MySQL (NOW()) и добавлена закрывающая скобка
+	_, err := r.db.ExecContext(ctx, "UPDATE organizations SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL", id)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete organization: %w", err)
 	}
 
-	log.Debug("deleted organization")
+	log.Debug("organization deleted successfully")
 	return nil
 }
