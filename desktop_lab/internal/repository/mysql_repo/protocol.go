@@ -23,9 +23,6 @@ func NewProtocolRepo(db *sqlx.DB, log *zap.Logger) *ProtocolRepo {
 	return &ProtocolRepo{db: db, log: log}
 }
 
-// Константа формата времени
-const timeLayout = "2006-01-02 15:04:05"
-
 // CreateFull создает протокол и результаты в одной транзакции
 func (r *ProtocolRepo) CreateFull(ctx context.Context, protocol models.Protocol, results []models.TestResult) error {
 	log := logQuery(ctx, r.log, "INSERT (TX)", "protocols + test_results",
