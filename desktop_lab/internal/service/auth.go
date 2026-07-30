@@ -24,12 +24,13 @@ type AuthService struct {
 	log *zap.Logger
 }
 
-func NewAuthService(userRepo UserRepo, tokenRepo TokenRepo, log *zap.Logger) *AuthService {
+func NewAuthService(userRepo UserRepo, tokenRepo TokenRepo, cfg config.AuthCfg, log *zap.Logger) *AuthService {
 	hasher := hasher.NewHasher()
 	return &AuthService{
 		user:   userRepo,
 		token:  tokenRepo,
 		hasher: hasher,
+		cfg:    cfg,
 		log:    log,
 	}
 }

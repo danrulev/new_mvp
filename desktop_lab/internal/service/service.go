@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	contextkeys "desktop_lab/internal/contextKey"
+	"desktop_lab/internal/config"
 	"desktop_lab/internal/models"
 
 	"go.uber.org/zap"
@@ -146,9 +147,10 @@ func NewServices(
 	fontDir string,
 	templatesDir string,
 	wkhtmltopdfWindows []byte,
+	cfg config.Config,
 	log *zap.Logger,
 ) *Services {
-	auth := NewAuthService(userRepo, tokenRepo, log)
+	auth := NewAuthService(userRepo, tokenRepo, cfg.Auth, log)
 	material := NewMaterialService(matRepo, log)
 	standards := NewStandardService(stdRepo, log)
 	sample := NewSampleService(sampRepo, log)
