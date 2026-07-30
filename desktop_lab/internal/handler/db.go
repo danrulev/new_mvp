@@ -17,12 +17,10 @@ func (h *Handler) initDBRoutes(api *gin.RouterGroup) {
 	}
 }
 
-// SelectDBRequest — тело запроса (на будущее, если понадобятся параметры)
 type SelectDBRequest struct {
 	AllowCreate bool `json:"allow_create,omitempty"` // разрешить создание новой БД
 }
 
-// SelectDBResponse — ответ фронтенду
 type SelectDBResponse struct {
 	Status  string `json:"status"` // "success", "cancelled", "error"
 	Path    string `json:"path,omitempty"`
@@ -30,20 +28,13 @@ type SelectDBResponse struct {
 	Error   string `json:"error,omitempty"`
 }
 
-// SelectDB — POST /api/db/select
-// Открывает нативный диалог выбора файла и переключает БД
 func (h *Handler) SelectDB(c *gin.Context) {
-	// 🔹 Парсинг тела запроса (опционально)
 	var req SelectDBRequest
 	if c.ShouldBindJSON(&req) != nil {
-		// Игнорируем ошибку биндинга, если тело пустое — используем дефолты
 	}
 
 	h.log.Info("Opening database selection dialog", zap.Bool("allow_create", req.AllowCreate))
 
-	// 🔹 Открываем нативный диалог (блокирующий вызов!)
-	// Важно: этот хендлер должен работать в отдельной горутине,
-	// если сервер должен обрабатывать другие запросы параллельно
 	selectedPath, ok, err := dlgs.File(
 		"Выберите файл базы данных",
 		"*.db *.sqlite",
@@ -59,7 +50,6 @@ func (h *Handler) SelectDB(c *gin.Context) {
 		return
 	}
 
-	// 🔹 Пользователь отменил выбор
 	if !ok {
 		h.log.Info("Database selection cancelled by user")
 		c.JSON(http.StatusOK, SelectDBResponse{
@@ -69,7 +59,6 @@ func (h *Handler) SelectDB(c *gin.Context) {
 		return
 	}
 
-	// 🔹 Опционально: проверка существования файла
 	if _, statErr := os.Stat(selectedPath); os.IsNotExist(statErr) {
 		if !req.AllowCreate {
 			c.JSON(http.StatusBadRequest, SelectDBResponse{
@@ -82,7 +71,6 @@ func (h *Handler) SelectDB(c *gin.Context) {
 		h.log.Warn("Selected DB file does not exist, will create new", zap.String("path", selectedPath))
 	}
 
-	// 🔹 Переключаем БД через интерфейс (потокобезопасно)
 	if h.appRef != nil {
 		if switchErr := h.appRef.SwitchDatabase(selectedPath); switchErr != nil {
 			h.log.Error("Failed to switch database", zap.Error(switchErr), zap.String("path", selectedPath))
@@ -97,7 +85,6 @@ func (h *Handler) SelectDB(c *gin.Context) {
 
 	h.log.Info("Database switched successfully", zap.String("path", selectedPath))
 
-	// 🔹 Успешный ответ
 	c.JSON(http.StatusOK, SelectDBResponse{
 		Status:  "success",
 		Path:    selectedPath,
@@ -105,8 +92,6 @@ func (h *Handler) SelectDB(c *gin.Context) {
 	})
 }
 
-// GetInfo — GET /api/db/info
-// Возвращает информацию о текущей БД
 func (h *Handler) GetInfo(c *gin.Context) {
 	path := ""
 	if h.appRef != nil {
@@ -119,7 +104,6 @@ func (h *Handler) GetInfo(c *gin.Context) {
 	})
 }
 
-// fileExists — вспомогательная функция
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil

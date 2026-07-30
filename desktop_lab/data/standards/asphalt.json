@@ -6,7 +6,7 @@
   "standards": [
     {
       "name": "ГОСТ 9128-2013",
-      "description": "Смеси асфальтобетонные дорожные, аэродромные и асфальтобетон. Методы испытаний",
+      "description": "Смеси асфальтобетонные дорожные, аэродромные и асфальтобетон. Технические условия",
       "dimensions": [
         {
           "key_name": "climate_zone",
@@ -19,6 +19,12 @@
           "label": "Тип слоя покрытия",
           "data_type": "select",
           "possible_values": ["верхний", "нижний", "основание"]
+        },
+        {
+          "key_name": "asphalt_type",
+          "label": "Тип асфальтобетона",
+          "data_type": "select",
+          "possible_values": ["А", "Б", "В", "Г", "Д"]
         }
       ],
       "methods": [
@@ -75,7 +81,7 @@
         },
         {
           "code": "9128-P-02",
-          "name": "Водопоглощение",
+          "name": "Водопоглощение по массе",
           "unit": "%",
           "formula_expr": "((weight_saturated - weight_air) / weight_air) * 100",
           "is_mandatory": true,
@@ -102,12 +108,25 @@
               "max_value": 3.0,
               "priority": 1,
               "conditions": []
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 2.5,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "верхний"
+                }
+              ]
             }
           ]
         },
         {
           "code": "9128-P-03",
-          "name": "Предел прочности при сжатии",
+          "name": "Предел прочности при сжатии при 20°C",
           "unit": "МПа",
           "formula_expr": "(F / A) / 10",
           "is_mandatory": true,
@@ -155,20 +174,696 @@
               ]
             }
           ]
+        },
+        {
+          "code": "9128-P-04",
+          "name": "Предел прочности при сжатии при 50°C",
+          "unit": "МПа",
+          "formula_expr": "(F / A) / 10",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F",
+              "label": "Разрушающая нагрузка",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "A",
+              "label": "Площадь сечения",
+              "unit": "см²",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 1.2,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "верхний"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 0.9,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "нижний"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-P-05",
+          "name": "Предел прочности при сжатии при 0°C",
+          "unit": "МПа",
+          "formula_expr": "(F / A) / 10",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F",
+              "label": "Разрушающая нагрузка",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "A",
+              "label": "Площадь сечения",
+              "unit": "см²",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 4.0,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "climate_zone",
+                  "operator": "IN",
+                  "expected_value": "I,II"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 3.0,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "climate_zone",
+                  "operator": "IN",
+                  "expected_value": "III,IV"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-P-06",
+          "name": "Предел прочности при растяжении-изгибе при 0°C",
+          "unit": "МПа",
+          "formula_expr": "(F * L) / (b * h * h)",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F",
+              "label": "Разрушающая нагрузка",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "L",
+              "label": "Расстояние между опорами",
+              "unit": "см",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "b",
+              "label": "Ширина образца",
+              "unit": "см",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "h",
+              "label": "Высота образца",
+              "unit": "см",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 2.8,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "climate_zone",
+                  "operator": "IN",
+                  "expected_value": "I,II"
+                },
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "верхний"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 2.2,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "climate_zone",
+                  "operator": "IN",
+                  "expected_value": "III,IV"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-P-07",
+          "name": "Коэффициент водостойкости",
+          "unit": "доли ед.",
+          "formula_expr": "strength_sat / strength_dry",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "strength_sat",
+              "label": "Прочность насыщенного образца",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "strength_dry",
+              "label": "Прочность сухого образца",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 0.85,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "верхний"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 0.80,
+              "max_value": null,
+              "priority": 2,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "9128-P-08",
+          "name": "Коэффициент водостойкости при замораживании-оттаивании",
+          "unit": "доли ед.",
+          "formula_expr": "strength_frost / strength_dry",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "strength_frost",
+              "label": "Прочность после циклов замораживания-оттаивания",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "strength_dry",
+              "label": "Прочность сухого образца",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 0.75,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "climate_zone",
+                  "operator": "IN",
+                  "expected_value": "I,II"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 0.70,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "climate_zone",
+                  "operator": "IN",
+                  "expected_value": "III,IV"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-P-09",
+          "name": "Сдвиг при сжатии при 20°C",
+          "unit": "МПа",
+          "formula_expr": "F_shear / A",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F_shear",
+              "label": "Нагрузка сдвига",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "A",
+              "label": "Площадь сечения",
+              "unit": "см²",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 0.45,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "верхний"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 0.35,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "нижний"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-P-10",
+          "name": "Сдвиг при сжатии при 50°C",
+          "unit": "МПа",
+          "formula_expr": "F_shear / A",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F_shear",
+              "label": "Нагрузка сдвига",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "A",
+              "label": "Площадь сечения",
+              "unit": "см²",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 0.25,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "верхний"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-P-11",
+          "name": "Пористость асфальтобетона",
+          "unit": "%",
+          "formula_expr": "((rho_theor - rho_actual) / rho_theor) * 100",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "rho_theor",
+              "label": "Теоретическая средняя плотность",
+              "unit": "г/см³",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "rho_actual",
+              "label": "Фактическая средняя плотность",
+              "unit": "г/см³",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 1.0,
+              "max_value": 5.0,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "верхний"
+                }
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 2.0,
+              "max_value": 7.0,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "нижний"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-P-12",
+          "name": "Остаточная пористость",
+          "unit": "%",
+          "formula_expr": "((rho_theor - rho_sat) / rho_theor) * 100",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "rho_theor",
+              "label": "Теоретическая средняя плотность",
+              "unit": "г/см³",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "rho_sat",
+              "label": "Средняя плотность насыщенного образца",
+              "unit": "г/см³",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 1.0,
+              "max_value": 4.0,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "верхний"
+                }
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 2.0,
+              "max_value": 6.0,
+              "priority": 2,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "9128-P-13",
+          "name": "Межзерновая пористость",
+          "unit": "%",
+          "formula_expr": "((rho_agg_theor - rho_agg_actual) / rho_agg_theor) * 100",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "rho_agg_theor",
+              "label": "Теоретическая плотность минерального скелета",
+              "unit": "г/см³",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "rho_agg_actual",
+              "label": "Фактическая плотность минерального скелета",
+              "unit": "г/см³",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 12.0,
+              "max_value": 18.0,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "верхний"
+                }
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 14.0,
+              "max_value": 22.0,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "нижний"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-P-14",
+          "name": "Содержание битума",
+          "unit": "%",
+          "formula_expr": "(m_bitumen / m_mix) * 100",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "m_bitumen",
+              "label": "Масса битума",
+              "unit": "г",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "m_mix",
+              "label": "Масса смеси",
+              "unit": "г",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 4.5,
+              "max_value": 6.0,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "asphalt_type",
+                  "operator": "=",
+                  "expected_value": "А"
+                }
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 5.0,
+              "max_value": 6.5,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "asphalt_type",
+                  "operator": "=",
+                  "expected_value": "Б"
+                }
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 5.0,
+              "max_value": 7.0,
+              "priority": 3,
+              "conditions": [
+                {
+                  "dimension_key": "asphalt_type",
+                  "operator": "=",
+                  "expected_value": "В"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-P-15",
+          "name": "Содержание пылевидных частиц",
+          "unit": "%",
+          "formula_expr": "(m_dust / m_aggregate) * 100",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "m_dust",
+              "label": "Масса пылевидных частиц",
+              "unit": "г",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "m_aggregate",
+              "label": "Масса минеральной части",
+              "unit": "г",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 4.0,
+              "max_value": 10.0,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "верхний"
+                }
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 3.0,
+              "max_value": 8.0,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "layer_type",
+                  "operator": "=",
+                  "expected_value": "нижний"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-P-16",
+          "name": "Температура укладки смеси",
+          "unit": "°C",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "temp",
+              "label": "Температура смеси при укладке",
+              "unit": "°C",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 135,
+              "max_value": 165,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "9128-P-17",
+          "name": "Содержание глины в комках",
+          "unit": "%",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "clay_percent",
+              "label": "Массовая доля глины в комках",
+              "unit": "%",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 0.25,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
         }
       ]
     },
     {
       "name": "ГОСТ 12801-2013",
       "description": "Материалы на основе органических вяжущих для дорожного и аэродромного строительства. Методы испытаний",
-      "dimensions": [],
+      "dimensions": [
+        {
+          "key_name": "binder_type",
+          "label": "Тип битума",
+          "data_type": "select",
+          "possible_values": ["БНД 40/60", "БНД 60/90", "БНД 90/130", "БНД 130/200", "БН 40/60", "БН 60/90"]
+        }
+      ],
       "methods": [
         {
           "code": "12801-M-01",
-          "name": "Температура размягчения битума",
+          "name": "Температура размягчения по кольцу и шару",
           "unit": "°C",
           "formula_expr": "",
-          "is_mandatory": false,
+          "is_mandatory": true,
           "inputs": [
             {
               "param_key": "value",
@@ -181,7 +876,513 @@
           "limits": [
             {
               "limit_type": "min",
-              "min_value": 45,
+              "min_value": 52,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "=",
+                  "expected_value": "БНД 40/60"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 47,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "=",
+                  "expected_value": "БНД 60/90"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 43,
+              "max_value": null,
+              "priority": 3,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "=",
+                  "expected_value": "БНД 90/130"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 40,
+              "max_value": null,
+              "priority": 4,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "=",
+                  "expected_value": "БНД 130/200"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "12801-M-02",
+          "name": "Глубина проникания иглы при 25°C (пенетрация)",
+          "unit": "0.1 мм",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "penetration_val",
+              "label": "Показание пенетрометра",
+              "unit": "0.1 мм",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 40,
+              "max_value": 60,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "=",
+                  "expected_value": "БНД 40/60"
+                }
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 60,
+              "max_value": 90,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "=",
+                  "expected_value": "БНД 60/90"
+                }
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 90,
+              "max_value": 130,
+              "priority": 3,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "=",
+                  "expected_value": "БНД 90/130"
+                }
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 130,
+              "max_value": 200,
+              "priority": 4,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "=",
+                  "expected_value": "БНД 130/200"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "12801-M-03",
+          "name": "Глубина проникания иглы при 0°C",
+          "unit": "0.1 мм",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "penetration_val_0",
+              "label": "Показание пенетрометра при 0°C",
+              "unit": "0.1 мм",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 20,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "IN",
+                  "expected_value": "БНД 40/60,БНД 60/90"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 25,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "IN",
+                  "expected_value": "БНД 90/130,БНД 130/200"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "12801-M-04",
+          "name": "Температура хрупкости по Фраасу",
+          "unit": "°C",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "temp_fraas",
+              "label": "Температура хрупкости",
+              "unit": "°C",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": -15,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "=",
+                  "expected_value": "БНД 40/60"
+                }
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": -18,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "=",
+                  "expected_value": "БНД 60/90"
+                }
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": -23,
+              "priority": 3,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "=",
+                  "expected_value": "БНД 90/130"
+                }
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": -28,
+              "priority": 4,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "=",
+                  "expected_value": "БНД 130/200"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "12801-M-05",
+          "name": "Дуктильность при 25°C",
+          "unit": "см",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "ductility_25",
+              "label": "Протяженность разрыва при 25°C",
+              "unit": "см",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 40,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "IN",
+                  "expected_value": "БНД 40/60,БНД 60/90"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 60,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "IN",
+                  "expected_value": "БНД 90/130,БНД 130/200"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "12801-M-06",
+          "name": "Дуктильность при 0°C",
+          "unit": "см",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "ductility_0",
+              "label": "Протяженность разрыва при 0°C",
+              "unit": "см",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 4.0,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "IN",
+                  "expected_value": "БНД 40/60,БНД 60/90"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 6.0,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "binder_type",
+                  "operator": "IN",
+                  "expected_value": "БНД 90/130,БНД 130/200"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "12801-M-07",
+          "name": "Индекс пенетрации",
+          "unit": "ед.",
+          "formula_expr": "(20 - 500 * A) / (1 + 50 * A)",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "A",
+              "label": "Показатель температурной чувствительности",
+              "unit": "ед.",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": -1.0,
+              "max_value": 1.0,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "12801-M-08",
+          "name": "Температура вспышки",
+          "unit": "°C",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "flash_temp",
+              "label": "Температура вспышки в открытом тигле",
+              "unit": "°C",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 220,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "12801-M-09",
+          "name": "Адгезия битума к минеральному материалу",
+          "unit": "баллы",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "adhesion_grade",
+              "label": "Оценка адгезии (1-5)",
+              "unit": "балл",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 4,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "12801-M-10",
+          "name": "Растворимость в трихлорэтилене",
+          "unit": "%",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "solubility",
+              "label": "Массовая доля растворимой части",
+              "unit": "%",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 99.5,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "12801-M-11",
+          "name": "Массовая доля воды",
+          "unit": "%",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "water_percent",
+              "label": "Массовая доля воды",
+              "unit": "%",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 0.2,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "12801-M-12",
+          "name": "Изменение массы после прогрева",
+          "unit": "%",
+          "formula_expr": "((m_after - m_before) / m_before) * 100",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "m_before",
+              "label": "Масса до прогрева",
+              "unit": "г",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "m_after",
+              "label": "Масса после прогрева",
+              "unit": "г",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 0.5,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "12801-M-13",
+          "name": "Тонкопленочный тест (TFOT) — изменение пенетрации",
+          "unit": "%",
+          "formula_expr": "((pen_after - pen_before) / pen_before) * 100",
+          "is_mandatory": false,
+          "inputs": [
+            {
+              "param_key": "pen_before",
+              "label": "Пенетрация до прогрева",
+              "unit": "0.1 мм",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "pen_after",
+              "label": "Пенетрация после прогрева",
+              "unit": "0.1 мм",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": -40,
               "max_value": null,
               "priority": 1,
               "conditions": []

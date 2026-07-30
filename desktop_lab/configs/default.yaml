@@ -1,9 +1,14 @@
+auth:
+  access_token_ttl: 15m
+  refresh_token_ttl: 30m
+  jwt_secret: "secret"
+
 db:
   allow_selection: true
 
 server:
   host: localhost
-  port: 8080
+  port: 8081
   max_header_bytes:  1048576
   read_timeout: 5s
   write_timeout: 10s

@@ -3,11 +3,27 @@ package handler
 import (
 	"context"
 	contextkeys "desktop_lab/internal/contextKey"
+	"errors"
+	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+)
+
+const (
+	userIDKey      = "user_id"
+	roleKey        = "role"
+	adminKey       = "admin"
+	userKey        = "user"
+	refreshToken   = "refresh_token"
+	accessToken    = "access_token"
+	authHeader     = "Authorization"
+	requestHeader  = "X-Request-ID"
+	requestContext = "request_id"
 )
 
 const (
@@ -75,6 +91,74 @@ func (s *Handler) loggerWith(c *gin.Context, fields ...zap.Field) *zap.Logger {
 	return s.log.With(append(base, fields...)...)
 }
 
+func (h *Handler) authMiddleware(c *gin.Context) {
+	_, err := getRefreshToken(c)
+	if err != nil {
+		c.Redirect(http.StatusSeeOther, "/api/auth/login")
+		c.Abort()
+		return
+	}
+
+	accessToken, err := getAccessToken(c)
+	if err != nil {
+		c.Redirect(http.StatusUnauthorized, "/api/auth/login")
+		c.Abort()
+		return
+	}
+
+	userID, err := h.auth.ParseToken(c.Request.Context(), accessToken)
+	if err != nil {
+		c.Redirect(http.StatusSeeOther, "/api/auth/login")
+		c.Abort()
+		return
+	}
+
+	c.Set(userIDKey, userID)
+
+	c.Next()
+}
+
 func (s *Handler) getRequestID(c *gin.Context) string {
 	return c.GetString(requestIDKey)
+}
+
+func getAccessToken(c *gin.Context) (string, error) {
+	token := c.GetHeader(authHeader)
+	if token == "" {
+		return "", errors.New("empty authorization header")
+	}
+
+	tokenPaths := strings.Split(token, " ")
+	if len(tokenPaths) != 2 || tokenPaths[0] != "Bearer" {
+		return "", errors.New("invalid authorization header format")
+	}
+
+	return tokenPaths[1], nil
+}
+
+func getUserID(c *gin.Context) (string, error) {
+	id, exists := c.Get(userIDKey)
+	if !exists {
+		return "", fmt.Errorf("user id not found in context")
+	}
+
+	userID, ok := id.(string)
+	if !ok {
+		return "", fmt.Errorf("invalid user id format")
+	}
+
+	if userID == "" {
+		return "", fmt.Errorf("invalid user id")
+	}
+
+	return userID, nil
+}
+
+func getRefreshToken(c *gin.Context) (string, error) {
+	tokenID, err := c.Cookie(refreshToken)
+	if err != nil || tokenID == "" {
+		return "", fmt.Errorf("token ID not found in cookie: %v", err)
+	}
+
+	return tokenID, nil
 }

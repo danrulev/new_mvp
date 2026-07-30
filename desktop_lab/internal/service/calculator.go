@@ -282,13 +282,14 @@ func tokenize(expr string) ([]token, error) {
 			val := expr[start:i]
 			lowerVal := strings.ToLower(val)
 
+			// Константы - регистронезависимые
 			if constVal, ok := constants[lowerVal]; ok {
 				tokens = append(tokens, token{typ: tokNumber, value: fmt.Sprintf("%.15f", constVal)})
 				continue
 			}
 
-			// Функция или переменная - определяем в toRPN
-			tokens = append(tokens, token{typ: tokIdentifier, value: lowerVal})
+			// Сохраняем оригинальный регистр для переменных и функций
+			tokens = append(tokens, token{typ: tokIdentifier, value: val})
 			continue
 		}
 
@@ -347,7 +348,8 @@ func toRPN(tokens []token) ([]token, error) {
 
 		case tokIdentifier:
 			isFunction := false
-			if _, exists := builtInFunctions[t.value]; exists {
+			// Проверяем встроенные функции регистронезависимо
+			if _, exists := builtInFunctions[strings.ToLower(t.value)]; exists {
 				if i+1 < len(tokens) && tokens[i+1].typ == tokLeftParen {
 					isFunction = true
 				}
@@ -356,12 +358,12 @@ func toRPN(tokens []token) ([]token, error) {
 			if isFunction {
 				opStack = append(opStack, token{
 					typ:      tokIdentifier,
-					value:    t.value,
+					value:    strings.ToLower(t.value), // Сохраняем в нижнем регистре для поиска в builtInFunctions
 					argCount: 0,
 				})
 				funcArgStack = append(funcArgStack, 0)
 			} else {
-				output = append(output, t)
+				output = append(output, t) // Сохраняем оригинальный регистр для переменных
 			}
 
 		case tokOperator:
@@ -488,8 +490,10 @@ func evalRPN(rpn []token, params map[string]interface{}) (float64, error) {
 			stack = append(stack, val)
 
 		case tokIdentifier:
+			// Ищем переменную с учетом регистра
 			rawVal, exists := params[t.value]
 			if !exists {
+				// Может быть константа?
 				if constVal, ok := constants[strings.ToLower(t.value)]; ok {
 					stack = append(stack, constVal)
 					continue

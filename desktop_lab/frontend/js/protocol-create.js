@@ -1,4 +1,3 @@
-// frontend/js/protocol-create.js
 import { api } from './api.js';
 import { showToast, setLoading } from './utils.js';
 import { initNavigation } from './navigation.js';
@@ -6,6 +5,7 @@ import { initNavigation } from './navigation.js';
 // === STATE ===
 let standards = [], methods = [];
 let currentMethod = null;
+let standardDimensions = []; // 🔥 Новое: храним измерения стандарта
 
 // === INIT ===
 document.addEventListener('DOMContentLoaded', async () => {
@@ -24,7 +24,7 @@ function setupFormListeners() {
   optionalInputs.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
-      el.addEventListener('input', checkCanSave); // можно убрать, если не нужна реактивность
+      el.addEventListener('input', checkCanSave);
       el.addEventListener('change', checkCanSave);
     }
   });
@@ -59,6 +59,12 @@ function setupCascadingSelects() {
     mthSel.disabled = true;
     document.getElementById('methodDetails').innerHTML = '';
     currentMethod = null;
+    
+    // 🔥 Сбрасываем измерения
+    standardDimensions = [];
+    document.getElementById('dimensionsContainer').innerHTML = '<p class="text-muted">Выберите стандарт...</p>';
+    document.getElementById('dimensionsCard').style.display = 'none';
+    
     checkCanSave();
 
     if (!matId) {
@@ -105,6 +111,8 @@ function setupCascadingSelects() {
     if (!stdId) {
       mthSel.innerHTML = '<option value="">-- Выберите стандарт --</option>';
       mthSel.disabled = true;
+      standardDimensions = [];
+      document.getElementById('dimensionsCard').style.display = 'none';
       return;
     }
 
@@ -112,7 +120,13 @@ function setupCascadingSelects() {
     mthSel.innerHTML = '<option value="">-- Загрузка... --</option>';
 
     try {
-      methods = await api.getMethodsByStandard(stdId);
+      // 🔥 Параллельно загружаем методы и измерения стандарта
+      const [methodsData, dimsData] = await Promise.all([
+        api.getMethodsByStandard(stdId),
+        api.getStandardDimensions(stdId)
+      ]);
+      
+      methods = methodsData;
       mthSel.innerHTML = '<option value="">-- Выберите метод --</option>';
       
       if (!methods || methods.length === 0) {
@@ -126,10 +140,15 @@ function setupCascadingSelects() {
         });
         mthSel.disabled = false;
       }
+      
+      // 🔥 Рендерим измерения
+      standardDimensions = dimsData || [];
+      renderDimensions(standardDimensions);
+      
     } catch (err) {
-      console.error('Error loading methods:', err);
+      console.error('Error loading methods/dimensions:', err);
       mthSel.innerHTML = '<option value="">❌ Ошибка загрузки</option>';
-      showToast('Не удалось загрузить методы', true);
+      showToast('Не удалось загрузить методы или параметры', true);
     }
   });
 
@@ -154,6 +173,53 @@ function setupCascadingSelects() {
       showToast('Не удалось загрузить детали метода', true);
     }
   });
+}
+
+// 🔥 НОВАЯ ФУНКЦИЯ: Рендеринг измерений стандарта
+function renderDimensions(dims) {
+  const container = document.getElementById('dimensionsContainer');
+  const card = document.getElementById('dimensionsCard');
+  
+  if (!dims || dims.length === 0) {
+    card.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  
+  card.style.display = 'block';
+  
+  let html = '';
+  dims.forEach(dim => {
+    html += `<div class="mb-3">
+      <label class="form-label small fw-bold">${dim.label} <span class="text-danger">*</span></label>`;
+    
+    if (dim.possible_values && dim.possible_values.length > 0) {
+      html += `<select class="form-control form-control-sm dimension-select" data-dim-key="${dim.key_name}" required>
+        <option value="">-- Выберите ${dim.label.toLowerCase()} --</option>`;
+      dim.possible_values.forEach(val => {
+        html += `<option value="${val}">${val}</option>`;
+      });
+      html += `</select>`;
+    } else {
+      html += `<input type="text" class="form-control form-control-sm dimension-select" data-dim-key="${dim.key_name}" placeholder="Введите значение" required>`;
+    }
+    
+    if (dim.description) {
+      html += `<small class="text-muted">${dim.description}</small>`;
+    }
+    
+    html += `</div>`;
+  });
+  
+  container.innerHTML = html;
+  
+  // Добавляем слушатели для валидации
+  setTimeout(() => {
+    document.querySelectorAll('.dimension-select').forEach(el => {
+      el.addEventListener('change', checkCanSave);
+      el.addEventListener('input', checkCanSave);
+    });
+  }, 0);
 }
 
 // === LOADERS ===
@@ -257,7 +323,6 @@ function renderMethodDetails(full) {
     }, 0);
   }
   
-  // 🔥 Новое: поле заметки для результата метода
   html += `
     <div class="form-group mt-3">
       <label class="small text-muted">Заметка к результату</label>
@@ -267,7 +332,6 @@ function renderMethodDetails(full) {
   html += `</div>`;
   document.getElementById('methodDetails').innerHTML = html;
   
-  // 🔥 Добавляем слушатель для заметки результата
   setTimeout(() => {
     const noteEl = document.getElementById('resultNote');
     if (noteEl) {
@@ -326,13 +390,17 @@ function calculatePreview() {
 }
 
 function checkCanSave() {
-  // 🔥 Обязательные поля (без note — они опциональны)
   const requiredIds = ['sampleNumber', 'samplePlace', 'labName', 'operator', 'materialSelect', 'standardSelect', 'methodSelect'];
   let isValid = true;
   
   requiredIds.forEach(id => {
       const el = document.getElementById(id);
       if (!el || !el.value.trim()) isValid = false;
+  });
+
+  // 🔥 Проверяем, что все измерения заполнены
+  document.querySelectorAll('.dimension-select').forEach(el => {
+      if (!el.value.trim()) isValid = false;
   });
 
   if (isValid && currentMethod) {
@@ -367,6 +435,8 @@ function resetMethodForm() {
   
   document.getElementById('methodDetails').innerHTML = '';
   currentMethod = null;
+  standardDimensions = [];
+  document.getElementById('dimensionsCard').style.display = 'none';
   checkCanSave();
 }
 
@@ -376,7 +446,24 @@ async function saveProtocol() {
       return;
   }
 
-  // 🔥 Получение значений заметок и даты
+  // 🔥 Сбор context_params из измерений
+  const contextParams = {};
+  let dimsValid = true;
+  document.querySelectorAll('.dimension-select').forEach(el => {
+      const key = el.dataset.dimKey;
+      const val = el.value.trim();
+      if (!val) {
+          dimsValid = false;
+      } else {
+          contextParams[key] = val;
+      }
+  });
+  
+  if (!dimsValid && standardDimensions.length > 0) {
+      showToast('Заполните все параметры контекста', true);
+      return;
+  }
+
   const sampleNoteEl = document.getElementById('sampleNote');
   const protocolNoteEl = document.getElementById('protocolNote');
   const resultNoteEl = document.getElementById('resultNote');
@@ -386,7 +473,6 @@ async function saveProtocol() {
   const protocolNote = protocolNoteEl ? (protocolNoteEl.value.trim() || null) : null;
   const resultNote = resultNoteEl ? (resultNoteEl.value.trim() || null) : null;
   
-  // 🔥 Обработка даты отбора
   let collectionDate = null;
   if (collectionDateEl && collectionDateEl.value) {
     collectionDate = new Date(collectionDateEl.value + 'T00:00:00Z').toISOString();
@@ -421,8 +507,8 @@ async function saveProtocol() {
       sample_number: document.getElementById('sampleNumber').value,
       material_id: document.getElementById('materialSelect').value,
       collection_place: document.getElementById('samplePlace').value,
-      collection_date: collectionDate,  // 🔥 Новое
-      context_params: {},
+      collection_date: collectionDate,
+      context_params: contextParams, // 🔥 Передаем собранные параметры контекста
       note: sampleNote
     },
     lab_name: document.getElementById('labName').value,
@@ -446,6 +532,5 @@ async function saveProtocol() {
   }
 }
 
-// Экспорт для HTML onclick
 window.resetMethodForm = resetMethodForm;
 window.saveProtocol = saveProtocol;

@@ -31,6 +31,8 @@ export const api = {
   getStandardsByMaterial: (id) => apiRequest(`/standard/material/${id}`),
   getMethodsByStandard: (id) => apiRequest(`/standard/${id}/methods`),
   getMethodDetails: (id) => apiRequest(`/standard/method/${id}/details`),
+  getStandardDimensions: (id) => apiRequest(`/standard/${id}/dimensions`), // 🔥 Новое
+  getStandardFull: (id) => apiRequest(`/standard/${id}/full`), 
   
   // === ГРУППЫ ===
   getGroups: (limit = 50, offset = 0) => apiRequest(`/group?limit=${limit}&offset=${offset}`),

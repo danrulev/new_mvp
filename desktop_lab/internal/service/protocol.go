@@ -3,10 +3,10 @@ package service
 import (
 	"context"
 	"desktop_lab/internal/models"
-	"desktop_lab/internal/repository"
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,20 +14,20 @@ import (
 )
 
 type ProtocolService struct {
-	protocolRepo repository.ProtocolRepo
-	sampleRepo   repository.SampleRepo
-	standardRepo repository.StandardRepo
-	groupRepo    repository.ExperimentGroupRepo
-	materialRepo repository.MaterialRepo
+	protocolRepo ProtocolRepo
+	sampleRepo   SampleRepo
+	standardRepo StandardRepo
+	groupRepo    ExperimentGroupRepo
+	materialRepo MaterialRepo
 	log          *zap.Logger
 }
 
 func NewProtocolService(
-	pRepo repository.ProtocolRepo,
-	sRepo repository.SampleRepo,
-	stdRepo repository.StandardRepo,
-	gRepo repository.ExperimentGroupRepo,
-	mRepo repository.MaterialRepo,
+	pRepo ProtocolRepo,
+	sRepo SampleRepo,
+	stdRepo StandardRepo,
+	gRepo ExperimentGroupRepo,
+	mRepo MaterialRepo,
 	log *zap.Logger,
 ) *ProtocolService {
 	return &ProtocolService{
@@ -40,9 +40,25 @@ func NewProtocolService(
 	}
 }
 
-// CreateProtocolWithSample создает пробу, затем протокол с результатами,
-// выполняя расчеты и валидацию с оптимизированной загрузкой методов
+// CreateProtocolWithSample создает пробу, затем протокол с результатами
 func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req models.CreateProtocolRequest) (models.Protocol, error) {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "CreateProtocolWithSample"),
+		zap.String("group_id", req.GroupID),
+		zap.String("material_id", req.Sample.MaterialID),
+		zap.String("lab_name", req.LabName),
+	)
+	log.Info("starting protocol creation workflow")
+	start := time.Now()
+	defer func() {
+		log.Debug("protocol creation workflow completed", zap.Duration("duration_ms", time.Since(start)))
+	}()
+
+	if req.Sample.CollectionDate == nil {
+		now := time.Now()
+		req.Sample.CollectionDate = &now
+	}
+
 	// 1. Создаем Пробу (Sample)
 	sampleID := uuid.New().String()
 	sample := models.Sample{
@@ -51,22 +67,26 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		MaterialID:      req.Sample.MaterialID,
 		CollectionPlace: req.Sample.CollectionPlace,
 		SampleNumber:    req.Sample.SampleNumber,
-		CollectionDate:  req.Sample.CollectionDate,
+		CollectionDate:  *req.Sample.CollectionDate,
 		ContextParams:   req.Sample.ContextParams,
 		Note:            req.Sample.Note,
 	}
 
+	log.Debug("creating sample", zap.String("sample_id", sampleID))
 	if err := s.sampleRepo.Create(ctx, sample); err != nil {
-		s.log.Error("failed to create sample", zap.Error(err))
+		log.Error("failed to create sample in repo", zap.Error(err))
 		return models.Protocol{}, fmt.Errorf("ошибка создания пробы: %w", err)
 	}
+	log.Debug("sample created successfully")
 
 	// 2. Подготавливаем Протокол
 	protocolID := uuid.New().String()
 	now := time.Now()
+
+	log.Debug("generating protocol number")
 	protocolNumber, err := s.generateProtocolNumber(ctx, protocolID, req.Sample.MaterialID, req.GroupID, sampleID, now)
 	if err != nil {
-		s.log.Error("failed to generate protocol number", zap.Error(err))
+		log.Error("failed to generate protocol number", zap.Error(err))
 		return models.Protocol{}, fmt.Errorf("ошибка генерации номера протокола: %w", err)
 	}
 
@@ -81,33 +101,35 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		Note:           req.Note,
 	}
 
-	// Предзагрузка всех методов стандарта
-	// Определяем StandardID по первому методу (или можно передавать в запросе)
-	standardID := ""
+	// Предзагрузка всех методов стандарта (оптимизация)
 	if len(req.Results) > 0 {
-		firstMethod, err := s.standardRepo.GetTestMethod(ctx, req.Results[0].MethodID)
+		firstMethodID := req.Results[0].MethodID
+		log.Debug("preloading standard methods cache", zap.String("first_method_id", firstMethodID))
+
+		firstMethod, err := s.standardRepo.GetTestMethod(ctx, firstMethodID)
 		if err != nil {
+			log.Error("failed to determine standard from first method", zap.Error(err), zap.String("method_id", firstMethodID))
 			return models.Protocol{}, fmt.Errorf("не удалось определить стандарт: %w", err)
 		}
-		standardID = firstMethod.StandardID
+		standardID := firstMethod.StandardID
 
-		// Загружаем ВСЕ методы, инпуты и лимиты стандарта ОДИН запросом
 		methodsCache, err := s.standardRepo.GetMethodsFullByStandardID(ctx, standardID)
 		if err != nil {
-			s.log.Warn("failed to preload methods, falling back to individual queries",
+			log.Warn("failed to preload methods cache, falling back to individual queries",
 				zap.Error(err), zap.String("standard_id", standardID))
-			// Продолжаем работу, в цикле ниже будут индивидуальные запросы
+			// Продолжаем работу в режиме legacy
 		} else {
-			// Используем кэш в цикле обработки результатов
+			log.Info("using optimized path with methods cache",
+				zap.Int("methods_cached", len(methodsCache)))
 			return s.createProtocolWithCache(ctx, protocol, sample, req.Results, methodsCache)
 		}
 	}
 
-	// Фоллбэк: старая логика с индивидуальными запросами (если кэш не сработал)
+	log.Info("using legacy path with individual queries")
 	return s.createProtocolLegacy(ctx, protocol, sample, req.Results)
 }
 
-// createProtocolWithCache - оптимизированная версия с использованием предзагруженных данных
+// createProtocolWithCache - оптимизированная версия с кэшированием
 func (s *ProtocolService) createProtocolWithCache(
 	ctx context.Context,
 	protocol models.Protocol,
@@ -115,50 +137,57 @@ func (s *ProtocolService) createProtocolWithCache(
 	results []models.CreateResultDTO,
 	methodsCache map[string]models.TestMethodFull,
 ) (models.Protocol, error) {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "createProtocolWithCache"),
+		zap.String("protocol_id", protocol.ID),
+		zap.Int("results_count", len(results)),
+	)
+	log.Debug("processing protocol with cached methods")
+
 	finalResults := make([]models.TestResult, 0, len(results))
 
-	for _, inputRes := range results {
-		// Быстрый доступ из кэша
+	for i, inputRes := range results {
+		methodLog := log.With(zap.Int("result_index", i), zap.String("method_id", inputRes.MethodID))
+
 		fullMethod, exists := methodsCache[inputRes.MethodID]
 		if !exists {
+			methodLog.Error("method not found in cache", zap.String("method_id", inputRes.MethodID))
 			return models.Protocol{}, fmt.Errorf("метод %s не найден в стандарте", inputRes.MethodID)
 		}
 
 		method := fullMethod.Method
 		inputs := fullMethod.Inputs
 
-		s.log.Debug("Processing method",
-			zap.String("method_id", method.ID),
-			zap.String("formula", method.FormulaExpr),
-			zap.Any("raw_inputs", inputRes.RawInputs),
+		methodLog.Debug("processing method",
+			zap.String("method_name", method.Name),
+			zap.Bool("has_formula", method.FormulaExpr != ""),
 			zap.Bool("is_mandatory", method.IsMandatory))
 
 		var calculatedValue float64
 		inputDataMap := make(map[string]interface{})
 
-		// Проверка: есть ли формула?
-		hasFormula := method.FormulaExpr != ""
-
-		if hasFormula {
+		if method.FormulaExpr != "" {
 			params := make(map[string]interface{})
-
 			for _, inp := range inputs {
 				valStr, exists := inputRes.RawInputs[inp.ParamKey]
 
-				s.log.Debug("Checking input param",
-					zap.String("key", inp.ParamKey),
-					zap.String("found_value", valStr),
-					zap.Bool("exists", exists))
-
 				if inp.IsRequired && (!exists || valStr == "") {
+					methodLog.Error("missing required parameter",
+						zap.String("param_key", inp.ParamKey),
+						zap.String("param_label", inp.Label))
 					return models.Protocol{}, fmt.Errorf("требуется параметр '%s' (%s) для метода '%s'", inp.Label, inp.ParamKey, method.Name)
 				}
 				if !exists || valStr == "" {
+					methodLog.Debug("skipping optional empty parameter", zap.String("param_key", inp.ParamKey))
 					continue
 				}
 
 				val, err := strconv.ParseFloat(valStr, 64)
 				if err != nil {
+					methodLog.Error("failed to parse parameter value",
+						zap.Error(err),
+						zap.String("param_key", inp.ParamKey),
+						zap.String("raw_value", valStr))
 					return models.Protocol{}, fmt.Errorf("некорректное число '%s' для параметра '%s': %w", valStr, inp.Label, err)
 				}
 
@@ -166,36 +195,29 @@ func (s *ProtocolService) createProtocolWithCache(
 				inputDataMap[inp.ParamKey] = val
 			}
 
-			s.log.Debug("Calling calculateFormula",
-				zap.String("expr", method.FormulaExpr),
-				zap.Any("params", params))
-
 			calcVal, err := s.calculateFormula(method.FormulaExpr, params)
 			if err != nil {
-				s.log.Error("Formula calculation failed", zap.Error(err), zap.String("method", method.Name))
+				methodLog.Error("formula calculation failed", zap.Error(err), zap.String("formula", method.FormulaExpr))
 				return models.Protocol{}, fmt.Errorf("ошибка расчета формулы '%s': %w", method.Name, err)
 			}
 
 			calculatedValue = math.Round(calcVal*100) / 100
-			s.log.Debug("Calculation result", zap.Float64("value", calculatedValue))
+			methodLog.Debug("formula calculated", zap.Float64("result", calculatedValue))
 
 		} else {
-			// Ветка ручного ввода
-			s.log.Debug("No formula found, using manual value")
+			methodLog.Debug("using manual value (no formula)")
 			calculatedValue = s.parseManualValue(inputRes.RawInputs, &inputDataMap)
 			calculatedValue = math.Round(calculatedValue*100) / 100
 		}
 
-		// --- ВАЛИДАЦИЯ (с использованием предзагруженных лимитов) ---
+		// --- ВАЛИДАЦИЯ ---
 		applicableLimit := s.findMatchingLimit(fullMethod.Limits, fullMethod.LimitConditions, sample.ContextParams)
-
 		isCompliant := true
 		var deviationMsg string
 		var appliedLimitID *string
 
 		if applicableLimit.ID != "" {
 			appliedLimitID = &applicableLimit.ID
-
 			switch applicableLimit.LimitType {
 			case "min":
 				if applicableLimit.MinValue != nil && calculatedValue < *applicableLimit.MinValue {
@@ -219,8 +241,13 @@ func (s *ProtocolService) createProtocolWithCache(
 					}
 				}
 			}
+			methodLog.Debug("limit applied",
+				zap.String("limit_id", applicableLimit.ID),
+				zap.String("limit_type", applicableLimit.LimitType),
+				zap.Bool("is_compliant", isCompliant))
 		} else {
 			deviationMsg = "Норматив не применён (условия не найдены)"
+			methodLog.Debug("no applicable limit found")
 		}
 
 		result := models.TestResult{
@@ -235,26 +262,37 @@ func (s *ProtocolService) createProtocolWithCache(
 		finalResults = append(finalResults, result)
 	}
 
+	log.Debug("all results processed, saving protocol")
 	return s.saveProtocol(ctx, protocol, sample, finalResults)
 }
 
-// createProtocolLegacy - фоллбэк-логика с индивидуальными запросами к БД
+// createProtocolLegacy - фоллбэк с индивидуальными запросами
 func (s *ProtocolService) createProtocolLegacy(
 	ctx context.Context,
 	protocol models.Protocol,
 	sample models.Sample,
 	results []models.CreateResultDTO,
 ) (models.Protocol, error) {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "createProtocolLegacy"),
+		zap.String("protocol_id", protocol.ID),
+	)
+	log.Warn("using legacy path - individual DB queries per method")
+
 	finalResults := make([]models.TestResult, 0, len(results))
 
-	for _, inputRes := range results {
+	for i, inputRes := range results {
+		methodLog := log.With(zap.Int("result_index", i), zap.String("method_id", inputRes.MethodID))
+
 		method, err := s.standardRepo.GetTestMethod(ctx, inputRes.MethodID)
 		if err != nil {
+			methodLog.Error("failed to fetch method", zap.Error(err))
 			return models.Protocol{}, fmt.Errorf("метод %s не найден: %w", inputRes.MethodID, err)
 		}
 
 		inputs, err := s.standardRepo.GetMethodInputs(ctx, inputRes.MethodID)
 		if err != nil {
+			methodLog.Error("failed to fetch method inputs", zap.Error(err))
 			return models.Protocol{}, fmt.Errorf("ошибка загрузки инпутов для %s: %w", inputRes.MethodID, err)
 		}
 
@@ -266,6 +304,7 @@ func (s *ProtocolService) createProtocolLegacy(
 			for _, inp := range inputs {
 				valStr, exists := inputRes.RawInputs[inp.ParamKey]
 				if inp.IsRequired && (!exists || valStr == "") {
+					methodLog.Error("missing required parameter", zap.String("param_key", inp.ParamKey))
 					return models.Protocol{}, fmt.Errorf("требуется параметр '%s' для метода '%s'", inp.Label, method.Name)
 				}
 				if !exists || valStr == "" {
@@ -273,6 +312,7 @@ func (s *ProtocolService) createProtocolLegacy(
 				}
 				val, err := strconv.ParseFloat(valStr, 64)
 				if err != nil {
+					methodLog.Error("failed to parse parameter", zap.Error(err), zap.String("value", valStr))
 					return models.Protocol{}, fmt.Errorf("некорректное число '%s': %w", valStr, err)
 				}
 				params[inp.ParamKey] = val
@@ -280,6 +320,7 @@ func (s *ProtocolService) createProtocolLegacy(
 			}
 			calculatedValue, err = s.calculateFormula(method.FormulaExpr, params)
 			if err != nil {
+				methodLog.Error("formula calculation failed", zap.Error(err))
 				return models.Protocol{}, fmt.Errorf("ошибка расчета формулы '%s': %w", method.Name, err)
 			}
 			calculatedValue = math.Round(calculatedValue*100) / 100
@@ -288,10 +329,10 @@ func (s *ProtocolService) createProtocolLegacy(
 			calculatedValue = math.Round(calculatedValue*100) / 100
 		}
 
-		// Валидация через запрос к БД
+		// Валидация через БД
 		limit, err := s.standardRepo.GetApplicableLimit(ctx, method.ID, sample.ContextParams)
 		if err != nil {
-			s.log.Warn("error finding limit", zap.Error(err))
+			methodLog.Warn("error finding limit", zap.Error(err))
 		}
 
 		isCompliant := true
@@ -338,7 +379,8 @@ func (s *ProtocolService) createProtocolLegacy(
 	return s.saveProtocol(ctx, protocol, sample, finalResults)
 }
 
-// findMatchingLimit ищет подходящий лимит в предзагруженных данных (работает в памяти)
+// findMatchingLimit - поиск лимита в памяти (без логирования, чистая функция)
+// findMatchingLimit - поиск лимита в памяти с подробным логированием
 func (s *ProtocolService) findMatchingLimit(
 	limits []models.NormativeLimit,
 	conditionsMap map[string][]models.LimitCondition,
@@ -346,13 +388,24 @@ func (s *ProtocolService) findMatchingLimit(
 ) models.NormativeLimit {
 	var defaultLimit *models.NormativeLimit
 
+	s.log.Debug("findMatchingLimit: starting search",
+		zap.Int("limits_count", len(limits)),
+		zap.Any("context_params", contextParams))
+
 	for i := range limits {
 		limit := limits[i]
 		conds := conditionsMap[limit.ID]
 
+		s.log.Debug("findMatchingLimit: checking limit",
+			zap.String("limit_id", limit.ID),
+			zap.String("limit_type", limit.LimitType),
+			zap.Int("conditions_count", len(conds)))
+
 		if len(conds) == 0 {
 			if defaultLimit == nil {
 				defaultLimit = &limit
+				s.log.Debug("findMatchingLimit: set as default limit",
+					zap.String("limit_id", limit.ID))
 			}
 			continue
 		}
@@ -360,24 +413,43 @@ func (s *ProtocolService) findMatchingLimit(
 		match := true
 		for _, cond := range conds {
 			actualVal, exists := contextParams[cond.DimensionKey]
+
+			s.log.Debug("findMatchingLimit: checking condition",
+				zap.String("limit_id", limit.ID),
+				zap.String("dimension_key", cond.DimensionKey),
+				zap.String("operator", cond.ConditionOperator),
+				zap.String("expected_value", cond.ExpectedValue),
+				zap.Bool("exists_in_context", exists),
+				zap.String("actual_value", actualVal))
+
 			if !exists {
 				match = false
+				s.log.Debug("findMatchingLimit: dimension key not found in context",
+					zap.String("dimension_key", cond.DimensionKey))
 				break
 			}
+
 			switch cond.ConditionOperator {
 			case "=":
 				if actualVal != cond.ExpectedValue {
 					match = false
+					s.log.Debug("findMatchingLimit: equality check failed",
+						zap.String("expected", cond.ExpectedValue),
+						zap.String("actual", actualVal))
 				}
 			case "!=":
 				if actualVal == cond.ExpectedValue {
 					match = false
+					s.log.Debug("findMatchingLimit: inequality check failed",
+						zap.String("expected", cond.ExpectedValue),
+						zap.String("actual", actualVal))
 				}
 			case "IN":
-				// Простая реализация: ожидаемое значение - список через запятую
-				// Можно улучшить парсингом JSON-массива
 				if !containsValue(cond.ExpectedValue, actualVal) {
 					match = false
+					s.log.Debug("findMatchingLimit: IN check failed",
+						zap.String("expected_csv", cond.ExpectedValue),
+						zap.String("actual", actualVal))
 				}
 			}
 			if !match {
@@ -386,18 +458,24 @@ func (s *ProtocolService) findMatchingLimit(
 		}
 
 		if match {
+			s.log.Debug("findMatchingLimit: limit matched",
+				zap.String("limit_id", limit.ID))
 			return limit
 		}
 	}
 
 	if defaultLimit != nil {
+		s.log.Debug("findMatchingLimit: returning default limit",
+			zap.String("limit_id", defaultLimit.ID))
 		return *defaultLimit
 	}
 
+	s.log.Warn("findMatchingLimit: no limit found for any conditions",
+		zap.Int("limits_checked", len(limits)))
 	return models.NormativeLimit{}
 }
 
-// containsValue проверяет наличие значения в строке "val1,val2,val3"
+// Вспомогательные функции (без логирования - чистые утилиты)
 func containsValue(csv, target string) bool {
 	for _, v := range splitCSV(csv) {
 		if v == target {
@@ -407,25 +485,23 @@ func containsValue(csv, target string) bool {
 	return false
 }
 
-// splitCSV простая реализация разделения строки по запятым
 func splitCSV(s string) []string {
 	var result []string
 	var current string
 	for _, r := range s {
 		if r == ',' {
-			result = append(result, current)
+			result = append(result, strings.TrimSpace(current)) // Убираем пробелы
 			current = ""
 		} else {
 			current += string(r)
 		}
 	}
 	if current != "" {
-		result = append(result, current)
+		result = append(result, strings.TrimSpace(current)) // Убираем пробелы
 	}
 	return result
 }
 
-// parseManualValue парсит ручное значение из RawInputs
 func (s *ProtocolService) parseManualValue(rawInputs map[string]string, outMap *map[string]interface{}) float64 {
 	if valStr, ok := rawInputs["value"]; ok {
 		if v, err := strconv.ParseFloat(valStr, 64); err == nil {
@@ -433,7 +509,6 @@ func (s *ProtocolService) parseManualValue(rawInputs map[string]string, outMap *
 			return v
 		}
 	}
-	// Fallback: берем первое валидное число
 	for k, v := range rawInputs {
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
 			(*outMap)[k] = f
@@ -443,65 +518,107 @@ func (s *ProtocolService) parseManualValue(rawInputs map[string]string, outMap *
 	return 0
 }
 
-// saveProtocol сериализует и сохраняет протокол с результатами
+// saveProtocol - сохранение протокола с транзакцией
 func (s *ProtocolService) saveProtocol(
 	ctx context.Context,
 	protocol models.Protocol,
 	sample models.Sample,
 	results []models.TestResult,
 ) (models.Protocol, error) {
-	// Сериализация контекста пробы
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "saveProtocol"),
+		zap.String("protocol_id", protocol.ID),
+		zap.String("sample_id", sample.ID),
+		zap.Int("results_count", len(results)),
+	)
+	log.Debug("serializing and saving protocol")
+
 	rawJSON, err := sample.ToJSON()
 	if err != nil {
+		log.Error("failed to marshal sample context", zap.Error(err))
 		return models.Protocol{}, fmt.Errorf("failed to marshal context: %w", err)
 	}
 	sample.RawContext = rawJSON
 
-	// Сериализация входных данных результатов
 	for i := range results {
 		rawInputs, err := results[i].InputsToJSON()
 		if err != nil {
+			log.Error("failed to marshal result inputs", zap.Error(err), zap.Int("result_index", i))
 			return models.Protocol{}, fmt.Errorf("failed to marshal inputs: %w", err)
 		}
 		results[i].RawInputData = rawInputs
 	}
 
-	// Сохранение в транзакции
 	if err := s.protocolRepo.CreateFull(ctx, protocol, results); err != nil {
-		s.log.Error("failed to create protocol transaction", zap.Error(err))
+		log.Error("failed to create protocol in transaction", zap.Error(err))
 		return models.Protocol{}, fmt.Errorf("ошибка сохранения протокола: %w", err)
 	}
 
-	s.log.Info("protocol created successfully",
-		zap.String("protocol_id", protocol.ID),
-		zap.String("sample_id", sample.ID))
+	log.Info("protocol and results saved successfully",
+		zap.String("protocol_number", protocol.ProtocolNumber),
+		zap.String("status", protocol.Status))
 
 	return protocol, nil
 }
 
-// GetProtocolFull загружает полный протокол с пробой, материалом и результатами (ОПТИМИЗИРОВАНО)
+// GetProtocolFull - загрузка полного протокола
 func (s *ProtocolService) GetProtocolFull(ctx context.Context, id string) (models.ProtocolFull, error) {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "GetProtocolFull"),
+		zap.String("protocol_id", id),
+	)
+	log.Debug("fetching full protocol")
+
 	full, err := s.protocolRepo.GetProtocolFull(ctx, id)
 	if err != nil {
+		log.Error("failed to fetch full protocol from repo", zap.Error(err))
 		return models.ProtocolFull{}, err
 	}
 	if full.IsEmpty() {
+		log.Warn("protocol not found", zap.String("searched_id", id))
 		return models.ProtocolFull{}, fmt.Errorf("protocol not found")
 	}
+
+	log.Debug("full protocol retrieved successfully")
 	return full, nil
 }
 
-// GetProtocolsByGroupID возвращает список протоколов группы
+// GetProtocolsByGroupID - список протоколов группы
 func (s *ProtocolService) GetProtocolsByGroupID(ctx context.Context, groupID string) ([]models.Protocol, error) {
-	return s.protocolRepo.GetByGroupID(ctx, groupID)
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "GetProtocolsByGroupID"),
+		zap.String("group_id", groupID),
+	)
+	log.Debug("fetching protocols by group")
+
+	protocols, err := s.protocolRepo.GetByGroupID(ctx, groupID)
+	if err != nil {
+		log.Error("failed to fetch protocols by group", zap.Error(err))
+		return nil, err
+	}
+
+	log.Debug("protocols retrieved", zap.Int("count", len(protocols)))
+	return protocols, nil
 }
 
-// GetList возвращает список протоколов с пагинацией
+// GetList - пагинированный список протоколов
 func (s *ProtocolService) GetList(ctx context.Context, limit, offset int64) (models.ProtocolListResponse, error) {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "GetList"),
+		zap.Int64("limit", limit),
+		zap.Int64("offset", offset),
+	)
+	log.Debug("fetching paginated protocols list")
+
 	protocols, total, err := s.protocolRepo.GetList(ctx, limit, offset)
 	if err != nil {
+		log.Error("failed to fetch protocols list", zap.Error(err))
 		return models.ProtocolListResponse{}, err
 	}
+
+	log.Debug("protocols list retrieved",
+		zap.Int("returned", len(protocols)),
+		zap.Int64("total", total))
 
 	return models.ProtocolListResponse{
 		Items: protocols,
@@ -509,24 +626,38 @@ func (s *ProtocolService) GetList(ctx context.Context, limit, offset int64) (mod
 	}, nil
 }
 
-// GetGroupSummary формирует сводный отчет по группе испытаний (ОПТИМИЗИРОВАНО)
+// GetGroupSummary - сводный отчёт по группе (с кэшированием)
 func (s *ProtocolService) GetGroupSummary(ctx context.Context, groupID string) (models.GroupSummary, error) {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "GetGroupSummary"),
+		zap.String("group_id", groupID),
+	)
+	log.Info("generating group summary report")
+	start := time.Now()
+	defer func() {
+		log.Debug("summary generation completed", zap.Duration("duration_ms", time.Since(start)))
+	}()
+
 	// 1. Получаем группу
 	group, err := s.groupRepo.GetByID(ctx, groupID)
 	if err != nil {
+		log.Error("failed to fetch group", zap.Error(err))
 		return models.GroupSummary{}, fmt.Errorf("failed to get group: %w", err)
 	}
 	if group.ID == "" {
+		log.Warn("group not found", zap.String("searched_id", groupID))
 		return models.GroupSummary{}, fmt.Errorf("group not found")
 	}
 
-	// 2. Получаем протоколы группы (оптимизированный запрос с JOIN)
+	// 2. Получаем протоколы
 	protocols, err := s.protocolRepo.GetByGroupID(ctx, groupID)
 	if err != nil {
+		log.Error("failed to fetch protocols for group", zap.Error(err))
 		return models.GroupSummary{}, fmt.Errorf("failed to get protocols: %w", err)
 	}
 
 	if len(protocols) == 0 {
+		log.Info("no protocols found for group, returning empty summary")
 		return models.GroupSummary{
 			GroupID:       group.ID,
 			GroupName:     group.Name,
@@ -537,44 +668,47 @@ func (s *ProtocolService) GetGroupSummary(ctx context.Context, groupID string) (
 		}, nil
 	}
 
-	// 3. 🔥 ПРЕДЗАГРУЗКА: Все пробы группы для быстрого маппинга
+	// 3. ПРЕДЗАГРУЗКА проб для быстрого маппинга
 	samples, err := s.sampleRepo.GetByGroupID(ctx, groupID)
 	if err != nil {
-		s.log.Warn("failed to load samples for summary", zap.Error(err))
+		log.Warn("failed to load samples for summary, continuing without sample numbers", zap.Error(err))
 	}
 	sampleMap := make(map[string]string, len(samples))
 	for _, samp := range samples {
 		sampleMap[samp.ID] = samp.SampleNumber
 	}
+	log.Debug("samples preloaded for mapping", zap.Int("samples_count", len(sampleMap)))
 
 	// 4. Агрегация результатов
-	methodMap := make(map[string]*models.MethodResultSummary) // pointer для мутаций
+	methodMap := make(map[string]*models.MethodResultSummary)
 	totalTests := 0
 	compliantTests := 0
-
-	// Кэш методов, чтобы не грузить одно и то же много раз
 	methodCache := make(map[string]models.TestMethod)
 
 	for _, proto := range protocols {
 		results, err := s.protocolRepo.GetResultsByProtocolID(ctx, proto.ID)
 		if err != nil {
-			s.log.Warn("failed to load results", zap.String("protocol_id", proto.ID), zap.Error(err))
+			log.Warn("failed to load results for protocol",
+				zap.String("protocol_id", proto.ID),
+				zap.Error(err))
 			continue
 		}
 
 		for _, res := range results {
-			// Получаем метод из кэша или БД
+			// Кэш методов
 			method, exists := methodCache[res.MethodID]
 			if !exists {
 				method, err = s.standardRepo.GetTestMethod(ctx, res.MethodID)
 				if err != nil {
-					s.log.Warn("failed to load method", zap.String("method_id", res.MethodID), zap.Error(err))
+					log.Warn("failed to load method definition",
+						zap.String("method_id", res.MethodID),
+						zap.Error(err))
 					continue
 				}
 				methodCache[res.MethodID] = method
 			}
 
-			// Инициализируем сводку по методу при первом появлении
+			// Инициализация сводки
 			summary, exists := methodMap[method.ID]
 			if !exists {
 				summary = &models.MethodResultSummary{
@@ -587,7 +721,7 @@ func (s *ProtocolService) GetGroupSummary(ctx context.Context, groupID string) (
 				methodMap[method.ID] = summary
 			}
 
-			// Формируем запись испытания
+			// Формирование испытания
 			isComp := false
 			if res.IsCompliant != nil {
 				isComp = *res.IsCompliant
@@ -595,10 +729,9 @@ func (s *ProtocolService) GetGroupSummary(ctx context.Context, groupID string) (
 
 			trial := models.MethodTrial{
 				ProtocolID:   proto.ID,
-				SampleNumber: sampleMap[proto.SampleID], // ✅ Быстрый доступ из предзагруженной мапы
+				SampleNumber: sampleMap[proto.SampleID],
 				IsCompliant:  isComp,
 			}
-
 			if res.CalculatedValue != nil {
 				trial.Value = *res.CalculatedValue
 			}
@@ -607,7 +740,6 @@ func (s *ProtocolService) GetGroupSummary(ctx context.Context, groupID string) (
 			}
 
 			summary.Trials = append(summary.Trials, trial)
-
 			totalTests++
 			if isComp {
 				compliantTests++
@@ -617,17 +749,23 @@ func (s *ProtocolService) GetGroupSummary(ctx context.Context, groupID string) (
 		}
 	}
 
-	// Преобразуем мапу в слайс для ответа
+	// Преобразование в слайс
 	summaries := make([]models.MethodResultSummary, 0, len(methodMap))
 	for _, v := range methodMap {
 		summaries = append(summaries, *v)
 	}
 
-	// Расчет процента соответствия
+	// Расчёт процента
 	rate := 100.0
 	if totalTests > 0 {
 		rate = float64(compliantTests) / float64(totalTests) * 100.0
 	}
+
+	log.Info("group summary generated successfully",
+		zap.Int("protocols_processed", len(protocols)),
+		zap.Int("methods_aggregated", len(summaries)),
+		zap.Int("total_tests", totalTests),
+		zap.Float64("compliant_rate", rate))
 
 	return models.GroupSummary{
 		GroupID:       group.ID,
@@ -639,6 +777,7 @@ func (s *ProtocolService) GetGroupSummary(ctx context.Context, groupID string) (
 	}, nil
 }
 
+// generateProtocolNumber - генерация номера (вспомогательная, без логирования)
 func (s *ProtocolService) generateProtocolNumber(ctx context.Context, protocolID, materialID, groupID, sampleID string, createdAt time.Time) (string, error) {
 	mat, err := s.materialRepo.GetByID(ctx, materialID)
 	if err != nil {
@@ -651,23 +790,65 @@ func (s *ProtocolService) generateProtocolNumber(ctx context.Context, protocolID
 	return fmt.Sprintf("%s%s-%s-%s-%s", isGroup, mat.Code[:8], sampleID[:8], protocolID[:8], createdAt.Format("20060102")), nil
 }
 
+// UpdateProtocol - обновление черновика
 func (s *ProtocolService) UpdateProtocol(ctx context.Context, id string, req models.UpdateProtocolRequest) error {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "UpdateProtocol"),
+		zap.String("protocol_id", id),
+	)
+	log.Debug("updating protocol")
+
 	prot, err := s.protocolRepo.GetByID(ctx, id)
 	if err != nil {
+		log.Error("failed to fetch protocol for update", zap.Error(err))
 		return err
 	}
 
 	if prot.Status != "draft" {
+		log.Warn("cannot update protocol - not in draft status", zap.String("current_status", prot.Status))
 		return fmt.Errorf("cannot update protocol with status %s", prot.Status)
 	}
 
-	return s.protocolRepo.UpdateProtocol(ctx, id, req)
+	if err := s.protocolRepo.UpdateProtocol(ctx, id, req); err != nil {
+		log.Error("failed to update protocol in repo", zap.Error(err))
+		return err
+	}
+
+	log.Info("protocol updated successfully")
+	return nil
 }
 
+// UpdateProtocolStatus - смена статуса
 func (s *ProtocolService) UpdateProtocolStatus(ctx context.Context, id string, status string) error {
-	return s.protocolRepo.UpdateStatus(ctx, id, status)
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "UpdateProtocolStatus"),
+		zap.String("protocol_id", id),
+		zap.String("new_status", status),
+	)
+	log.Info("updating protocol status")
+
+	if err := s.protocolRepo.UpdateStatus(ctx, id, status); err != nil {
+		log.Error("failed to update protocol status in repo", zap.Error(err))
+		return err
+	}
+
+	log.Info("protocol status updated successfully")
+	return nil
 }
 
+// DeleteProtocol - удаление
 func (s *ProtocolService) DeleteProtocol(ctx context.Context, id string) error {
-	return s.protocolRepo.DeleteProtocol(ctx, id)
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "DeleteProtocol"),
+		zap.String("protocol_id", id),
+	)
+	log.Info("deleting protocol")
+
+	if err := s.protocolRepo.DeleteProtocol(ctx, id); err != nil {
+		log.Error("failed to delete protocol from repo", zap.Error(err))
+		return err
+	}
+
+	log.Info("protocol deleted successfully")
+	return nil
 }

@@ -46,69 +46,97 @@ func NewReportService(
 	}
 }
 
-// GenerateProtocolPDF генерирует PDF для конкретного протокола (ОПТИМИЗИРОВАНО)
+// GenerateProtocolPDF генерирует PDF для конкретного протокола
 func (s *ReportService) GenerateProtocolPDF(ctx context.Context, protocolID string) ([]byte, error) {
-	s.log.Info("Generating PDF for protocol", zap.String("id", protocolID))
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "GenerateProtocolPDF"),
+		zap.String("protocol_id", protocolID),
+	)
+	log.Info("starting PDF generation for protocol")
+	start := time.Now()
+	defer func() {
+		log.Info("PDF generation completed", zap.Duration("duration_ms", time.Since(start)))
+	}()
 
-	// 🔥 1. ОДИН ЗАПРОС вместо четырёх
-	// Получаем протокол, пробу, материал и результаты сразу
-	// Это возможно благодаря методу GetProtocolFull, который мы реализовали ранее
+	// 1. Получаем полные данные протокола
+	log.Debug("fetching full protocol data")
 	protocolFull, err := s.protocolService.GetProtocolFull(ctx, protocolID)
 	if err != nil {
+		log.Error("failed to fetch protocol data", zap.Error(err))
 		return nil, fmt.Errorf("failed to get protocol data: %w", err)
 	}
 	if protocolFull.IsEmpty() {
+		log.Warn("protocol not found", zap.String("searched_id", protocolID))
 		return nil, fmt.Errorf("protocol %s not found", protocolID)
 	}
+	log.Debug("protocol data fetched successfully",
+		zap.Int("results_count", len(protocolFull.Results)),
+		zap.String("material_name", protocolFull.Material.Name))
 
-	// 🔥 2. Предзагрузка методов для результатов (Batch Load)
-	// Чтобы избежать N+1 запросов в цикле prepareProtocolTemplateData,
-	// загружаем все методы, которые встречаются в результатах, одним махом.
-	// Если StandardID неизвестен, можно загрузить по списку ID методов.
-
-	// Собираем уникальные MethodID из результатов
-	methodIDs := make(map[string]bool)
-	for _, res := range protocolFull.Results {
-		methodIDs[res.MethodID] = true
-	}
-
-	// Если у нас есть доступ к стандарту (он есть в протоколе через пробу),
-	// можно загрузить методы стандарта целиком (как мы делали в ProtocolService).
-	// Но для универсальности загрузим только нужные методы.
-	// Примечание: В идеале нужен метод standardRepo.GetMethodsByIDs(ctx, []string)
-	// Пока реализуем кэширование внутри prepare... или загрузим стандарт полностью.
-
-	// Для простоты и максимальной скорости: если все результаты одного стандарта,
-	// загружаем контекст стандарта целиком.
+	// 2. Предзагрузка методов для оптимизации
 	standardID := ""
 	if len(protocolFull.Results) > 0 {
-		// Быстрый хак: получаем StandardID по первому методу (один легкий запрос)
-		// В продакшене лучше передавать StandardID в ответе GetProtocolFull
-		firstMethod, _ := s.protocolService.standardRepo.GetTestMethod(ctx, protocolFull.Results[0].MethodID)
-		standardID = firstMethod.StandardID
+		firstMethodID := protocolFull.Results[0].MethodID
+		log.Debug("determining standard for methods cache", zap.String("first_method_id", firstMethodID))
+
+		firstMethod, err := s.protocolService.standardRepo.GetTestMethod(ctx, firstMethodID)
+		if err != nil {
+			log.Warn("failed to determine standard, falling back to individual queries",
+				zap.Error(err), zap.String("method_id", firstMethodID))
+		} else {
+			standardID = firstMethod.StandardID
+		}
 	}
 
 	var methodsCache map[string]models.TestMethodFull
 	if standardID != "" {
-		methodsCache, _ = s.protocolService.standardRepo.GetMethodsFullByStandardID(ctx, standardID)
-		// Если ошибка - просто проигнорируем и будем грузить по одному (fallback)
+		log.Debug("preloading methods cache for standard", zap.String("standard_id", standardID))
+		cacheStart := time.Now()
+		methodsCache, err = s.protocolService.standardRepo.GetMethodsFullByStandardID(ctx, standardID)
+		if err != nil {
+			log.Warn("failed to preload methods cache", zap.Error(err), zap.Duration("cache_load_ms", time.Since(cacheStart)))
+		} else {
+			log.Info("methods cache loaded successfully",
+				zap.Int("methods_count", len(methodsCache)),
+				zap.Duration("cache_load_ms", time.Since(cacheStart)))
+		}
 	}
 
-	// 3. Преобразуем данные в формат для шаблона
-	// Передаем кэш методов, чтобы функция не делала лишние запросы
+	// 3. Подготовка данных шаблона
+	log.Debug("preparing template data")
+	templateStart := time.Now()
 	templateData, err := s.prepareProtocolTemplateData(ctx, protocolFull, methodsCache)
 	if err != nil {
+		log.Error("failed to prepare template data", zap.Error(err))
 		return nil, fmt.Errorf("failed to prepare template data: %w", err)
 	}
+	log.Debug("template data prepared", zap.Duration("prep_duration_ms", time.Since(templateStart)))
 
-	// 4. Рендерим HTML (используем embed FS)
+	// 4. Рендеринг HTML
+	log.Debug("rendering HTML template")
+	htmlStart := time.Now()
 	htmlContent, err := s.renderHTML("protocol_template.html", templateData)
 	if err != nil {
+		log.Error("failed to render HTML template", zap.Error(err))
 		return nil, err
 	}
+	log.Debug("HTML rendered successfully",
+		zap.Int("html_size_bytes", len(htmlContent)),
+		zap.Duration("render_duration_ms", time.Since(htmlStart)))
 
-	// 5. Генерируем PDF
-	return s.generatePDFFromHTML(htmlContent)
+	// 5. Генерация PDF
+	log.Debug("generating PDF from HTML")
+	pdfStart := time.Now()
+	pdfBytes, err := s.generatePDFFromHTML(htmlContent)
+	if err != nil {
+		log.Error("failed to generate PDF", zap.Error(err))
+		return nil, err
+	}
+	log.Info("PDF generated successfully",
+		zap.Int("pdf_size_bytes", len(pdfBytes)),
+		zap.Duration("pdf_generation_ms", time.Since(pdfStart)))
+
+	return pdfBytes, nil
 }
 
 type GroupSummaryTemplateData struct {
@@ -163,36 +191,51 @@ type ProtocolTrialView struct {
 	LabName        string
 }
 
-// GenerateGroupSummaryPDF генерирует сводный PDF-отчёт по группе испытаний
+// GenerateGroupSummaryPDF генерирует сводный PDF-отчёт по группе
 func (s *ReportService) GenerateGroupSummaryPDF(ctx context.Context, groupID string) ([]byte, error) {
-	s.log.Info("Generating group summary PDF", zap.String("group_id", groupID))
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "GenerateGroupSummaryPDF"),
+		zap.String("group_id", groupID),
+	)
+	log.Info("starting group summary PDF generation")
+	start := time.Now()
+	defer func() {
+		log.Info("group summary PDF generation completed", zap.Duration("total_duration_ms", time.Since(start)))
+	}()
 
-	// 1. Получаем базовую информацию о группе
+	// 1. Получаем информацию о группе
+	log.Debug("fetching group data")
 	group, err := s.protocolService.groupRepo.GetByID(ctx, groupID)
 	if err != nil {
+		log.Error("failed to fetch group", zap.Error(err))
 		return nil, fmt.Errorf("failed to get group: %w", err)
 	}
 	if group.ID == "" {
+		log.Warn("group not found", zap.String("searched_id", groupID))
 		return nil, fmt.Errorf("group %s not found", groupID)
 	}
+	log.Debug("group data fetched", zap.String("group_name", group.Name))
 
-	// 2. Получаем материал для отображения
+	// 2. Получаем материал
+	log.Debug("fetching material data")
 	material, err := s.materialService.GetByID(ctx, group.MaterialID)
 	if err != nil {
-		s.log.Warn("failed to load material for group report", zap.Error(err))
+		log.Warn("failed to load material, using fallback", zap.Error(err), zap.String("material_id", group.MaterialID))
 		material = models.Material{ID: group.MaterialID, Name: "Неизвестный материал"}
 	}
 
 	// 3. Получаем сводную статистику
+	log.Debug("fetching group summary statistics")
 	summary, err := s.protocolService.GetGroupSummary(ctx, groupID)
 	if err != nil {
+		log.Error("failed to fetch group summary", zap.Error(err))
 		return nil, fmt.Errorf("failed to get group summary: %w", err)
 	}
+	log.Debug("summary fetched",
+		zap.Int("methods_count", len(summary.Results)),
+		zap.Float64("compliant_rate", summary.CompliantRate))
 
-	// 4. 🔥 КЭШИРОВАНИЕ МЕТОДОВ через GetMethodsFullByStandardID
-	methodsCache := make(map[string]models.TestMethodFull)
-
-	// Получаем StandardID по первому результату (если есть)
+	// 4. Кэширование методов
 	standardID := ""
 	if len(summary.Results) > 0 {
 		firstMethod, err := s.protocolService.standardRepo.GetTestMethod(ctx, summary.Results[0].MethodID)
@@ -201,36 +244,46 @@ func (s *ReportService) GenerateGroupSummaryPDF(ctx context.Context, groupID str
 		}
 	}
 
-	// Загружаем ВСЕ методы стандарта одним запросом (оптимизация)
+	methodsCache := make(map[string]models.TestMethodFull)
 	if standardID != "" {
+		log.Debug("preloading methods cache for group report", zap.String("standard_id", standardID))
 		cache, err := s.protocolService.standardRepo.GetMethodsFullByStandardID(ctx, standardID)
 		if err != nil {
-			s.log.Warn("failed to preload methods for group report", zap.Error(err))
+			log.Warn("failed to preload methods cache", zap.Error(err))
 		} else {
 			methodsCache = cache
+			log.Debug("methods cache loaded", zap.Int("cached_methods", len(cache)))
 		}
 	}
 
-	// 5. Получаем протоколы группы для детализации испытаний
+	// 5. Получаем протоколы группы
+	log.Debug("fetching protocols for group")
 	protocols, err := s.protocolService.protocolRepo.GetByGroupID(ctx, groupID)
 	if err != nil {
-		s.log.Warn("failed to load protocols for group report", zap.Error(err))
+		log.Warn("failed to load protocols, continuing with empty list", zap.Error(err))
 		protocols = []models.Protocol{}
+	} else {
+		log.Debug("protocols loaded", zap.Int("count", len(protocols)))
 	}
 
-	// 6. Подготавливаем данные для шаблона
+	// 6. Подготовка данных шаблона
+	log.Debug("preparing group summary template data")
 	templateData, err := s.prepareGroupSummaryTemplateData(ctx, group, material, summary, methodsCache, protocols)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare group template  %w", err)
+		log.Error("failed to prepare group template data", zap.Error(err))
+		return nil, fmt.Errorf("failed to prepare group template data: %w", err)
 	}
 
-	// 7. Рендерим HTML
+	// 7. Рендеринг HTML
+	log.Debug("rendering group summary HTML")
 	htmlContent, err := s.renderHTML("group_summary_template.html", templateData)
 	if err != nil {
+		log.Error("failed to render group summary HTML", zap.Error(err))
 		return nil, err
 	}
 
-	// 8. Генерируем PDF
+	// 8. Генерация PDF
+	log.Debug("generating PDF from HTML")
 	return s.generatePDFFromHTML(htmlContent)
 }
 
@@ -243,7 +296,6 @@ func (s *ReportService) prepareGroupSummaryTemplateData(
 	methodsCache map[string]models.TestMethodFull,
 	protocols []models.Protocol,
 ) (GroupSummaryTemplateData, error) {
-	// Форматирование даты
 	createdAt := group.CreatedAt
 	if createdAt.IsZero() {
 		createdAt = time.Now()
@@ -251,7 +303,6 @@ func (s *ReportService) prepareGroupSummaryTemplateData(
 	dateStr := createdAt.Format("02.01.2006")
 	formattedFullDate := createdAt.Format("02.01.2006 15:04")
 
-	// 🔹 Создаем карту только завершенных протоколов
 	completedProtocolsMap := make(map[string]models.Protocol)
 	for _, p := range protocols {
 		if p.Status == "completed" {
@@ -268,27 +319,25 @@ func (s *ReportService) prepareGroupSummaryTemplateData(
 			Project:        group.ProjectName,
 			Location:       group.Location,
 			CreatedAt:      dateStr,
-			TotalProtocols: len(completedProtocolsMap), // Показываем только завершенные
+			TotalProtocols: len(completedProtocolsMap),
 		},
 		FormattedDate: formattedFullDate,
 		QRCodeData:    group.ID,
 		GeneratedAt:   time.Now().Format("02.01.2006 15:04"),
 	}
 
-	// Временный срез для накопления методов
 	tempMethodResults := make([]MethodSummaryView, 0)
-
-	// Переменные для общей статистики (только по методам, которые войдут в отчет)
 	totalTests := 0
 	compliantTests := 0
 
-	// Обработка результатов по методам
 	for _, res := range summary.Results {
 		methodFull, exists := methodsCache[res.MethodID]
 		if !exists {
 			methodBasic, err := s.protocolService.standardRepo.GetTestMethod(ctx, res.MethodID)
 			if err != nil {
-				s.log.Warn("failed to load method for group report", zap.String("method_id", res.MethodID), zap.Error(err))
+				s.log.Warn("failed to load method for group report",
+					zap.String("method_id", res.MethodID),
+					zap.Error(err))
 				continue
 			}
 			methodFull = models.TestMethodFull{
@@ -298,42 +347,42 @@ func (s *ReportService) prepareGroupSummaryTemplateData(
 			}
 		}
 		method := methodFull.Method
+
 		var normStr string = "—"
-
 		if len(methodFull.Limits) > 0 {
-			// Простая логика: берем первый лимит, у которого нет условий, или просто первый, если условий нет ни у кого
-			// В идеале здесь нужна та же логика findMatchingLimit, но с пустым или усредненным контекстом.
-			// Для простоты возьмем первый лимит, считая его основным для метода.
 			limit := methodFull.Limits[0]
-
-			if limit.LimitType == "range" && limit.MinValue != nil && limit.MaxValue != nil {
-				normStr = fmt.Sprintf("%.2f – %.2f", *limit.MinValue, *limit.MaxValue)
-			} else if limit.LimitType == "min" && limit.MinValue != nil {
-				normStr = fmt.Sprintf("≥ %.2f", *limit.MinValue)
-			} else if limit.LimitType == "max" && limit.MaxValue != nil {
-				normStr = fmt.Sprintf("≤ %.2f", *limit.MaxValue)
-			} else if len(limit.DiscreteValues) > 0 {
+			switch limit.LimitType {
+			case "range":
+				if limit.MinValue != nil && limit.MaxValue != nil {
+					normStr = fmt.Sprintf("%.2f – %.2f", *limit.MinValue, *limit.MaxValue)
+				}
+			case "min":
+				if limit.MinValue != nil {
+					normStr = fmt.Sprintf("≥ %.2f", *limit.MinValue)
+				}
+			case "max":
+				if limit.MaxValue != nil {
+					normStr = fmt.Sprintf("≤ %.2f", *limit.MaxValue)
+				}
+			}
+			if len(limit.DiscreteValues) > 0 && normStr == "—" {
 				normStr = strings.Join(limit.DiscreteValues, ", ")
 			}
 		}
 
-		// Собираем детализацию ТОЛЬКО по завершенным протоколам
 		protocolTrials := make([]ProtocolTrialView, 0)
 		values := make([]float64, 0)
 
 		for _, trial := range res.Trials {
-			// 🔹 ГЛАВНЫЙ ФИЛЬТР: Пропускаем черновики
 			proto, exists := completedProtocolsMap[trial.ProtocolID]
 			if !exists {
 				continue
 			}
 
-			// Добавляем значение для статистики метода
 			if !math.IsNaN(trial.Value) && !math.IsInf(trial.Value, 0) {
 				values = append(values, trial.Value)
 			}
 
-			// Формируем строку для таблицы
 			testDate := proto.TestDate
 			if testDate.IsZero() {
 				testDate = proto.CreatedAt
@@ -355,14 +404,11 @@ func (s *ReportService) prepareGroupSummaryTemplateData(
 			})
 		}
 
-		// 🔹 ИСКЛЮЧЕНИЕ МЕТОДА: Если нет завершенных протоколов, пропускаем этот метод полностью
 		if len(protocolTrials) == 0 {
 			continue
 		}
 
-		// Расчет статистики для этого метода
 		var avg, min, max float64
-
 		if len(values) > 0 {
 			sum := 0.0
 			min = values[0]
@@ -379,7 +425,6 @@ func (s *ReportService) prepareGroupSummaryTemplateData(
 			avg = sum / float64(len(values))
 		}
 
-		// Обновляем общую статистику (теперь мы уверены, что метод имеет данные)
 		for _, trial := range protocolTrials {
 			totalTests++
 			if trial.IsCompliant {
@@ -395,19 +440,16 @@ func (s *ReportService) prepareGroupSummaryTemplateData(
 			MinValue:     math.Round(min*100) / 100,
 			MaxValue:     math.Round(max*100) / 100,
 			NormDisplay:  normStr,
-			IsCompliant:  res.IsCompliant, // Статус соответствия метода (из сервиса)
+			IsCompliant:  res.IsCompliant,
 			TrialsCount:  len(protocolTrials),
 			Protocols:    protocolTrials,
 		}
 		tempMethodResults = append(tempMethodResults, methodView)
 	}
 
-	// Записываем отфильтрованные результаты
 	data.MethodResults = tempMethodResults
-
-	// Записываем пересчитанную статистику
 	data.Statistics = StatisticsView{
-		CompliantRate:    summary.CompliantRate, // Берем из сервиса (там логика только по completed)
+		CompliantRate:    summary.CompliantRate,
 		CompliantPercent: fmt.Sprintf("%.1f%%", summary.CompliantRate),
 		TotalSamples:     len(completedProtocolsMap),
 		TotalTests:       totalTests,
@@ -416,10 +458,6 @@ func (s *ReportService) prepareGroupSummaryTemplateData(
 
 	return data, nil
 }
-
-// ============================================================================
-// СТРУКТУРЫ ДАННЫХ ДЛЯ ШАБЛОНА (VIEW MODELS)
-// ============================================================================
 
 type ProtocolTemplateData struct {
 	Protocol      ProtocolView
@@ -465,20 +503,13 @@ type ResultRowView struct {
 	RawInputs  map[string]interface{}
 }
 
-// ============================================================================
-// ВНУТРЕННЯЯ ЛОГИКА
-// ============================================================================
-
-// prepareProtocolTemplateData - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ
-// Принимает ProtocolFull и кэш методов, чтобы избежать запросов в цикле
+// prepareProtocolTemplateData - оптимизированная версия с кэшированием
 func (s *ReportService) prepareProtocolTemplateData(
 	ctx context.Context,
 	full models.ProtocolFull,
-	methodsCache map[string]models.TestMethodFull, // 🔥 Кэш для ускорения
+	methodsCache map[string]models.TestMethodFull,
 ) (ProtocolTemplateData, error) {
-	// Форматирование даты
 	var reportTime time.Time
-
 	if !full.Protocol.TestDate.IsZero() {
 		reportTime = full.Protocol.TestDate.Local()
 	} else if !full.Protocol.CreatedAt.IsZero() {
@@ -503,7 +534,7 @@ func (s *ReportService) prepareProtocolTemplateData(
 			Number:          full.Sample.SampleNumber,
 			CollectionPlace: full.Sample.CollectionPlace,
 			Note:            full.Sample.Note,
-			MaterialName:    full.Material.Name, // ✅ Уже загружено в full.Material
+			MaterialName:    full.Material.Name,
 		},
 		Material: MaterialView{
 			Name: full.Material.Name,
@@ -513,37 +544,41 @@ func (s *ReportService) prepareProtocolTemplateData(
 		Operator:      full.Protocol.OperatorName,
 		FormattedDate: formattedFullDate,
 		QRCodeData:    full.Protocol.ID,
-		// FontPath можно передать, если wkhtmltopdf требует локальный путь
 	}
 
-	// ОБРАБОТКА РЕЗУЛЬТАТОВ
-	for _, res := range full.Results {
+	for i, res := range full.Results {
 		var method models.TestMethod
 		var applicableLimit models.NormativeLimit
+		cacheHit := false
 
-		// Пытаемся взять метод из предзагруженного кэша
 		if methodsCache != nil {
 			if fullMethod, ok := methodsCache[res.MethodID]; ok {
 				method = fullMethod.Method
-				// Ищем применимый лимит в памяти (быстро)
-				// Используем ту же логику, что и в ProtocolService.findMatchingLimit
 				applicableLimit = s.findMatchingLimitInMemory(fullMethod.Limits, fullMethod.LimitConditions, full.Sample.ContextParams)
+				cacheHit = true
 			}
 		}
 
-		// Fallback: если кэш не сработал (или пуст), грузим из БД (медленно, но надежно)
 		if method.ID == "" {
+			s.log.Debug("method cache miss, fetching from DB",
+				zap.String("method_id", res.MethodID),
+				zap.Int("result_index", i))
+
 			var err error
 			method, err = s.protocolService.standardRepo.GetTestMethod(ctx, res.MethodID)
 			if err != nil {
-				s.log.Warn("failed to load method for report", zap.String("method_id", res.MethodID), zap.Error(err))
-				continue // Пропускаем этот результат, чтобы не ломать весь отчет
+				s.log.Warn("failed to load method for report",
+					zap.String("method_id", res.MethodID),
+					zap.Error(err))
+				continue
 			}
-			// Для лимитов в фоллбэке тоже делаем запрос
 			applicableLimit, _ = s.protocolService.standardRepo.GetApplicableLimit(ctx, res.MethodID, full.Sample.ContextParams)
+		} else if cacheHit {
+			s.log.Debug("method cache hit",
+				zap.String("method_id", res.MethodID),
+				zap.Int("result_index", i))
 		}
 
-		// Формирование строки нормы
 		normStr := "—"
 		if applicableLimit.ID != "" {
 			if applicableLimit.MinValue != nil && applicableLimit.MaxValue != nil {
@@ -555,15 +590,11 @@ func (s *ReportService) prepareProtocolTemplateData(
 			}
 		}
 
-		// Статус соответствия
-		// ВАЖНО: Используем статус, который УЖЕ рассчитан и сохранен в БД (res.IsCompliant)
-		// Не нужно пересчитывать его заново!
 		complianceStr := "Соответствует"
 		if res.IsCompliant != nil && !*res.IsCompliant {
 			complianceStr = "Не соответствует"
 		}
 
-		// Значение
 		val := 0.0
 		if res.CalculatedValue != nil {
 			val = *res.CalculatedValue
@@ -575,17 +606,20 @@ func (s *ReportService) prepareProtocolTemplateData(
 			Unit:       method.Unit,
 			Norm:       normStr,
 			Compliance: complianceStr,
-			Deviation:  res.DeviationMsg, // Берем сохраненное сообщение об ошибке
+			Deviation:  res.DeviationMsg,
 			RawInputs:  res.InputData,
 		}
 		data.Results = append(data.Results, row)
 	}
 
+	s.log.Debug("template data prepared",
+		zap.Int("results_processed", len(data.Results)),
+		zap.String("protocol_number", data.Protocol.Number))
+
 	return data, nil
 }
 
-// findMatchingLimitInMemory - вспомогательная функция для поиска лимита в кэше
-// (Дублирует логику из ProtocolService, можно вынести в утилиты)
+// findMatchingLimitInMemory - чистая функция, без логирования
 func (s *ReportService) findMatchingLimitInMemory(
 	limits []models.NormativeLimit,
 	conditionsMap map[string][]models.LimitCondition,
@@ -631,20 +665,16 @@ func (s *ReportService) findMatchingLimitInMemory(
 	return models.NormativeLimit{}
 }
 
-// renderHTML - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ С EMBED
+// renderHTML - рендеринг HTML-шаблона
 func (s *ReportService) renderHTML(templateName string, data interface{}) (string, error) {
 	execPath, err := os.Executable()
 	if err != nil {
 		return "", fmt.Errorf("failed to get executable path: %w", err)
 	}
 	execDir := filepath.Dir(execPath)
-
-	// Конструируем полный путь
 	tmplPath := filepath.Join(execDir, "templates", "protocols", templateName)
 
-	// Проверка существования файла
 	if _, err := os.Stat(tmplPath); os.IsNotExist(err) {
-		// Попытка найти в текущей рабочей директории (для режима разработки go run)
 		tmplPath = filepath.Join("templates", "protocols", templateName)
 		if _, err := os.Stat(tmplPath); os.IsNotExist(err) {
 			return "", fmt.Errorf("template file not found at %s or %s",
@@ -653,50 +683,65 @@ func (s *ReportService) renderHTML(templateName string, data interface{}) (strin
 		}
 	}
 
+	s.log.Debug("parsing HTML template", zap.String("template_path", tmplPath))
 	tmpl, err := template.ParseFiles(tmplPath)
 	if err != nil {
+		s.log.Error("failed to parse template", zap.Error(err), zap.String("template", templateName))
 		return "", fmt.Errorf("failed to parse template: %w", err)
 	}
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
+		s.log.Error("failed to execute template", zap.Error(err))
 		return "", fmt.Errorf("failed to execute template: %w", err)
 	}
 
+	s.log.Debug("HTML template rendered successfully", zap.Int("output_size_bytes", buf.Len()))
 	return buf.String(), nil
 }
 
-// generatePDFFromHTML (без изменений, логика wkhtmltopdf)
+// generatePDFFromHTML - генерация PDF через wkhtmltopdf
 func (s *ReportService) generatePDFFromHTML(htmlContent string) ([]byte, error) {
+	s.log.Debug("initializing wkhtmltopdf")
 	wkPath, err := GetWkhtmltopdfPath(s.wkhtmltopdfWindows)
 	if err != nil {
+		s.log.Error("failed to prepare wkhtmltopdf binary", zap.Error(err))
 		return nil, fmt.Errorf("failed to prepare wkhtmltopdf: %w", err)
 	}
+
 	tmpFile, err := os.CreateTemp("", "protocol_*.html")
 	if err != nil {
+		s.log.Error("failed to create temp HTML file", zap.Error(err))
 		return nil, fmt.Errorf("failed to create temp file: %w", err)
 	}
 	tempPath := tmpFile.Name()
-	defer os.Remove(tempPath)
+	defer func() {
+		os.Remove(tempPath)
+		s.log.Debug("cleaned up temp HTML file", zap.String("path", tempPath))
+	}()
 
 	if _, err := tmpFile.Write([]byte(htmlContent)); err != nil {
 		tmpFile.Close()
+		s.log.Error("failed to write HTML to temp file", zap.Error(err))
 		return nil, fmt.Errorf("failed to write to temp file: %w", err)
 	}
 	tmpFile.Close()
 
 	wkhtmltopdf.SetPath(wkPath)
+	s.log.Debug("creating PDF generator instance")
 
 	pdfg, err := wkhtmltopdf.NewPDFGenerator()
 	if err != nil {
+		s.log.Error("failed to initialize PDF generator", zap.Error(err))
 		return nil, fmt.Errorf("failed to init wkhtmltopdf: %w", err)
 	}
 
 	page := wkhtmltopdf.NewPage(tempPath)
 	page.EnableLocalFileAccess.Set(true)
 	page.Encoding.Set("UTF-8")
-
 	pdfg.AddPage(page)
+
+	// Настройки PDF
 	pdfg.Dpi.Set(300)
 	pdfg.PageSize.Set(wkhtmltopdf.PageSizeA4)
 	pdfg.MarginTop.Set(10)
@@ -704,40 +749,38 @@ func (s *ReportService) generatePDFFromHTML(htmlContent string) ([]byte, error) 
 	pdfg.MarginLeft.Set(10)
 	pdfg.MarginRight.Set(10)
 
+	s.log.Debug("generating PDF content")
 	if err := pdfg.Create(); err != nil {
+		s.log.Error("failed to create PDF content", zap.Error(err))
 		return nil, fmt.Errorf("failed to create PDF: %w", err)
 	}
 
-	return pdfg.Bytes(), nil
+	pdfBytes := pdfg.Bytes()
+	s.log.Debug("PDF content generated", zap.Int("size_bytes", len(pdfBytes)))
+	return pdfBytes, nil
 }
 
+// GetWkhtmltopdfPath - утилита для извлечения бинарника
 func GetWkhtmltopdfPath(wkhtmltopdfWindows []byte) (string, error) {
-	var binary []byte
 	var filename string
-
-	binary = wkhtmltopdfWindows
 	filename = "wkhtmltopdf.exe"
 
-	// Проверяем, уже ли извлечён файл
 	tempDir := os.TempDir()
 	binaryPath := filepath.Join(tempDir, "desktop_lab_wkhtmltopdf", filename)
 
 	if _, err := os.Stat(binaryPath); err == nil {
-		// Файл существует — проверяем, что он исполняемый
 		if err := os.Chmod(binaryPath, 0755); err != nil {
 			return "", fmt.Errorf("failed to chmod binary: %w", err)
 		}
 		return binaryPath, nil
 	}
 
-	// Создаём директорию
 	dir := filepath.Dir(binaryPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create temp dir: %w", err)
 	}
 
-	// Записываем бинарник
-	if err := os.WriteFile(binaryPath, binary, 0755); err != nil {
+	if err := os.WriteFile(binaryPath, wkhtmltopdfWindows, 0755); err != nil {
 		return "", fmt.Errorf("failed to write wkhtmltopdf binary: %w", err)
 	}
 
