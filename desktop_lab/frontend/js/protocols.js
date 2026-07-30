@@ -1,6 +1,6 @@
 // frontend/js/protocols.js
 import { api, downloadBlob } from './api.js';
-import { formatDate, showToast, showConfirm, setLoading } from './utils.js';
+import { formatDate, formatDateOnly, showToast, showConfirm, setLoading } from './utils.js';
 import { initNavigation } from './navigation.js';
 
 let currentPage = 1;
@@ -121,18 +121,6 @@ function updatePagination(meta) {
   if (pageInfo) pageInfo.textContent = `Страница ${meta?.page || 1} из ${meta?.total_pages || 1}`;
   if (prevPage) prevPage.disabled = !meta?.has_prev_page;
   if (nextPage) nextPage.disabled = !meta?.has_next_page;
-}
-
-function formatDateOnly(isoString) {
-  if (!isoString) return '—';
-  try {
-    // Берём только часть до 'T': "2026-05-05T10:30:00Z" → "2026-05-05"
-    const datePart = isoString.split('T')[0];
-    const [year, month, day] = datePart.split('-');
-    return `${day}.${month}.${year}`;
-  } catch {
-    return '—';
-  }
 }
 
 // === VIEW PROTOCOL ===
@@ -374,9 +362,9 @@ function renderNoteBlock(label, note, className = '') {
     .replace(/\n/g, '<br>');
   
   return `
-    <div class="note-block ${className}" style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:6px;padding:12px;font-size:0.9rem;margin-bottom:8px;">
-      <span class="note-label" style="display:block;font-weight:600;color:#1f2937;margin-bottom:6px;font-size:0.85rem;">📝 ${label}</span>
-      <div class="note-content" style="color:#4b5563;line-height:1.5;white-space:pre-wrap;">${escapedNote}</div>
+    <div class="note-block ${className}">
+      <span class="note-label">📝 ${label}</span>
+      <div class="note-content">${escapedNote}</div>
     </div>`;
 }
 

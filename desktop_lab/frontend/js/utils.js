@@ -10,6 +10,17 @@ export function formatDate(date) {
   } catch { return String(date); }
 }
 
+export function formatDateOnly(isoString) {
+  if (!isoString) return '—';
+  try {
+    const datePart = isoString.split('T')[0];
+    const [year, month, day] = datePart.split('-');
+    return `${day}.${month}.${year}`;
+  } catch {
+    return '—';
+  }
+}
+
 export function formatNumber(value, unit = '') {
   if (value == null || isNaN(value)) return '—';
   return `${Number(value).toFixed(2)}${unit ? ` ${unit}` : ''}`;
@@ -30,7 +41,7 @@ export function showToast(message, error = false) {
   const toast = document.createElement('div');
   toast.className = `toast${error ? ' error' : ''}`;
   toast.innerHTML = `
-    <span>${error ? '❌ Ошибка' : '✅ Успешно'}</span>
+    <span>${error ? '❌' : '✅'}</span>
     <span style="flex:1">${message}</span>
     <button class="close">&times;</button>
   `;
