@@ -118,7 +118,7 @@ func (a *App) selectDatabase() error {
 }
 
 // initServices инициализирует сервисы.
-func (a *App) initServices(repos *repository.Repositories, wkhtmltopdfWindows []byte) *service.Services {
+func (a *App) initServices(repos *repository.Repository, wkhtmltopdfWindows []byte) *service.Services {
 	svc := service.NewServices(
 		repos.Material, repos.Standard, repos.Protocol, repos.Sample, repos.Group, repos.Token, repos.User, repos.Dimension,
 		a.fontDir, "templates", wkhtmltopdfWindows, *a.cfg, a.log,
