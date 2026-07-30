@@ -4,6 +4,8 @@ package main
 import (
 	"desktop_lab/internal/app"
 	"embed"
+	"fmt"
+	"os"
 )
 
 //go:embed bin/windows/wkhtmltopdf.exe
@@ -19,9 +21,8 @@ var fontFS embed.FS
 var templateFS embed.FS
 
 func main() {
-	// 1. Инициализация бэкенда
-	err := app.NewApp(wkhtmltopdfWindows, fontFS, templateFS)
-	if err != nil {
-		panic(err)
+	if err := app.NewApp(wkhtmltopdfWindows, fontFS, templateFS); err != nil {
+		fmt.Fprintf(os.Stderr, "Application error: %v\n", err)
+		os.Exit(1)
 	}
 }

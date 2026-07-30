@@ -11,31 +11,31 @@ import (
 	"go.uber.org/zap"
 )
 
+// DatabaseSwitcher определяет интерфейс для переключения БД.
 type DatabaseSwitcher interface {
 	SwitchDatabase(newPath string) error
 	GetDBPath() string
 }
 
+// Handler содержит все обработчики HTTP-запросов.
 type Handler struct {
-	log       *zap.Logger
-	auth      *service.AuthService
-	dimension *service.DimensionService
-	material  *service.MaterialService
-	profile   *service.ProfileService
-	group     *service.ExperimentGroupService
-	protocol  *service.ProtocolService
-	report    *service.ReportService
-	sample    *service.SampleService
-	standard  *service.StandardService
-
-	appRef DatabaseSwitcher
-
+	log             *zap.Logger
+	auth            *service.AuthService
+	dimension       *service.DimensionService
+	material        *service.MaterialService
+	profile         *service.ProfileService
+	group           *service.ExperimentGroupService
+	protocol        *service.ProtocolService
+	report          *service.ReportService
+	sample          *service.SampleService
+	standard        *service.StandardService
+	appRef          DatabaseSwitcher
 	frontendFS      embed.FS
 	frontendFSReady bool
-
 	refreshTokenTTL time.Duration
 }
 
+// NewHandler создает новый экземпляр Handler.
 func NewHandler(
 	auth *service.AuthService,
 	dimension *service.DimensionService,
@@ -45,9 +45,7 @@ func NewHandler(
 	report *service.ReportService,
 	sample *service.SampleService,
 	standard *service.StandardService,
-
 	appRef DatabaseSwitcher,
-
 	log *zap.Logger,
 	refreshTokenTTL time.Duration,
 ) *Handler {
@@ -66,99 +64,91 @@ func NewHandler(
 	}
 }
 
+// SetFrontendFS устанавливает файловую систему для фронтенда.
 func (h *Handler) SetFrontendFS(fs embed.FS) {
 	h.frontendFS = fs
 	h.frontendFSReady = true
 }
 
+// Init инициализирует и настраивает HTTP-роутер.
 func (h *Handler) Init() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
-	router.Use(
-		gin.Recovery(),
-		h.logging(),
-	)
+	router.Use(gin.Recovery(), h.logging())
 
-	// 1. Health check
+	// Health check
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// 2. API Routes
-	// Используем /api/v1 как основной префикс, чтобы соответствовать ожиданиям фронтенда
+	// API Routes
 	api := router.Group("/api/v1")
-	{
-		h.initAuthRoutes(api)
-		h.initMaterialRoutes(api)
-		h.initStandardRoutes(api)
-		h.initSampleRoutes(api)
-		h.initGroupRoutes(api)
-		h.initDimensionRoutes(api)
-		h.initProtocolRoutes(api)
-		h.initReportRoutes(api)
-		h.initDBRoutes(api)
-	}
+	h.initAuthRoutes(api)
+	h.initMaterialRoutes(api)
+	h.initStandardRoutes(api)
+	h.initSampleRoutes(api)
+	h.initGroupRoutes(api)
+	h.initDimensionRoutes(api)
+	h.initProtocolRoutes(api)
+	h.initReportRoutes(api)
+	h.initDBRoutes(api)
 
-	router.NoRoute(func(c *gin.Context) {
-		path := c.Request.URL.Path
-
-		// Игнорируем API
-		if strings.HasPrefix(path, "/api/") {
-			c.Status(http.StatusNotFound)
-			return
-		}
-
-		if !h.frontendFSReady {
-			c.Status(http.StatusNotFound)
-			return
-		}
-
-		// Нормализуем путь: убираем ведущий слеш
-		filePath := strings.TrimPrefix(path, "/")
-
-		// Если путь пустой (корень /), отдаем index.html
-		if filePath == "" {
-			filePath = "index.html"
-		}
-
-		// Пытаемся прочитать файл из embed
-		// Важно: файлы в embed лежат в папке frontend/
-		fullPath := "frontend/" + filePath
-
-		data, err := h.frontendFS.ReadFile(fullPath)
-		if err == nil {
-			// Файл найден
-			c.Header("Content-Type", getContentType(filePath))
-			// Кэшируем статику, но не HTML
-			if !strings.HasSuffix(filePath, ".html") {
-				c.Header("Cache-Control", "public, max-age=86400")
-			} else {
-				c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
-			}
-			c.Data(http.StatusOK, getContentType(filePath), data)
-			return
-		}
-
-		// Если файл не найден и это не запрос к HTML-странице (SPA роутинг),
-		// пробуем отдать index.html для поддержки клиентского роутинга
-		// Но только если в пути нет точки (чтобы не ломать 404 для missing.css)
-		if !strings.Contains(filePath, ".") {
-			indexData, errIndex := h.frontendFS.ReadFile("frontend/index.html")
-			if errIndex == nil {
-				c.Header("Content-Type", "text/html; charset=utf-8")
-				c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
-				c.Data(http.StatusOK, "text/html; charset=utf-8", indexData)
-				return
-			}
-		}
-
-		// Если ничего не помогло
-		c.Status(http.StatusNotFound)
-	})
+	// Frontend routes (SPA)
+	router.NoRoute(h.serveFrontend)
 
 	return router
 }
 
+// serveFrontend обрабатывает маршруты фронтенда.
+func (h *Handler) serveFrontend(c *gin.Context) {
+	path := c.Request.URL.Path
+
+	// Игнорируем API
+	if strings.HasPrefix(path, "/api/") {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	if !h.frontendFSReady {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	// Нормализуем путь
+	filePath := strings.TrimPrefix(path, "/")
+	if filePath == "" {
+		filePath = "index.html"
+	}
+
+	fullPath := "frontend/" + filePath
+	data, err := h.frontendFS.ReadFile(fullPath)
+	if err == nil {
+		contentType := getContentType(filePath)
+		c.Header("Content-Type", contentType)
+		if strings.HasSuffix(filePath, ".html") {
+			c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		} else {
+			c.Header("Cache-Control", "public, max-age=86400")
+		}
+		c.Data(http.StatusOK, contentType, data)
+		return
+	}
+
+	// SPA роутинг: отдаем index.html для путей без расширения
+	if !strings.Contains(filePath, ".") {
+		indexData, errIndex := h.frontendFS.ReadFile("frontend/index.html")
+		if errIndex == nil {
+			c.Header("Content-Type", "text/html; charset=utf-8")
+			c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+			c.Data(http.StatusOK, "text/html; charset=utf-8", indexData)
+			return
+		}
+	}
+
+	c.Status(http.StatusNotFound)
+}
+
+// getContentType возвращает MIME-тип по расширению файла.
 func getContentType(path string) string {
 	switch {
 	case strings.HasSuffix(path, ".html"):

@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Константы для контекста и cookie.
 const (
 	userIDKey      = "user_id"
 	roleKey        = "role"
@@ -24,13 +25,11 @@ const (
 	authHeader     = "Authorization"
 	requestHeader  = "X-Request-ID"
 	requestContext = "request_id"
+	requestIDKey   = "request_id"
 )
 
-const (
-	requestIDKey = "request_id"
-)
-
-func (s *Handler) logging() gin.HandlerFunc {
+// logging создает middleware для логирования HTTP-запросов.
+func (h *Handler) logging() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		requestID := uuid.New().String()
@@ -43,7 +42,7 @@ func (s *Handler) logging() gin.HandlerFunc {
 		method := c.Request.Method
 		clientIP := c.ClientIP()
 
-		s.log.Debug("HTTP request started",
+		h.log.Debug("HTTP request started",
 			zap.String("request_id", requestID),
 			zap.String("method", method),
 			zap.String("path", path),
@@ -72,25 +71,27 @@ func (s *Handler) logging() gin.HandlerFunc {
 		var logFn func(string, ...zap.Field)
 		switch {
 		case statusCode >= 500:
-			logFn = s.log.Error
+			logFn = h.log.Error
 		case statusCode >= 400:
-			logFn = s.log.Warn
+			logFn = h.log.Warn
 		default:
-			logFn = s.log.Info
+			logFn = h.log.Info
 		}
 
 		logFn("http_request_completed", fields...)
 	}
 }
 
-func (s *Handler) loggerWith(c *gin.Context, fields ...zap.Field) *zap.Logger {
+// loggerWith создает логгер с полями запроса.
+func (h *Handler) loggerWith(c *gin.Context, fields ...zap.Field) *zap.Logger {
 	base := []zap.Field{
-		zap.String("request_id", s.getRequestID(c)),
+		zap.String("request_id", h.getRequestID(c)),
 		zap.String("client_ip", c.ClientIP()),
 	}
-	return s.log.With(append(base, fields...)...)
+	return h.log.With(append(base, fields...)...)
 }
 
+// authMiddleware проверяет аутентификацию пользователя.
 func (h *Handler) authMiddleware(c *gin.Context) {
 	_, err := getRefreshToken(c)
 	if err != nil {
@@ -114,14 +115,15 @@ func (h *Handler) authMiddleware(c *gin.Context) {
 	}
 
 	c.Set(userIDKey, userID)
-
 	c.Next()
 }
 
-func (s *Handler) getRequestID(c *gin.Context) string {
+// getRequestID извлекает ID запроса из контекста.
+func (h *Handler) getRequestID(c *gin.Context) string {
 	return c.GetString(requestIDKey)
 }
 
+// getAccessToken извлекает access токен из заголовка Authorization.
 func getAccessToken(c *gin.Context) (string, error) {
 	token := c.GetHeader(authHeader)
 	if token == "" {
@@ -136,6 +138,7 @@ func getAccessToken(c *gin.Context) (string, error) {
 	return tokenPaths[1], nil
 }
 
+// getUserID извлекает ID пользователя из контекста.
 func getUserID(c *gin.Context) (string, error) {
 	id, exists := c.Get(userIDKey)
 	if !exists {
@@ -154,6 +157,7 @@ func getUserID(c *gin.Context) (string, error) {
 	return userID, nil
 }
 
+// getRefreshToken извлекает refresh токен из cookie.
 func getRefreshToken(c *gin.Context) (string, error) {
 	tokenID, err := c.Cookie(refreshToken)
 	if err != nil || tokenID == "" {
