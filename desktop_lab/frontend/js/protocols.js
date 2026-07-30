@@ -20,6 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 function setupFilters() {
   const searchInput = document.getElementById('searchInput');
   const filterStatus = document.getElementById('filterStatus');
+  const filterStartDate = document.getElementById('filterStartDate');
+  const filterEndDate = document.getElementById('filterEndDate');
   const prevPage = document.getElementById('prevPage');
   const nextPage = document.getElementById('nextPage');
   
@@ -29,6 +31,16 @@ function setupFilters() {
   }, 300));
   
   if (filterStatus) filterStatus.addEventListener('change', () => {
+    currentPage = 1;
+    loadProtocols();
+  });
+  
+  if (filterStartDate) filterStartDate.addEventListener('change', () => {
+    currentPage = 1;
+    loadProtocols();
+  });
+  
+  if (filterEndDate) filterEndDate.addEventListener('change', () => {
     currentPage = 1;
     loadProtocols();
   });
@@ -61,9 +73,20 @@ async function loadProtocols() {
   try {
     const statusFilter = document.getElementById('filterStatus')?.value || '';
     const searchQuery = document.getElementById('searchInput')?.value || '';
+    const startDate = document.getElementById('filterStartDate')?.value || '';
+    const endDate = document.getElementById('filterEndDate')?.value || '';
     
-    // Если api.getProtocols не поддерживает фильтры, уберите их из вызова
-    const res = await api.getProtocols(limit, offset);
+    // Формируем query-параметры для фильтрации
+    const params = new URLSearchParams();
+    params.set('limit', limit);
+    params.set('offset', offset);
+    
+    if (statusFilter) params.set('status', statusFilter);
+    if (searchQuery) params.set('lab_name', searchQuery);
+    if (startDate) params.set('start_test_date', startDate);
+    if (endDate) params.set('end_test_date', endDate);
+    
+    const res = await api.getProtocols(params.toString());
     renderProtocolsTable(res.items || [], res.meta);
   } catch(e) {
     console.error('Load protocols error:', e);

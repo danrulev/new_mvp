@@ -1,7 +1,57 @@
 ```
-# Project-specific ignores
-desktop_lab/frontend/js/theme.js
-desktop_lab/frontend/css/style.css
-desktop_lab/ROADMAP.md
-desktop_lab/frontend/protocols.html
+# Dependencies
+node_modules/
+
+# Go build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*_test
+*.prof
+*.trace
+
+# Build directories
+build/
+dist/
+target/
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# Logs
+*.log
+
+# Python (if applicable)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+htmlcov/
+.coverage.*
+.python-version
+
+# Go specific
+*.mod
+*.sum
+!go.mod
+!go.sum
+
+# OS generated files
+.DS_Store
+Thumbs.db
 ```
