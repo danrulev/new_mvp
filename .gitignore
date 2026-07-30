@@ -1,32 +1,7 @@
 ```
-# Go-specific ignores
-*.o
-*.a
-*.out
-*.test
-*.prof
-coverage.out
-coverprofile
-
-# Dependencies
-vendor/
-
-# Build artifacts
-bin/
-pkg/
-
-# Environment
-.env
-.env.local
-.env.*
-
-# Logs
-*.log
-
-# Editor/IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Project-specific ignores
+desktop_lab/frontend/js/theme.js
+desktop_lab/frontend/css/style.css
+desktop_lab/ROADMAP.md
+desktop_lab/frontend/protocols.html
 ```
