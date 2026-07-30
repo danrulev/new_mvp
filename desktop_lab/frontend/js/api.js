@@ -45,7 +45,10 @@ export const api = {
   deleteGroup: (id) => apiRequest(`/group/${id}`, { method: 'DELETE' }),
   
   // === ПРОТОКОЛЫ ===
-  getProtocols: (limit = 20, offset = 0) => apiRequest(`/protocol?limit=${limit}&offset=${offset}`),
+  getProtocols: (queryParams = '') => {
+    const url = queryParams ? `/protocol?${queryParams}` : '/protocol';
+    return apiRequest(url);
+  },
   getProtocolFull: (id) => apiRequest(`/protocol/full/${id}`),
   createProtocol: (data) => apiRequest('/protocol', { method: 'POST', body: JSON.stringify(data) }),
   updateProtocolStatus: (id, status) => apiRequest(`/protocol/${id}/status`, { 
