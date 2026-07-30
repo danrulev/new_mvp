@@ -19,14 +19,4 @@ vendor/
 # Editors
 .vscode/
 .idea/
-
-# Build directories
-build/
-dist/
-target/
-
-# Go-specific
-*.a
-*.so
-*.dylib
 ```
