@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	contextkeys "desktop_lab/internal/contextKey"
+	"desktop_lab/pkg/ratelimiter"
 	"errors"
 	"fmt"
 	"net/http"
@@ -27,6 +28,28 @@ const (
 	requestContext = "request_id"
 	requestIDKey   = "request_id"
 )
+
+// rateLimitMiddleware создает middleware для ограничения частоты запросов.
+func (h *Handler) rateLimitMiddleware(limiter *ratelimiter.RateLimiter) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		clientIP := c.ClientIP()
+
+		if !limiter.Allow(clientIP) {
+			h.log.Warn("rate limit exceeded",
+				zap.String("client_ip", clientIP),
+				zap.String("path", c.Request.URL.Path),
+			)
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error":   "too_many_requests",
+				"message": "Превышен лимит запросов. Пожалуйста, подождите.",
+			})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
 
 // logging создает middleware для логирования HTTP-запросов.
 func (h *Handler) logging() gin.HandlerFunc {
