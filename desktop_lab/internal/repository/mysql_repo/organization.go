@@ -142,7 +142,7 @@ func (r *OrganizationRepo) List(ctx context.Context, limit, offset int64) ([]mod
 		}
 
 		if createdAt.Valid {
-			if t, err := helperParseTime(createdAt.String); err == nil {
+			if t, err := parseTime(createdAt.String); err == nil {
 				org.CreatedAt = t
 			} else {
 				r.log.Warn("failed to parse created_at", zap.String("val", createdAt.String), zap.Error(err))
@@ -150,7 +150,7 @@ func (r *OrganizationRepo) List(ctx context.Context, limit, offset int64) ([]mod
 		}
 
 		if updatedAt.Valid {
-			if t, err := helperParseTime(updatedAt.String); err == nil {
+			if t, err := parseTime(updatedAt.String); err == nil {
 				org.UpdatedAt = t
 			} else {
 				r.log.Warn("failed to parse updated_at", zap.String("val", updatedAt.String), zap.Error(err))
@@ -158,7 +158,7 @@ func (r *OrganizationRepo) List(ctx context.Context, limit, offset int64) ([]mod
 		}
 
 		if deletedAt.Valid {
-			if t, err := helperParseTime(deletedAt.String); err == nil {
+			if t, err := parseTime(deletedAt.String); err == nil {
 				// Предполагается, что DeletedAt в модели - это *time.Time или time.Time
 				// Если time.Time, то нужно проверить, как ваша модель это принимает
 				org.DeletedAt = t

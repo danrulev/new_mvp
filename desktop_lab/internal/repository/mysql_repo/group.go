@@ -66,7 +66,7 @@ func (r *ExperimentGroupRepo) GetByID(ctx context.Context, id string) (models.Ex
 		return models.ExperimentGroup{}, err
 	}
 
-	g.CreatedAt, err = helperParseTime(createdAt)
+	g.CreatedAt, err = parseTime(createdAt)
 	if err != nil {
 		r.log.Warn("failed to parse created_at for group", zap.String("id", id), zap.Error(err))
 		g.CreatedAt = time.Now() // Fallback
@@ -109,7 +109,7 @@ func (r *ExperimentGroupRepo) GetList(ctx context.Context, limit, offset int64) 
 			return nil, 0, err
 		}
 
-		parsedTime, err := helperParseTime(createdAt)
+		parsedTime, err := parseTime(createdAt)
 		if err != nil {
 			r.log.Warn("failed to parse created_at in list", zap.Error(err))
 			parsedTime = time.Now()

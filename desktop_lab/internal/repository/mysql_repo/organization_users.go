@@ -50,12 +50,12 @@ func (r *OrganizationUserRepo) GetByID(ctx context.Context, id string) (models.O
 		return models.OrganizationUser{}, err
 	}
 
-	ou.CreatedAt, err = helperParseTime(createdAt)
+	ou.CreatedAt, err = parseTime(createdAt)
 	if err != nil {
 		log.Warn("failed to parse created_at", zap.Error(err))
 		ou.CreatedAt = time.Now()
 	}
-	ou.UpdatedAt, err = helperParseTime(updatedAt)
+	ou.UpdatedAt, err = parseTime(updatedAt)
 	if err != nil {
 		log.Warn("failed to parse updated_at", zap.Error(err))
 		ou.UpdatedAt = time.Now()
@@ -104,13 +104,13 @@ func (r *OrganizationUserRepo) GetByRole(ctx context.Context, organizationID, ro
 			return nil, 0, fmt.Errorf("failed to scan user: %w", err)
 		}
 
-		ou.CreatedAt, err = helperParseTime(createdAt)
+		ou.CreatedAt, err = parseTime(createdAt)
 		if err != nil {
 			r.log.Warn("failed parse created at date", zap.Error(err))
 			ou.CreatedAt = time.Now()
 		}
 
-		ou.UpdatedAt, err = helperParseTime(updatedAt)
+		ou.UpdatedAt, err = parseTime(updatedAt)
 		if err != nil {
 			r.log.Warn("failed parse updated at date", zap.Error(err))
 			ou.UpdatedAt = time.Now()
@@ -160,13 +160,13 @@ func (r *OrganizationUserRepo) List(ctx context.Context, organizationID string, 
 			return nil, 0, fmt.Errorf("failed to scan user: %w", err)
 		}
 
-		ou.CreatedAt, err = helperParseTime(createdAt)
+		ou.CreatedAt, err = parseTime(createdAt)
 		if err != nil {
 			r.log.Warn("failed parse created at date", zap.Error(err))
 			ou.CreatedAt = time.Now()
 		}
 
-		ou.UpdatedAt, err = helperParseTime(updatedAt)
+		ou.UpdatedAt, err = parseTime(updatedAt)
 		if err != nil {
 			r.log.Warn("failed parse updated at date", zap.Error(err))
 			ou.UpdatedAt = time.Now()

@@ -20,7 +20,7 @@ func NewTokenRepo(db *sqlx.DB, log *zap.Logger) *TokenRepo {
 }
 
 func (r *TokenRepo) Create(ctx context.Context, token models.Token) error {
-	if err := helperCheckContext(ctx); err != nil {
+	if err := checkContext(ctx); err != nil {
 		return err
 	}
 
@@ -47,7 +47,7 @@ func (r *TokenRepo) Create(ctx context.Context, token models.Token) error {
 }
 
 func (r *TokenRepo) TokenByID(ctx context.Context, id string) (models.Token, error) {
-	if err := helperCheckContext(ctx); err != nil {
+	if err := checkContext(ctx); err != nil {
 		return models.Token{}, err
 	}
 
@@ -67,7 +67,7 @@ func (r *TokenRepo) TokenByID(ctx context.Context, id string) (models.Token, err
 }
 
 func (r *TokenRepo) Delete(ctx context.Context, id string) error {
-	if err := helperCheckContext(ctx); err != nil {
+	if err := checkContext(ctx); err != nil {
 		return err
 	}
 
