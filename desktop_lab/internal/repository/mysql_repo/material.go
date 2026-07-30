@@ -22,18 +22,6 @@ func NewMaterialRepo(db *sqlx.DB, log *zap.Logger) *MaterialRepo {
 	return &MaterialRepo{db: db, log: log}
 }
 
-// helperParseTimeMaterial безопасно парсит время из строки (ожидается UTC в БД) и возвращает локальное время
-func helperParseTimeMaterial(timeStr string) (time.Time, error) {
-	if timeStr == "" {
-		return time.Time{}, nil
-	}
-	t, err := time.ParseInLocation(timeLayout, timeStr, time.UTC)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return t.Local(), nil
-}
-
 func (r *MaterialRepo) Create(ctx context.Context, m models.Material) error {
 	log := logQuery(ctx, r.log, "INSERT", "materials",
 		zap.String("material_id", m.ID),
@@ -246,18 +234,4 @@ func (r *MaterialRepo) DeleteContextDimensionFromMaterial(ctx context.Context, m
 	}
 	log.Debug("context dimension deleted from material successfully")
 	return nil
-}
-
-// helperParseTime вспомогательная функция для парсинга даты из SQLite
-func helperParseTime(raw interface{}) (time.Time, error) {
-	if raw == nil {
-		return time.Time{}, nil
-	}
-
-	str, ok := raw.(string)
-	if !ok {
-		return time.Time{}, fmt.Errorf("expected string for time, got %T", raw)
-	}
-
-	return time.Parse("2006-01-02 15:04:05", str)
 }

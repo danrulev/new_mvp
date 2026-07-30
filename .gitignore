@@ -1,17 +1,15 @@
 ```
-# Dependencies
-node_modules/
-
-# Build artifacts
-dist/
-build/
+# Compiled and build artifacts
 *.o
 *.obj
+*.out
+
+# Dependencies
+vendor/
 
 # Logs and temp files
 *.log
 *.tmp
-*.swp
 
 # Editors
 .vscode/
