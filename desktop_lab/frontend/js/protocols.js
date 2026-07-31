@@ -4,7 +4,7 @@ import { formatDate, formatDateOnly, showToast, showConfirm, setLoading } from '
 import { initNavigation } from './navigation.js';
 
 let currentPage = 1;
-const limit = 20;
+const limit = 10;
 let viewingProtocolId = null;
 let editGroupsCache = [];
 
@@ -274,7 +274,7 @@ async function viewProtocol(id) {
 
 async function loadEditGroups() {
   try {
-    const res = await api.getGroups(100, 0);
+    const res = await api.getGroups(10, 0);
     editGroupsCache = res.items || (Array.isArray(res) ? res : []);
   } catch(e) {
     console.error('Failed to load groups for edit modal', e);
