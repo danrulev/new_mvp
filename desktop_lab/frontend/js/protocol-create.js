@@ -269,10 +269,15 @@ async function loadGroups() {
   if (!sel) return;
 
   try {
-    const res = await api.getGroups(100, 0);
+    const res = await api.getGroups('limit=10&offset=0');
+    console.log('📦 Groups API response:', res);
     const list = res.items || (Array.isArray(res) ? res : []);
-    
+    console.log('📋 Groups list:', list);
+
     sel.innerHTML = '<option value="">-- Без группы --</option>';
+    if (list.length === 0) {
+      console.warn('⚠️ No groups found in database');
+    }
     list.forEach(g => {
       const opt = document.createElement('option');
       opt.value = g.id;
@@ -280,7 +285,7 @@ async function loadGroups() {
       sel.appendChild(opt);
     });
   } catch (err) {
-    console.error('Failed to load groups', err);
+    console.error('❌ Failed to load groups', err);
   }
 }
 
