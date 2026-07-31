@@ -19,17 +19,13 @@ async function loadMaterials() {
     materials = await api.getMaterials();
     const sel = document.getElementById('newGroupMaterial');
     if (!sel) return;
+    
     sel.innerHTML = '<option value="">-- Выберите материал --</option>';
     materials.forEach(m => {
       sel.innerHTML += `<option value="${m.id}">${m.name}</option>`;
     });
-    const filterMaterial = document.getElementById('filterMaterial');
-    if (filterMaterial) {
-      filterMaterial.innerHTML = '<option value="">Все материалы</option>';
-      materials.forEach(m => {
-        filterMaterial.innerHTML += `<option value="${m.id}">${m.name}</option>`;
-      });
-    }
+    
+    // УДАЛЕНО: попытка заполнить текстовый input тегами <option>
   } catch(e) {
     console.error('Load materials error:', e);
   }
@@ -53,10 +49,11 @@ function setupGroupFilters() {
     loadGroups();
   }, 300));
 
-  if (filterMaterial) filterMaterial.addEventListener('change', () => {
+  // ИСПРАВЛЕНО: используем 'input' + debounce для текстового поля, а не 'change'
+  if (filterMaterial) filterMaterial.addEventListener('input', debounce(() => {
     currentPage = 1;
     loadGroups();
-  });
+  }, 300));
 
   if (prevPage) prevPage.addEventListener('click', () => {
     if (currentPage > 1) { currentPage--; loadGroups(); }
@@ -84,7 +81,7 @@ async function loadGroups() {
   try {
     const searchQuery = document.getElementById('groupSearchInput')?.value || '';
     const projectQuery = document.getElementById('filterProject')?.value || '';
-    const materialId = document.getElementById('filterMaterial')?.value || '';
+    const materialQuery = document.getElementById('filterMaterial')?.value || '';
 
     // Формируем query-параметры для фильтрации
     const params = new URLSearchParams();
@@ -93,7 +90,7 @@ async function loadGroups() {
 
     if (searchQuery) params.set('name', searchQuery);
     if (projectQuery) params.set('project_name', projectQuery);
-    if (materialId) params.set('material', materialId);
+    if (materialQuery) params.set('material', materialQuery);
 
     const res = await api.getGroups(params.toString());
     renderGroupsTable(res.items || [], res.meta);

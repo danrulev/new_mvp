@@ -102,19 +102,9 @@ func (r *ExperimentGroupRepo) GetList(ctx context.Context, p models.GroupListFil
 		filterArgs = append(filterArgs, "%"+*p.ProjectName+"%")
 	}
 
-	if p.Material != nil {
-		var materialIDs []string
-		err := r.db.SelectContext(ctx, &materialIDs,
-			`SELECT id FROM materials WHERE name LIKE ?`,
-			"%"+*p.Material+"%",
-		)
-		if err != nil {
-			r.log.Debug("fetching material", zap.Error(err), zap.String("material", *p.Material))
-		}
-		if len(materialIDs) != 0 {
-			filterFields = append(filterFields, "material_id IN (?)")
-			filterArgs = append(filterArgs, materialIDs)
-		}
+	if p.Material != nil && *p.Material != "" {
+		filterFields = append(filterFields, "material_id IN (SELECT id FROM materials WHERE name LIKE ?)")
+		filterArgs = append(filterArgs, "%"+*p.Material+"%")
 	}
 
 	var whereClause string
