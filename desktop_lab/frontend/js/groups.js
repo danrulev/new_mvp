@@ -126,13 +126,16 @@ window.viewGroup = async function(id) {
       protDiv.innerHTML = '<p class="text-muted">Нет протоколов</p>';
     } else {
       let html = `<table>
-        <thead><tr><th>№</th><th>Дата</th><th>Статус</th></tr></thead>
+        <thead><tr><th>№</th><th>Дата</th><th>Статус</th><th>Действия</th></tr></thead>
         <tbody>`;
       protocols.slice(0, 10).forEach(p => {
         html += `<tr>
           <td>${p.protocol_number || p.id.substring(0,8)}</td>
           <td>${formatDate(p.created_at)}</td>
           <td><span class="badge ${p.status==='draft'?'badge-warning':'badge-success'}">${p.status==='draft'?'Черновик':'Завершён'}</span></td>
+          <td>
+            <button class="btn btn-small btn-secondary" onclick="viewProtocol('${p.id}')" title="Просмотр">👁️</button>
+          </td>
         </tr>`;
       });
       html += '</tbody></table>';

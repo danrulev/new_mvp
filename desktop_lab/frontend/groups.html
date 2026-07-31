@@ -109,6 +109,26 @@
     </div>
   </div>
 
+  <!-- Modal: Просмотр протокола (для вызова из groups.html) -->
+  <div id="viewModal" class="modal">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h3>Просмотр протокола</h3>
+        <button class="modal-close" onclick="closeViewModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="viewNotes" class="notes-section mb-4"></div>
+        <div id="viewInfo" class="info-grid mb-4"></div>
+        <h4 class="mb-3">📊 Результаты испытаний</h4>
+        <div id="viewResults"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeViewModal()">Закрыть</button>
+        <button class="btn btn-primary" id="viewDownloadBtn">📥 Скачать PDF</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Редактирование группы -->
   <div id="editGroupModal" class="modal">
     <div class="modal-content">
@@ -142,6 +162,7 @@
   <script type="module" src="js/api.js"></script>
   <script type="module" src="js/utils.js"></script>
   <script type="module" src="js/navigation.js"></script>
+  <script type="module" src="js/protocols.js"></script>
   <script type="module" src="js/groups.js"></script>
 </body>
 </html>
