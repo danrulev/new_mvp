@@ -330,3 +330,5 @@ window.viewGroup = viewGroup;
 window.closeViewGroupModal = closeViewGroupModal;
 window.downloadGroupPDF = downloadGroupPDF;
 window.deleteGroup = deleteGroup;
+
+export { openCreateGroupModal, closeCreateGroupModal, createGroup, viewGroup, closeViewGroupModal, downloadGroupPDF, deleteGroup };

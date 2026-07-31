@@ -191,17 +191,5 @@
   <script type="module" src="js/navigation.js"></script>
   <script type="module" src="js/protocols.js"></script>
   <script type="module" src="js/groups.js"></script>
-  <script type="module">
-    // Экспорт функций для HTML onclick
-    import * as groupsModule from './js/groups.js';
-    window.viewProtocol = async function(id) {
-      // Импортируем функцию из protocols.js
-      const { viewProtocol } = await import('./js/protocols.js');
-      return viewProtocol(id);
-    };
-    window.closeViewModal = function() {
-      document.getElementById('viewModal')?.classList.remove('active');
-    };
-  </script>
 </body>
 </html>

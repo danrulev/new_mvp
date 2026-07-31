@@ -456,3 +456,6 @@ window.closeViewModal = closeViewModal;
 window.editProtocol = editProtocol;
 window.closeEditModal = closeEditModal;
 window.saveProtocolEdit = saveProtocolEdit;
+
+
+export { viewProtocol, downloadPDF, completeProtocol, deleteProtocol, closeViewModal, editProtocol, closeEditModal, saveProtocolEdit };
