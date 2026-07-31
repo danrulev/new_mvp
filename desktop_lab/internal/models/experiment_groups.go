@@ -32,6 +32,14 @@ type GroupSummary struct {
 	Results       []MethodResultSummary `json:"results"`
 }
 
+type GroupListFilter struct {
+	Name        *string `form:"name"`
+	Material    *string `form:"material"`
+	ProjectName *string `form:"project_name"`
+	Location    *string `form:"location"`
+	Paginated
+}
+
 type GroupListResponse struct {
 	Items []ExperimentGroup `json:"items"`
 	Meta  PaginatedMetadata `json:"meta"`

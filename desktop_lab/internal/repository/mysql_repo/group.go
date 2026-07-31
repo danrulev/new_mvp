@@ -76,31 +76,77 @@ func (r *ExperimentGroupRepo) GetByID(ctx context.Context, id string) (models.Ex
 	return g, nil
 }
 
-func (r *ExperimentGroupRepo) GetList(ctx context.Context, limit, offset int64) ([]models.ExperimentGroup, int64, error) {
+func (r *ExperimentGroupRepo) GetList(ctx context.Context, p models.GroupListFilter) ([]models.ExperimentGroup, int64, error) {
 	log := logQuery(ctx, r.log, "SELECT", "experiment_groups",
-		zap.Int64("limit", limit),
-		zap.Int64("offset", offset))
+		zap.Int64("limit", p.Limit),
+		zap.Int64("offset", p.Offset))
 	log.Debug("fetching paginated groups list")
 
+	var (
+		filterFields []string
+		filterArgs   []interface{}
+	)
+
+	if p.Name != nil {
+		filterFields = append(filterFields, "name LIKE ?")
+		filterArgs = append(filterArgs, "%"+*p.Name+"%")
+	}
+
+	if p.Location != nil {
+		filterFields = append(filterFields, "location LIKE ?")
+		filterArgs = append(filterArgs, "%"+*p.Location+"%")
+	}
+
+	if p.ProjectName != nil {
+		filterFields = append(filterFields, "project_name LIKE ?")
+		filterArgs = append(filterArgs, "%"+*p.ProjectName+"%")
+	}
+
+	if p.Material != nil {
+		var materialIDs []string
+		err := r.db.SelectContext(ctx, &materialIDs,
+			`SELECT id FROM materials WHERE name LIKE ?`,
+			"%"+*p.Material+"%",
+		)
+		if err != nil {
+			r.log.Debug("fetching material", zap.Error(err), zap.String("material", *p.Material))
+		}
+		if len(materialIDs) != 0 {
+			filterFields = append(filterFields, "material_id IN (?)")
+			filterArgs = append(filterArgs, materialIDs)
+		}
+	}
+
+	var whereClause string
+	if len(filterFields) > 0 {
+		whereClause = " WHERE " + strings.Join(filterFields, " AND ")
+	}
+
 	var total int64
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM experiment_groups`).Scan(&total)
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM experiment_groups`+whereClause, filterArgs...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
 
+	if total == 0 {
+		return []models.ExperimentGroup{}, 0, nil
+	}
+
+	selectArgs := append([]interface{}{}, filterArgs...)
+	selectArgs = append(selectArgs, p.Limit, p.Offset)
+
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, name, material_id, project_name, location, created_at 
-		 FROM experiment_groups 
+		 FROM experiment_groups`+whereClause+`
 		 ORDER BY created_at DESC 
-		 LIMIT ? OFFSET ?`,
-		limit, offset,
+		 LIMIT ? OFFSET ?`, selectArgs...,
 	)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
 
-	var groups []models.ExperimentGroup
+	groups := make([]models.ExperimentGroup, 0, p.Limit)
 	for rows.Next() {
 		var g models.ExperimentGroup
 		var createdAt string

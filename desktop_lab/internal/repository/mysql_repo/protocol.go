@@ -432,16 +432,16 @@ func (r *ProtocolRepo) GetByGroupID(ctx context.Context, groupID string) ([]mode
 	return protocols, nil
 }
 
-func (r *ProtocolRepo) GetList(ctx context.Context, filter models.ProtocolListFilter, limit, offset int64) ([]models.Protocol, int64, error) {
-	log := logQuery(ctx, r.log, "SELECT", "protocols", zap.Int64("limit", limit), zap.Int64("offset", offset))
+func (r *ProtocolRepo) GetList(ctx context.Context, filter models.ProtocolListFilter) ([]models.Protocol, int64, error) {
+	log := logQuery(ctx, r.log, "SELECT", "protocols", zap.Int64("limit", filter.Limit), zap.Int64("offset", filter.Offset))
 	log.Debug("fetching paginated protocols list")
 
 	// 1. Валидация входных параметров
-	if limit <= 0 || limit > 1000 {
-		limit = 50
+	if filter.Limit <= 0 || filter.Limit > 1000 {
+		filter.Limit = 50
 	}
-	if offset < 0 {
-		offset = 0
+	if filter.Offset < 0 {
+		filter.Offset = 0
 	}
 
 	var (
@@ -506,7 +506,7 @@ func (r *ProtocolRepo) GetList(ctx context.Context, filter models.ProtocolListFi
 	// 5. Запрос данных (с фильтрами И с LIMIT/OFFSET)
 	// Копируем filterArgs, чтобы не мутировать исходный слайс перед добавлением limit/offset
 	selectArgs := append([]interface{}{}, filterArgs...)
-	selectArgs = append(selectArgs, limit, offset)
+	selectArgs = append(selectArgs, filter.Limit, filter.Offset)
 
 	selectQuery := `
 		SELECT id, sample_id, protocol_number, lab_name, operator_name, test_date, status, created_at, updated_at 
@@ -522,7 +522,7 @@ func (r *ProtocolRepo) GetList(ctx context.Context, filter models.ProtocolListFi
 	defer rows.Close()
 
 	// 6. Чтение результатов
-	protocols := make([]models.Protocol, 0, limit)
+	protocols := make([]models.Protocol, 0, filter.Limit)
 
 	for rows.Next() {
 		var p models.Protocol

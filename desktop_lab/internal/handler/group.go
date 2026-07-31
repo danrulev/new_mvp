@@ -44,13 +44,13 @@ func (h *Handler) createGroup(c *gin.Context) {
 }
 
 func (h *Handler) getGroupList(c *gin.Context) {
-	var p models.Paginated
-	if err := c.BindQuery(&p); err != nil {
+	var filter models.GroupListFilter
+	if err := c.BindQuery(&filter); err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "getGroupList", "invalid data", err)
 		return
 	}
 
-	data, err := h.group.GetList(c.Request.Context(), p.Limit, p.Offset)
+	data, err := h.group.GetList(c.Request.Context(), filter)
 	if err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "getGroupList", "service error", err)
 		return

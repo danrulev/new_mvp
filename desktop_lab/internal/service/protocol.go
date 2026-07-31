@@ -772,15 +772,15 @@ func (s *ProtocolService) GetProtocolsByGroupID(ctx context.Context, groupID str
 }
 
 // GetList - пагинированный список протоколов
-func (s *ProtocolService) GetList(ctx context.Context, filter models.ProtocolListFilter, limit, offset int64) (models.ProtocolListResponse, error) {
+func (s *ProtocolService) GetList(ctx context.Context, filter models.ProtocolListFilter) (models.ProtocolListResponse, error) {
 	log := loggerWith(ctx, s.log,
 		zap.String("service_name", "GetList"),
-		zap.Int64("limit", limit),
-		zap.Int64("offset", offset),
+		zap.Int64("limit", filter.Limit),
+		zap.Int64("offset", filter.Offset),
 	)
 	log.Debug("fetching paginated protocols list")
 
-	protocols, total, err := s.protocolRepo.GetList(ctx, filter, limit, offset)
+	protocols, total, err := s.protocolRepo.GetList(ctx, filter)
 	if err != nil {
 		log.Error("failed to fetch protocols list", zap.Error(err))
 		return models.ProtocolListResponse{}, err
@@ -792,7 +792,7 @@ func (s *ProtocolService) GetList(ctx context.Context, filter models.ProtocolLis
 
 	return models.ProtocolListResponse{
 		Items: protocols,
-		Meta:  models.MakePaginatedMetadata(limit, offset, total),
+		Meta:  models.MakePaginatedMetadata(filter.Limit, filter.Offset, total),
 	}, nil
 }
 

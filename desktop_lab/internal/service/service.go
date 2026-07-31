@@ -85,7 +85,7 @@ type StandardRepo interface {
 type ExperimentGroupRepo interface {
 	Create(ctx context.Context, g models.ExperimentGroup) error
 	GetByID(ctx context.Context, id string) (models.ExperimentGroup, error)
-	GetList(ctx context.Context, limit, offset int64) ([]models.ExperimentGroup, int64, error)
+	GetList(ctx context.Context, filter models.GroupListFilter) ([]models.ExperimentGroup, int64, error)
 	AddSampleToGroup(ctx context.Context, sampleID, groupID string) error
 	UpdateGroup(ctx context.Context, id string, g models.UpdateExperimentGroup) error
 	DeleteGroup(ctx context.Context, id string) error
@@ -105,7 +105,7 @@ type ProtocolRepo interface {
 	GetByID(ctx context.Context, id string) (models.Protocol, error)
 	GetByGroupID(ctx context.Context, groupID string) ([]models.Protocol, error)
 	GetResultsByProtocolID(ctx context.Context, protocolID string) ([]models.TestResult, error)
-	GetList(ctx context.Context, filter models.ProtocolListFilter, limit, offset int64) ([]models.Protocol, int64, error)
+	GetList(ctx context.Context, filter models.ProtocolListFilter) ([]models.Protocol, int64, error)
 	GetProtocolFull(ctx context.Context, id string) (models.ProtocolFull, error)
 	UpdateStatus(ctx context.Context, id string, status string) error
 	UpdateProtocol(ctx context.Context, id string, req models.UpdateProtocolRequest) error

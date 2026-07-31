@@ -45,21 +45,21 @@ func (s *ExperimentGroupService) Create(ctx context.Context, name, projectName, 
 	return g, nil
 }
 
-func (s *ExperimentGroupService) GetList(ctx context.Context, limit, offset int64) (models.GroupListResponse, error) {
+func (s *ExperimentGroupService) GetList(ctx context.Context, filter models.GroupListFilter) (models.GroupListResponse, error) {
 	log := loggerWith(ctx, s.log,
 		zap.String("service_name", "GetList"),
-		zap.Int64("limit", limit),
-		zap.Int64("offset", offset),
+		zap.Int64("limit", filter.Limit),
+		zap.Int64("offset", filter.Offset),
 	)
 	log.Debug("fetching experiment groups list")
 
-	groups, total, err := s.repo.GetList(ctx, limit, offset)
+	groups, total, err := s.repo.GetList(ctx, filter)
 	if err != nil {
 		log.Error("failed to get groups list from repo", zap.Error(err))
 		return models.GroupListResponse{}, err
 	}
 
-	meta := models.MakePaginatedMetadata(limit, offset, total)
+	meta := models.MakePaginatedMetadata(filter.Limit, filter.Offset, total)
 
 	log.Debug("successfully retrieved groups list",
 		zap.Int("returned_count", len(groups)),
