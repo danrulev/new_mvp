@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS experiment_groups (
     project_name TEXT NOT NULL,
     location TEXT,
     created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE RESTRICT
 );
 
