@@ -35,7 +35,10 @@ export const api = {
   getStandardFull: (id) => apiRequest(`/standard/${id}/full`), 
   
   // === ГРУППЫ ===
-  getGroups: (limit = 50, offset = 0) => apiRequest(`/group?limit=${limit}&offset=${offset}`),
+  getGroups: (queryParams = '') => {
+    const url = queryParams ? `/group?${queryParams}` : '/group';
+    return apiRequest(url);
+  },
   createGroup: (data) => apiRequest('/group', { method: 'POST', body: JSON.stringify(data) }),
   getGroupById: (id) => apiRequest(`/group/${id}`),
   updateGroup: (id, data) => apiRequest(`/group/${id}`, { 
