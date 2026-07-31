@@ -463,7 +463,7 @@ func (r *ProtocolRepo) GetList(ctx context.Context, filter models.ProtocolListFi
 	if filter.ProtocolID != nil {
 		// РЕКОМЕНДАЦИЯ: Для ID обычно используется точное совпадение (=), а не LIKE.
 		// Если вам нужен именно частичный поиск, оставьте LIKE, но синтаксис исправлен.
-		filterFields = append(filterFields, "id LIKE ?")
+		filterFields = append(filterFields, "protocol_number LIKE ?")
 		filterArgs = append(filterArgs, "%"+*filter.ProtocolID+"%") // ИСПРАВЛЕНО
 	}
 

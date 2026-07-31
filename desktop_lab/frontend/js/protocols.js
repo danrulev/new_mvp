@@ -18,14 +18,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // === FILTERS & PAGINATION ===
 function setupFilters() {
-  const searchInput = document.getElementById('searchInput');
+  const searchProtocolId = document.getElementById('searchProtocolId');
+  const searchLab = document.getElementById('searchLab');
   const filterStatus = document.getElementById('filterStatus');
   const filterStartDate = document.getElementById('filterStartDate');
   const filterEndDate = document.getElementById('filterEndDate');
   const prevPage = document.getElementById('prevPage');
   const nextPage = document.getElementById('nextPage');
   
-  if (searchInput) searchInput.addEventListener('input', debounce(() => {
+  if (searchProtocolId) searchProtocolId.addEventListener('input', debounce(() => {
     currentPage = 1;
     loadProtocols();
   }, 300));
@@ -34,6 +35,11 @@ function setupFilters() {
     currentPage = 1;
     loadProtocols();
   });
+
+  if (searchLab) searchLab.addEventListener('input', debounce(() => {
+    currentPage = 1;
+    loadProtocols();
+  }, 300));
   
   if (filterStartDate) filterStartDate.addEventListener('change', () => {
     currentPage = 1;
@@ -72,7 +78,8 @@ async function loadProtocols() {
   
   try {
     const statusFilter = document.getElementById('filterStatus')?.value || '';
-    const searchQuery = document.getElementById('searchInput')?.value || '';
+    const protocolIdQuery = document.getElementById('searchProtocolId')?.value || '';
+    const labNameQuery = document.getElementById('searchLab')?.value || '';
     const startDate = document.getElementById('filterStartDate')?.value || '';
     const endDate = document.getElementById('filterEndDate')?.value || '';
     
@@ -82,7 +89,8 @@ async function loadProtocols() {
     params.set('offset', offset);
     
     if (statusFilter) params.set('status', statusFilter);
-    if (searchQuery) params.set('lab_name', searchQuery);
+    if (protocolIdQuery) params.set('protocol_id', protocolIdQuery);
+    if (labNameQuery) params.set('lab_name', labNameQuery);
     if (startDate) params.set('start_test_date', startDate);
     if (endDate) params.set('end_test_date', endDate);
     
