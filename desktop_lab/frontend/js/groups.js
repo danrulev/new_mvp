@@ -92,8 +92,8 @@ async function loadGroups() {
     params.set('offset', offset);
 
     if (searchQuery) params.set('name', searchQuery);
-    if (projectQuery) params.set('project', projectQuery);
-    if (materialId) params.set('material_id', materialId);
+    if (projectQuery) params.set('project_name', projectQuery);
+    if (materialId) params.set('material', materialId);
 
     const res = await api.getGroups(params.toString());
     renderGroupsTable(res.items || [], res.meta);
