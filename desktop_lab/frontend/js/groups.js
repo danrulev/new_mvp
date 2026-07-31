@@ -4,11 +4,14 @@ import { formatDate, showToast, showConfirm } from './utils.js';
 import { initNavigation } from './navigation.js';
 
 let materials = [];
+let currentPage = 1;
+const limit = 20;
 
 document.addEventListener('DOMContentLoaded', async () => {
   initNavigation();
   await loadMaterials();
   await loadGroups();
+  setupGroupFilters();
 });
 
 async function loadMaterials() {
@@ -20,27 +23,93 @@ async function loadMaterials() {
     materials.forEach(m => {
       sel.innerHTML += `<option value="${m.id}">${m.name}</option>`;
     });
+    const filterMaterial = document.getElementById('filterMaterial');
+    if (filterMaterial) {
+      filterMaterial.innerHTML = '<option value="">Все материалы</option>';
+      materials.forEach(m => {
+        filterMaterial.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+      });
+    }
   } catch(e) {
     console.error('Load materials error:', e);
   }
 }
 
+// === FILTERS & PAGINATION ===
+function setupGroupFilters() {
+  const searchInput = document.getElementById('groupSearchInput');
+  const filterProject = document.getElementById('filterProject');
+  const filterMaterial = document.getElementById('filterMaterial');
+  const prevPage = document.getElementById('prevPage');
+  const nextPage = document.getElementById('nextPage');
+
+  if (searchInput) searchInput.addEventListener('input', debounce(() => {
+    currentPage = 1;
+    loadGroups();
+  }, 300));
+
+  if (filterProject) filterProject.addEventListener('input', debounce(() => {
+    currentPage = 1;
+    loadGroups();
+  }, 300));
+
+  if (filterMaterial) filterMaterial.addEventListener('change', () => {
+    currentPage = 1;
+    loadGroups();
+  });
+
+  if (prevPage) prevPage.addEventListener('click', () => {
+    if (currentPage > 1) { currentPage--; loadGroups(); }
+  });
+
+  if (nextPage) nextPage.addEventListener('click', () => {
+    currentPage++;
+    loadGroups();
+  });
+}
+
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 async function loadGroups() {
+  const offset = (currentPage - 1) * limit;
   const table = document.getElementById('groupsTable');
   if (!table) return;
   table.innerHTML = '<tr><td colspan="6" class="text-center">Загрузка...</td></tr>';
   try {
-    const res = await api.getGroups(50, 0);
-    renderGroupsTable(res.items || []);
+    const searchQuery = document.getElementById('groupSearchInput')?.value || '';
+    const projectQuery = document.getElementById('filterProject')?.value || '';
+    const materialId = document.getElementById('filterMaterial')?.value || '';
+
+    // Формируем query-параметры для фильтрации
+    const params = new URLSearchParams();
+    params.set('limit', limit);
+    params.set('offset', offset);
+
+    if (searchQuery) params.set('name', searchQuery);
+    if (projectQuery) params.set('project', projectQuery);
+    if (materialId) params.set('material_id', materialId);
+
+    const res = await api.getGroups(params.toString());
+    renderGroupsTable(res.items || [], res.meta);
   } catch(e) {
     console.error('Load groups error:', e);
     table.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Ошибка загрузки</td></tr>';
   }
 }
 
-function renderGroupsTable(groups) {
+function renderGroupsTable(groups, meta) {
   const table = document.getElementById('groupsTable');
-  if (!groups.length) {
+  if (!table) return;
+
+  updatePagination(meta);
+
+  if (!groups || !groups.length) {
     table.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Нет групп</td></tr>';
     return;
   }
@@ -66,6 +135,17 @@ function renderGroupsTable(groups) {
       </tr>`;
   });
   table.innerHTML = html;
+}
+
+
+function updatePagination(meta) {
+  const pageInfo = document.getElementById('pageInfo');
+  const prevPage = document.getElementById('prevPage');
+  const nextPage = document.getElementById('nextPage');
+
+  if (pageInfo) pageInfo.textContent = `Страница ${meta?.page || 1} из ${meta?.total_pages || 1}`;
+  if (prevPage) prevPage.disabled = !meta?.has_prev_page;
+  if (nextPage) nextPage.disabled = !meta?.has_next_page;
 }
 
 // === MODALS ===

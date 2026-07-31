@@ -33,6 +33,23 @@
         <button class="btn btn-primary" onclick="openCreateGroupModal()">+ Новая группа</button>
       </header>
 
+      <div class="card">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Поиск по названию</label>
+            <input type="text" id="groupSearchInput" placeholder="Название группы...">
+          </div>
+          <div class="form-group">
+            <label>Проект</label>
+            <input type="text" id="filterProject" placeholder="Название проекта...">
+          </div>
+          <div class="form-group">
+            <label>Материал</label>
+            <input type="text" id="filterMaterial" placeholder="Название материала...">
+          </div>
+        </div>
+      </div>
+
       <!-- Таблица -->
       <section class="card">
         <div class="table-wrap">
@@ -53,6 +70,14 @@
           </table>
         </div>
       </section>
+
+      <!-- Пагинация -->
+      <div class="flex justify-between items-center mt-4">
+        <button id="prevPage" class="btn btn-secondary btn-small" disabled>← Назад</button>
+        <span id="pageInfo" class="text-muted">Страница 1</span>
+        <button id="nextPage" class="btn btn-secondary btn-small">Вперёд →</button>
+      </div>
+
     </main>
   </div>
 
@@ -109,6 +134,8 @@
     </div>
   </div>
 
+  
+
   <!-- Modal: Просмотр протокола (для вызова из groups.html) -->
   <div id="viewModal" class="modal">
     <div class="modal-content modal-lg">
@@ -164,5 +191,17 @@
   <script type="module" src="js/navigation.js"></script>
   <script type="module" src="js/protocols.js"></script>
   <script type="module" src="js/groups.js"></script>
+  <script type="module">
+    // Экспорт функций для HTML onclick
+    import * as groupsModule from './js/groups.js';
+    window.viewProtocol = async function(id) {
+      // Импортируем функцию из protocols.js
+      const { viewProtocol } = await import('./js/protocols.js');
+      return viewProtocol(id);
+    };
+    window.closeViewModal = function() {
+      document.getElementById('viewModal')?.classList.remove('active');
+    };
+  </script>
 </body>
 </html>
