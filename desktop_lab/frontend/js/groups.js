@@ -4,6 +4,7 @@ import { formatDate, showToast, showConfirm } from './utils.js';
 import { initNavigation } from './navigation.js';
 
 let materials = [];
+let currentFilter = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
   initNavigation();
@@ -30,13 +31,35 @@ async function loadGroups() {
   if (!table) return;
   table.innerHTML = '<tr><td colspan="6" class="text-center">Загрузка...</td></tr>';
   try {
-    const res = await api.getGroups(50, 0);
+    const res = await api.getGroups(50, 0, currentFilter);
     renderGroupsTable(res.items || []);
   } catch(e) {
     console.error('Load groups error:', e);
     table.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Ошибка загрузки</td></tr>';
   }
 }
+
+// === FILTER FUNCTIONS ===
+window.applyFilters = function() {
+  const name = document.getElementById('filterName')?.value.trim();
+  const project = document.getElementById('filterProject')?.value.trim();
+  const location = document.getElementById('filterLocation')?.value.trim();
+  
+  currentFilter = {};
+  if (name) currentFilter.name = name;
+  if (project) currentFilter.project_name = project;
+  if (location) currentFilter.location = location;
+  
+  loadGroups();
+};
+
+window.clearFilters = function() {
+  document.getElementById('filterName').value = '';
+  document.getElementById('filterProject').value = '';
+  document.getElementById('filterLocation').value = '';
+  currentFilter = {};
+  loadGroups();
+};
 
 function renderGroupsTable(groups) {
   const table = document.getElementById('groupsTable');
@@ -253,3 +276,5 @@ window.viewGroup = viewGroup;
 window.closeViewGroupModal = closeViewGroupModal;
 window.downloadGroupPDF = downloadGroupPDF;
 window.deleteGroup = deleteGroup;
+window.applyFilters = applyFilters;
+window.clearFilters = clearFilters;

@@ -35,7 +35,13 @@ export const api = {
   getStandardFull: (id) => apiRequest(`/standard/${id}/full`), 
   
   // === ГРУППЫ ===
-  getGroups: (limit = 50, offset = 0) => apiRequest(`/group?limit=${limit}&offset=${offset}`),
+  getGroups: (limit = 50, offset = 0, filter = {}) => {
+    const params = new URLSearchParams({ limit, offset });
+    if (filter.name) params.append('name', filter.name);
+    if (filter.project_name) params.append('project_name', filter.project_name);
+    if (filter.location) params.append('location', filter.location);
+    return apiRequest(`/group?${params.toString()}`);
+  },
   createGroup: (data) => apiRequest('/group', { method: 'POST', body: JSON.stringify(data) }),
   getGroupById: (id) => apiRequest(`/group/${id}`),
   updateGroup: (id, data) => apiRequest(`/group/${id}`, { 

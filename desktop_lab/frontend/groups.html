@@ -33,6 +33,17 @@
         <button class="btn btn-primary" onclick="openCreateGroupModal()">+ Новая группа</button>
       </header>
 
+      <!-- Фильтры -->
+      <section class="card mb-3">
+        <div class="filters-row">
+          <input type="text" id="filterName" placeholder="Название" class="filter-input">
+          <input type="text" id="filterProject" placeholder="Проект" class="filter-input">
+          <input type="text" id="filterLocation" placeholder="Место" class="filter-input">
+          <button class="btn btn-secondary" onclick="applyFilters()">🔍 Поиск</button>
+          <button class="btn btn-secondary" onclick="clearFilters()">✕ Сброс</button>
+        </div>
+      </section>
+
       <!-- Таблица -->
       <section class="card">
         <div class="table-wrap">
