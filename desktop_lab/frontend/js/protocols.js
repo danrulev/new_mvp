@@ -274,7 +274,11 @@ async function viewProtocol(id) {
 
 async function loadEditGroups() {
   try {
-    const res = await api.getGroups(10, 0);
+     const params = new URLSearchParams();
+    params.set('limit', '100');
+    params.set('offset', '0');
+
+    const res = await api.getGroups(params.toString());
     editGroupsCache = res.items || (Array.isArray(res) ? res : []);
   } catch(e) {
     console.error('Failed to load groups for edit modal', e);
