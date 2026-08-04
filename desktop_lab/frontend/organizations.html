@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Организации — ЛабСистема</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>🧪 ЛабСистема</h1>
+        <p>Лабораторная система</p>
+      </div>
+      <nav>
+        <ul class="nav">
+          <li class="nav-item"><a href="/protocol-create.html" class="nav-link">📝 Новый протокол</a></li>
+          <li class="nav-item"><a href="/protocols.html" class="nav-link">📋 Протоколы</a></li>
+          <li class="nav-item"><a href="/groups.html" class="nav-link">🗂️ Группы</a></li>
+          <li class="nav-item"><a href="/organizations.html" class="nav-link active">🏢 Организации</a></li>
+        </ul>
+      </nav>
+    </aside>
+    <main class="main">
+      <header class="page-header">
+        <h2 class="page-title">🏢 Организации</h2>
+        <button class="btn btn-primary" onclick="openCreateModal()">
+          <span>➕</span> Добавить организацию
+        </button>
+      </header>
+
+      <!-- Поиск и фильтры -->
+      <div class="card">
+        <div class="form-group" style="margin-bottom: 0;">
+          <input 
+            type="text" 
+            id="searchInput" 
+            placeholder="🔍 Поиск по названию..." 
+            oninput="handleSearch()"
+            style="width: 100%;"
+          >
+        </div>
+      </div>
+
+      <!-- Список организаций -->
+      <div class="card">
+        <h3 class="card-title">Все организации</h3>
+        <div id="organizationsList" class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Название</th>
+                <th>Адрес</th>
+                <th>Телефон</th>
+                <th>Email</th>
+                <th>Участники</th>
+                <th>Услуги</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="organizationsTableBody">
+              <tr><td colspan="7" class="text-center text-muted">Загрузка...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Модальное окно создания/редактирования организации -->
+  <div class="modal" id="orgModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Новая организация</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="orgForm" onsubmit="handleOrgSubmit(event)">
+          <input type="hidden" id="orgId">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Название <span class="required">*</span></label>
+              <input type="text" id="orgName" required placeholder="ООО «Лаборатория»">
+            </div>
+            <div class="form-group">
+              <label>Адрес <span class="required">*</span></label>
+              <input type="text" id="orgAddress" required placeholder="г. Москва, ул. Примерная, д. 1">
+            </div>
+            <div class="form-group">
+              <label>Телефон <span class="required">*</span></label>
+              <input type="tel" id="orgPhone" required placeholder="+7 (495) 123-45-67">
+            </div>
+            <div class="form-group">
+              <label>Email <span class="required">*</span></label>
+              <input type="email" id="orgEmail" required placeholder="info@lab.ru">
+            </div>
+          </div>
+          <div class="modal-footer" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+            <button type="submit" class="btn btn-primary" id="saveBtn">Сохранить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно участников -->
+  <div class="modal" id="usersModal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3 id="usersModalTitle">Участники организации</h3>
+        <button class="modal-close" onclick="closeUsersModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <p class="text-muted" id="currentOrgName"></p>
+          <button class="btn btn-success btn-small" onclick="openAddUserModal()">
+            <span>➕</span> Добавить участника
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID пользователя</th>
+                <th>Роль</th>
+                <th>Дата добавления</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="4" class="text-center text-muted">Загрузка...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно добавления участника -->
+  <div class="modal" id="addUserModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Добавить участника</h3>
+        <button class="modal-close" onclick="closeAddUserModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addUserForm" onsubmit="handleAddUserSubmit(event)">
+          <div class="form-group">
+            <label>ID пользователя <span class="required">*</span></label>
+            <input type="text" id="newUserId" required placeholder="UUID пользователя">
+          </div>
+          <div class="form-group">
+            <label>Роль <span class="required">*</span></label>
+            <select id="newUserRole" required>
+              <option value="">Выберите роль</option>
+              <option value="admin">Администратор</option>
+              <option value="manager">Менеджер</option>
+              <option value="lab_technician">Лаборант</option>
+              <option value="viewer">Наблюдатель</option>
+            </select>
+          </div>
+          <div class="modal-footer" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+            <button type="button" class="btn btn-secondary" onclick="closeAddUserModal()">Отмена</button>
+            <button type="submit" class="btn btn-primary">Добавить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно услуг организации -->
+  <div class="modal" id="testsModal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3 id="testsModalTitle">Услуги организации</h3>
+        <button class="modal-close" onclick="closeTestsModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <p class="text-muted" id="testsOrgName"></p>
+          <button class="btn btn-success btn-small" onclick="openAddTestModal()">
+            <span>➕</span> Добавить услугу
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID метода</th>
+                <th>Цена</th>
+                <th>Описание</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="testsTableBody">
+              <tr><td colspan="4" class="text-center text-muted">Загрузка...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно добавления услуги -->
+  <div class="modal" id="addTestModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Добавить услугу</h3>
+        <button class="modal-close" onclick="closeAddTestModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addTestForm" onsubmit="handleAddTestSubmit(event)">
+          <div class="form-group">
+            <label>ID метода тестирования <span class="required">*</span></label>
+            <input type="text" id="testMethodId" required placeholder="UUID метода">
+          </div>
+          <div class="form-group">
+            <label>Цена <span class="required">*</span></label>
+            <input type="number" id="testPrice" required step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label>Описание</label>
+            <textarea id="testDescription" rows="3" placeholder="Описание услуги..."></textarea>
+          </div>
+          <div class="modal-footer" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+            <button type="button" class="btn btn-secondary" onclick="closeAddTestModal()">Отмена</button>
+            <button type="submit" class="btn btn-primary">Добавить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/organizations.js"></script>
+</body>
+</html>
