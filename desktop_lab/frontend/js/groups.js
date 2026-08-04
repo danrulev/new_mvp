@@ -230,9 +230,11 @@ async function viewGroup(id) {
   }
 }
 
-function closeViewGroupModal() {
+// Выносим функцию закрытия модального окна просмотра группы
+const closeViewGroupModal = function() {
   document.getElementById('viewGroupModal').classList.remove('active');
-}
+};
+window.closeViewGroupModal = closeViewGroupModal;
 
 // === EDIT GROUP ===
 
@@ -296,8 +298,6 @@ window.editGroup = editGroup;
 window.closeEditGroupModal = closeEditGroupModal;
 window.saveGroupUpdate = saveGroupUpdate;
 
-window.closeViewGroupModal = closeViewGroupModal;
-
 // === DOWNLOAD PDF ===
 async function downloadGroupPDF(id) {
   try {
@@ -329,7 +329,6 @@ window.openCreateGroupModal = openCreateGroupModal;
 window.closeCreateGroupModal = closeCreateGroupModal;
 window.createGroup = createGroup;
 window.viewGroup = viewGroup;
-window.closeViewGroupModal = closeViewGroupModal;
 window.downloadGroupPDF = downloadGroupPDF;
 window.deleteGroup = deleteGroup;
 window.editGroup = editGroup;
