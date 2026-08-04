@@ -146,18 +146,18 @@ function updatePagination(meta) {
 }
 
 // === MODALS ===
-window.openCreateGroupModal = function() {
+function openCreateGroupModal() {
   document.getElementById('createGroupModal').classList.add('active');
-};
+}
 
-window.closeCreateGroupModal = function() {
+function closeCreateGroupModal() {
   document.getElementById('createGroupModal').classList.remove('active');
   document.getElementById('newGroupName').value = '';
   document.getElementById('newGroupProject').value = '';
   document.getElementById('newGroupLocation').value = '';
   const sel = document.getElementById('newGroupMaterial');
   if (sel) sel.value = '';
-};
+}
 
 async function createGroup() {
   const name = document.getElementById('newGroupName').value.trim();
@@ -182,7 +182,7 @@ async function createGroup() {
 }
 
 // === VIEW GROUP & PROTOCOLS ===
-window.viewGroup = async function(id) {
+async function viewGroup(id) {
   try {
     const group = await api.getGroupById(id);
     const mat = materials.find(m => m.id === group.material_id);
@@ -228,14 +228,14 @@ window.viewGroup = async function(id) {
     console.error('viewGroup error:', e);
     showToast('Ошибка загрузки группы', true);
   }
-};
+}
 
 // === EDIT GROUP ===
 
 // Открытие модального окна редактирования с загрузкой данных
 // === EDIT GROUP (без изменения материала) ===
 
-window.editGroup = async function(id) {
+async function editGroup(id) {
   try {
     // Загружаем текущие данные группы
     const group = await api.getGroupById(id);
@@ -252,12 +252,12 @@ window.editGroup = async function(id) {
     console.error('editGroup error:', e);
     showToast('Ошибка загрузки данных группы', true);
   }
-};
+}
 
-window.closeEditGroupModal = function() {
+function closeEditGroupModal() {
   document.getElementById('editGroupModal').classList.remove('active');
   document.getElementById('editGroupId').value = '';
-};
+}
 
 async function saveGroupUpdate() {
   const id = document.getElementById('editGroupId').value;
@@ -292,9 +292,7 @@ window.editGroup = editGroup;
 window.closeEditGroupModal = closeEditGroupModal;
 window.saveGroupUpdate = saveGroupUpdate;
 
-window.closeViewGroupModal = function() {
-  document.getElementById('viewGroupModal').classList.remove('active');
-};
+window.closeViewGroupModal = closeViewGroupModal;
 
 // === DOWNLOAD PDF ===
 async function downloadGroupPDF(id) {
@@ -330,5 +328,8 @@ window.viewGroup = viewGroup;
 window.closeViewGroupModal = closeViewGroupModal;
 window.downloadGroupPDF = downloadGroupPDF;
 window.deleteGroup = deleteGroup;
+window.editGroup = editGroup;
+window.closeEditGroupModal = closeEditGroupModal;
+window.saveGroupUpdate = saveGroupUpdate;
 
-export { openCreateGroupModal, closeCreateGroupModal, createGroup, viewGroup, closeViewGroupModal, downloadGroupPDF, deleteGroup };
+export { openCreateGroupModal, closeCreateGroupModal, createGroup, viewGroup, closeViewGroupModal, downloadGroupPDF, deleteGroup, editGroup, closeEditGroupModal, saveGroupUpdate };
