@@ -189,3 +189,22 @@ func getRefreshToken(c *gin.Context) (string, error) {
 
 	return tokenID, nil
 }
+
+// getUserIDFromContext извлекает ID пользователя из контекста Gin.
+func getUserIDFromContext(c *gin.Context) (string, error) {
+	id, exists := c.Get(userIDKey)
+	if !exists {
+		return "", fmt.Errorf("user id not found in context")
+	}
+
+	userID, ok := id.(string)
+	if !ok {
+		return "", fmt.Errorf("invalid user id format")
+	}
+
+	if userID == "" {
+		return "", fmt.Errorf("invalid user id")
+	}
+
+	return userID, nil
+}

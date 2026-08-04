@@ -1,21 +1,20 @@
 ```
-# Compiled and build artifacts
-*.pyc
-__pycache__/
+# Go-specific ignores
 *.o
-*.obj
-dist/
-build/
+*.a
+*.out
+*.test
+*.prof
+coverage.out
+go.sum.bak
 
 # Dependencies
-.venv/
-venv/
-node_modules/
+vendor/
 
-# Logs and temp files
-*.log
-*.tmp
-*.swp
+# Build artifacts
+bin/
+dist/
+build/
 
 # Environment
 .env
@@ -25,4 +24,39 @@ node_modules/
 # Editors
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# Logs and temp files
+*.log
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+
+# Gradle
+.gradle/
+build/
+
+# Node
+node_modules/
+
+# Virtual environments
+venv/
+.venv/
 ```
