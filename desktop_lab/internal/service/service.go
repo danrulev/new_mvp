@@ -41,7 +41,7 @@ type MaterialRepo interface {
 type OrganizationUserRepo interface {
 	Create(ctx context.Context, id string, ou models.CreateOrganizationUserRequest) error
 	GetByID(ctx context.Context, id string) (models.OrganizationUser, error)
-	GetByRole(ctx context.Context, role string, limit, offset int64) ([]models.OrganizationUser, int64, error)
+	GetByRole(ctx context.Context, organizationID, role string, limit, offset int64) ([]models.OrganizationUser, int64, error)
 	List(ctx context.Context, organizationID string, limit, offset int64) ([]models.OrganizationUser, int64, error)
 	UpdateUser(ctx context.Context, id string, role *string) (models.OrganizationUser, error)
 	Delete(ctx context.Context, id string) error
