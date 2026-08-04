@@ -146,18 +146,22 @@ function updatePagination(meta) {
 }
 
 // === MODALS ===
-window.openCreateGroupModal = function() {
+export function openCreateGroupModal() {
   document.getElementById('createGroupModal').classList.add('active');
-};
+}
 
-window.closeCreateGroupModal = function() {
+export function closeCreateGroupModal() {
   document.getElementById('createGroupModal').classList.remove('active');
   document.getElementById('newGroupName').value = '';
   document.getElementById('newGroupProject').value = '';
   document.getElementById('newGroupLocation').value = '';
   const sel = document.getElementById('newGroupMaterial');
   if (sel) sel.value = '';
-};
+}
+
+// Делаем функции доступными глобально для onclick в HTML
+window.openCreateGroupModal = openCreateGroupModal;
+window.closeCreateGroupModal = closeCreateGroupModal;
 
 async function createGroup() {
   const name = document.getElementById('newGroupName').value.trim();
@@ -235,7 +239,7 @@ window.viewGroup = async function(id) {
 // Открытие модального окна редактирования с загрузкой данных
 // === EDIT GROUP (без изменения материала) ===
 
-window.editGroup = async function(id) {
+export async function editGroup(id) {
   try {
     // Загружаем текущие данные группы
     const group = await api.getGroupById(id);
@@ -252,12 +256,16 @@ window.editGroup = async function(id) {
     console.error('editGroup error:', e);
     showToast('Ошибка загрузки данных группы', true);
   }
-};
+}
 
-window.closeEditGroupModal = function() {
+export function closeEditGroupModal() {
   document.getElementById('editGroupModal').classList.remove('active');
   document.getElementById('editGroupId').value = '';
-};
+}
+
+// Делаем функции доступными глобально для onclick в HTML
+window.editGroup = editGroup;
+window.closeEditGroupModal = closeEditGroupModal;
 
 async function saveGroupUpdate() {
   const id = document.getElementById('editGroupId').value;
@@ -292,12 +300,15 @@ window.editGroup = editGroup;
 window.closeEditGroupModal = closeEditGroupModal;
 window.saveGroupUpdate = saveGroupUpdate;
 
-window.closeViewGroupModal = function() {
+export function closeViewGroupModal() {
   document.getElementById('viewGroupModal').classList.remove('active');
-};
+}
+
+// Делаем функцию доступной глобально для onclick в HTML
+window.closeViewGroupModal = closeViewGroupModal;
 
 // === DOWNLOAD PDF ===
-async function downloadGroupPDF(id) {
+export async function downloadGroupPDF(id) {
   try {
     const blob = await api.downloadGroupPDF(id);
     downloadBlob(blob, `group_${id}_summary.pdf`);
@@ -308,8 +319,11 @@ async function downloadGroupPDF(id) {
   }
 }
 
+// Делаем функцию доступной глобально для onclick в HTML
+window.downloadGroupPDF = downloadGroupPDF;
+
 // === DELETE GROUP ===
-async function deleteGroup(id) {
+export async function deleteGroup(id) {
   if (!await showConfirm('Удалить группу? Привязка протоколов сбросится.')) return;
   try {
     // ✅ Реальный DELETE запрос к API
@@ -322,13 +336,12 @@ async function deleteGroup(id) {
   }
 }
 
-// Make functions available globally
-window.openCreateGroupModal = openCreateGroupModal;
-window.closeCreateGroupModal = closeCreateGroupModal;
-window.createGroup = createGroup;
-window.viewGroup = viewGroup;
-window.closeViewGroupModal = closeViewGroupModal;
-window.downloadGroupPDF = downloadGroupPDF;
+// Делаем функцию доступной глобально для onclick в HTML
 window.deleteGroup = deleteGroup;
 
-export { openCreateGroupModal, closeCreateGroupModal, createGroup, viewGroup, closeViewGroupModal, downloadGroupPDF, deleteGroup };
+// Make functions available globally
+window.createGroup = createGroup;
+window.viewGroup = viewGroup;
+window.saveGroupUpdate = saveGroupUpdate;
+
+export { openCreateGroupModal, closeCreateGroupModal, createGroup, viewGroup, closeViewGroupModal, downloadGroupPDF, deleteGroup, editGroup, closeEditGroupModal, saveGroupUpdate };
