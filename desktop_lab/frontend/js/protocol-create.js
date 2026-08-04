@@ -186,26 +186,31 @@ function renderDimensions(dims) {
     return;
   }
   
+  // Добавляем класс анимации
+  card.classList.remove('fade-in');
+  void card.offsetWidth; // trigger reflow
+  card.classList.add('fade-in');
+  
   card.style.display = 'block';
   
   let html = '';
-  dims.forEach(dim => {
-    html += `<div class="mb-3">
+  dims.forEach((dim, index) => {
+    html += `<div class="dimension-item" style="animation-delay: ${index * 0.1}s">
       <label class="form-label small fw-bold">${dim.label} <span class="text-danger">*</span></label>`;
     
     if (dim.possible_values && dim.possible_values.length > 0) {
-      html += `<select class="form-control form-control-sm dimension-select" data-dim-key="${dim.key_name}" required>
+      html += `<select class="dimension-select dimension-field" data-dim-key="${dim.key_name}" required>
         <option value="">-- Выберите ${dim.label.toLowerCase()} --</option>`;
       dim.possible_values.forEach(val => {
         html += `<option value="${val}">${val}</option>`;
       });
       html += `</select>`;
     } else {
-      html += `<input type="text" class="form-control form-control-sm dimension-select" data-dim-key="${dim.key_name}" placeholder="Введите значение" required>`;
+      html += `<input type="text" class="dimension-select dimension-field" data-dim-key="${dim.key_name}" placeholder="Введите значение ${dim.label.toLowerCase()}" required>`;
     }
     
     if (dim.description) {
-      html += `<small class="text-muted">${dim.description}</small>`;
+      html += `<small class="text-muted d-block mt-1">${dim.description}</small>`;
     }
     
     html += `</div>`;
@@ -215,7 +220,7 @@ function renderDimensions(dims) {
   
   // Добавляем слушатели для валидации
   setTimeout(() => {
-    document.querySelectorAll('.dimension-select').forEach(el => {
+    document.querySelectorAll('.dimension-field').forEach(el => {
       el.addEventListener('change', checkCanSave);
       el.addEventListener('input', checkCanSave);
     });
@@ -404,7 +409,7 @@ function checkCanSave() {
   });
 
   // 🔥 Проверяем, что все измерения заполнены
-  document.querySelectorAll('.dimension-select').forEach(el => {
+  document.querySelectorAll('.dimension-field').forEach(el => {
       if (!el.value.trim()) isValid = false;
   });
 
@@ -454,7 +459,7 @@ async function saveProtocol() {
   // 🔥 Сбор context_params из измерений
   const contextParams = {};
   let dimsValid = true;
-  document.querySelectorAll('.dimension-select').forEach(el => {
+  document.querySelectorAll('.dimension-field').forEach(el => {
       const key = el.dataset.dimKey;
       const val = el.value.trim();
       if (!val) {
