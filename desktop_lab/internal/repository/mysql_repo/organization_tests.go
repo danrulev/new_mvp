@@ -161,7 +161,7 @@ func (r *OrganizationTestsRepo) Update(ctx context.Context, id string, req model
 	return r.GetOrganizationTest(ctx, id)
 }
 
-func (r *OrganizationRepo) DeleteOrganizationTest(ctx context.Context, id string) error {
+func (r *OrganizationTestsRepo) DeleteOrganizationTest(ctx context.Context, id string) error {
 	log := logQuery(ctx, r.log, "DELETE", "organization_tests", zap.String("id", id))
 	log.Debug("deleting organization test")
 

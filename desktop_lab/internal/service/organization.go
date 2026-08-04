@@ -121,7 +121,7 @@ func (s *OrganizationService) GetOrganizationUserByRole(ctx context.Context, use
 	if user.OrganizationID != organizationID {
 		return models.OrganizationUserListResponse{}, fmt.Errorf("permission denied")
 	}
-	users, total, err := s.user.GetByRole(ctx, role, limit, offset)
+	users, total, err := s.user.GetByRole(ctx, organizationID, role, limit, offset)
 	if err != nil {
 		return models.OrganizationUserListResponse{}, err
 	}
