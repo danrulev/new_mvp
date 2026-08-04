@@ -1,12 +1,56 @@
 ```
+# Go build artifacts
+*.o
+*.a
+*.so
+*.exe
+*.dll
+*.dylib
+*.test
+*.prof
+
+# Go cache and modules
+go.mod
+go.sum
+vendor/
+
 # Dependencies
 node_modules/
+**/node_modules/
 
-# Editors
-.vscode/
+# Build directories
+build/
+dist/
+target/
 
-# Environment
+# Environment files
 .env
 .env.local
-*.env.*
+.env.*
+
+# Python artifacts (if any Python in project)
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+.directory
+.Trashes
+*.nib
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 ```
