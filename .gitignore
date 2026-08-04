@@ -1,4 +1,12 @@
-# Examples
-desktop_lab/frontend/css/style.css
-desktop_lab/frontend/js/protocol-create.js
-desktop_lab/frontend/protocol-create.html
+```
+# Dependencies
+node_modules/
+
+# Editors
+.vscode/
+
+# Environment
+.env
+.env.local
+*.env.*
+```

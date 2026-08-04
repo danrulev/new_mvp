@@ -646,6 +646,12 @@ tbody tr:hover {
   background: linear-gradient(135deg, var(--card) 0%, var(--bg) 100%);
   border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 }
+
+/* Large modal for users and tests */
+.modal-large {
+  max-width: 900px;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
