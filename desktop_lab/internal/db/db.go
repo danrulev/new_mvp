@@ -93,7 +93,6 @@ func QueryWithRetry(ctx context.Context, db *sqlx.DB, log *zap.Logger, query str
 		}
 		return results, err
 	})
-
 	if err != nil {
 		return nil, err
 	}
