@@ -127,14 +127,15 @@ type TokenRepo interface {
 }
 
 type Services struct {
-	Auth       *AuthService
-	Materials  *MaterialService
-	Standards  *StandardService
-	Protocols  *ProtocolService
-	Groups     *ExperimentGroupService
-	Samples    *SampleService
-	Reports    *ReportService
-	Dimensions *DimensionService
+	Auth          *AuthService
+	Dimensions    *DimensionService
+	Groups        *ExperimentGroupService
+	Materials     *MaterialService
+	Organizations *OrganizationService
+	Standards     *StandardService
+	Protocols     *ProtocolService
+	Samples       *SampleService
+	Reports       *ReportService
 }
 
 func NewServices(
@@ -146,6 +147,8 @@ func NewServices(
 	tokenRepo TokenRepo,
 	userRepo UserRepo,
 	dimRepo DimensionRepo,
+	orgRepo OrganizationRepo,
+
 	fontDir string,
 	templatesDir string,
 	wkhtmltopdfWindows []byte,
