@@ -230,6 +230,10 @@ async function viewGroup(id) {
   }
 }
 
+function closeViewGroupModal() {
+  document.getElementById('viewGroupModal').classList.remove('active');
+}
+
 // === EDIT GROUP ===
 
 // Открытие модального окна редактирования с загрузкой данных
