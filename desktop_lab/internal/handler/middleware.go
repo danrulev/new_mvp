@@ -118,6 +118,15 @@ func (h *Handler) loggerWith(c *gin.Context, fields ...zap.Field) *zap.Logger {
 func (h *Handler) authMiddleware(c *gin.Context) {
 	_, err := getRefreshToken(c)
 	if err != nil {
+		// Для API запросов возвращаем JSON ошибку вместо редиректа
+		if c.GetHeader("Accept") == "application/json" || strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":   "unauthorized",
+				"message": "Требуется авторизация",
+			})
+			c.Abort()
+			return
+		}
 		c.Redirect(http.StatusSeeOther, "/api/auth/login")
 		c.Abort()
 		return
@@ -125,6 +134,15 @@ func (h *Handler) authMiddleware(c *gin.Context) {
 
 	accessToken, err := getAccessToken(c)
 	if err != nil {
+		// Для API запросов возвращаем JSON ошибку вместо редиректа
+		if c.GetHeader("Accept") == "application/json" || strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":   "unauthorized",
+				"message": "Требуется авторизация",
+			})
+			c.Abort()
+			return
+		}
 		c.Redirect(http.StatusUnauthorized, "/api/auth/login")
 		c.Abort()
 		return
@@ -132,6 +150,15 @@ func (h *Handler) authMiddleware(c *gin.Context) {
 
 	userID, err := h.auth.ParseToken(c.Request.Context(), accessToken)
 	if err != nil {
+		// Для API запросов возвращаем JSON ошибку вместо редиректа
+		if c.GetHeader("Accept") == "application/json" || strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":   "unauthorized",
+				"message": "Недействительный токен",
+			})
+			c.Abort()
+			return
+		}
 		c.Redirect(http.StatusSeeOther, "/api/auth/login")
 		c.Abort()
 		return
@@ -144,10 +171,16 @@ func (h *Handler) authMiddleware(c *gin.Context) {
 			zap.String("user_id", userID),
 			zap.Error(err),
 		)
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":   "unauthorized",
-			"message": "Пользователь не найден",
-		})
+		// Для API запросов возвращаем JSON ошибку вместо редиректа
+		if c.GetHeader("Accept") == "application/json" || strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":   "unauthorized",
+				"message": "Пользователь не найден",
+			})
+			c.Abort()
+			return
+		}
+		c.Redirect(http.StatusSeeOther, "/api/auth/login")
 		c.Abort()
 		return
 	}
