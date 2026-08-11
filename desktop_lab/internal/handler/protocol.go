@@ -9,16 +9,26 @@ import (
 )
 
 func (h *Handler) initProtocolRoutes(api *gin.RouterGroup) {
-	group := api.Group("/protocol")
+	// Протоколы требуют аутентификации
+	auth := api.Group("/protocol")
+	auth.Use(h.authMiddleware)
 	{
-		group.POST("/", h.createProtocol)
-		group.GET("/", h.getProtocolList)
-		group.GET("/full/:id", h.getProtocolFull)
-		group.GET("/groups/:id", h.getProtocolsByGroupID)
-		group.GET("/summary/:id", h.getGroupSummary)
-		group.PUT("/:id/status", h.updateProtocolStatus)
-		group.PUT("/:id", h.updateProtocol)
-		group.DELETE("/:id", h.deleteProtocol)
+		// Создание протокола - инженер, админ
+		auth.POST("/", h.permissionMiddleware(models.PermProtocolCreate), h.createProtocol)
+		// Чтение списка - все аутентифицированные
+		auth.GET("/", h.permissionMiddleware(models.PermProtocolRead), h.getProtocolList)
+		// Полное чтение - все аутентифицированные
+		auth.GET("/full/:id", h.permissionMiddleware(models.PermProtocolRead), h.getProtocolFull)
+		// По группе - все аутентифицированные
+		auth.GET("/groups/:id", h.permissionMiddleware(models.PermProtocolRead), h.getProtocolsByGroupID)
+		// Сводка группы - все аутентифицированные
+		auth.GET("/summary/:id", h.permissionMiddleware(models.PermReportRead), h.getGroupSummary)
+		// Обновление статуса - инженер, админ
+		auth.PUT("/:id/status", h.permissionMiddleware(models.PermProtocolUpdate), h.updateProtocolStatus)
+		// Обновление протокола - инженер, админ
+		auth.PUT("/:id", h.permissionMiddleware(models.PermProtocolUpdate), h.updateProtocol)
+		// Удаление - только инженер и админ
+		auth.DELETE("/:id", h.permissionMiddleware(models.PermProtocolDelete), h.deleteProtocol)
 	}
 }
 

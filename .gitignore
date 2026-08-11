@@ -1,15 +1,31 @@
 ```
-# Compiled and build artifacts
-*.o
-*.obj
+# Go-specific ignores
+*.mod
+*.sum
+*.exe
+*.dll
+*.so
+*.dylib
 *.out
+*.test
 
 # Dependencies
 vendor/
 
+# Build artifacts
+bin/
+pkg/
+*.exe
+*.dll
+*.so
+*.dylib
+*.out
+*.test
+
 # Logs and temp files
 *.log
 *.tmp
+*.swp
 
 # Environment
 .env
@@ -19,4 +35,21 @@ vendor/
 # Editors
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Cache directories
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.gradle/
 ```

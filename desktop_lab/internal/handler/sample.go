@@ -1,15 +1,19 @@
 package handler
 
 import (
+	"desktop_lab/internal/models"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) initSampleRoutes(api *gin.RouterGroup) {
-	group := api.Group("/sample")
+	// Проба требуют аутентификации
+	auth := api.Group("/sample")
+	auth.Use(h.authMiddleware)
 	{
-		group.POST("/", h.createSample)
+		// Создание пробы - техник, инженер, админ
+		auth.POST("/", h.permissionMiddleware(models.PermSampleCreate), h.createSample)
 	}
 }
 

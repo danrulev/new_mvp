@@ -8,17 +8,23 @@ import (
 )
 
 func (h *Handler) initStandardRoutes(api *gin.RouterGroup) {
-	group := api.Group("/standard")
+	// Стандарты требуют аутентификации
+	auth := api.Group("/standard")
+	auth.Use(h.authMiddleware)
 	{
-		group.POST("/", h.createStandard)
-		group.GET("/material/:id", h.getStandardsByMaterialID)
-		group.GET("/:id/methods", h.getMethodsByStandardID)
-		group.GET("/:id/methods/full", h.getMethodsFullByStandardID)
-		group.GET("/method/:id/details", h.getMethodDetails)
-		group.GET("/:id/dimensions", h.getStandardDimensions)
-		group.GET("/:id/full", h.getStandardFull)
-		group.DELETE("/cache/:id", h.invalidateStandardCache)
-		group.POST("/:id/dimensions/:dimId", h.linkDimensionToStandard)
+		// Создание стандарта - только инженер и админ
+		auth.POST("/", h.permissionMiddleware(models.PermStandardCreate), h.createStandard)
+		// Чтение стандартов - все аутентифицированные
+		auth.GET("/material/:id", h.permissionMiddleware(models.PermStandardRead), h.getStandardsByMaterialID)
+		auth.GET("/:id/methods", h.permissionMiddleware(models.PermStandardRead), h.getMethodsByStandardID)
+		auth.GET("/:id/methods/full", h.permissionMiddleware(models.PermStandardRead), h.getMethodsFullByStandardID)
+		auth.GET("/method/:id/details", h.permissionMiddleware(models.PermStandardRead), h.getMethodDetails)
+		auth.GET("/:id/dimensions", h.permissionMiddleware(models.PermStandardRead), h.getStandardDimensions)
+		auth.GET("/:id/full", h.permissionMiddleware(models.PermStandardRead), h.getStandardFull)
+		// Инвалидация кэша - только инженер и админ
+		auth.DELETE("/cache/:id", h.permissionMiddleware(models.PermStandardUpdate), h.invalidateStandardCache)
+		// Линковка измерений - только инженер и админ
+		auth.POST("/:id/dimensions/:dimId", h.permissionMiddleware(models.PermStandardUpdate), h.linkDimensionToStandard)
 	}
 }
 

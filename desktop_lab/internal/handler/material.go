@@ -1,17 +1,21 @@
 package handler
 
 import (
+	"desktop_lab/internal/models"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) initMaterialRoutes(api *gin.RouterGroup) {
-	material := api.Group("/materials")
+	// Материалы требуют аутентификации
+	auth := api.Group("/materials")
+	auth.Use(h.authMiddleware)
 	{
-		material.GET("/", h.getMaterialList)
-		material.GET("/:id", h.getMaterialByID)
-		material.GET("/:id/dimensions", h.getDimensions)
+		// Чтение материалов - все аутентифицированные
+		auth.GET("/", h.permissionMiddleware(models.PermMaterialRead), h.getMaterialList)
+		auth.GET("/:id", h.permissionMiddleware(models.PermMaterialRead), h.getMaterialByID)
+		auth.GET("/:id/dimensions", h.permissionMiddleware(models.PermDimensionRead), h.getDimensions)
 	}
 }
 

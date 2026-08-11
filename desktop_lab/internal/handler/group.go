@@ -9,13 +9,20 @@ import (
 )
 
 func (h *Handler) initGroupRoutes(api *gin.RouterGroup) {
-	group := api.Group("/group")
+	// Группы экспериментов требуют аутентификации
+	auth := api.Group("/group")
+	auth.Use(h.authMiddleware)
 	{
-		group.POST("/", h.createGroup)
-		group.GET("/", h.getGroupList)
-		group.GET("/:id", h.getGroupByID)
-		group.PUT("/:id", h.updateGroup)
-		group.DELETE("/:id", h.deleteGroup)
+		// Создание группы - техник, инженер, админ
+		auth.POST("/", h.permissionMiddleware(models.PermGroupCreate), h.createGroup)
+		// Чтение списка - все аутентифицированные
+		auth.GET("/", h.permissionMiddleware(models.PermGroupRead), h.getGroupList)
+		// Чтение по ID - все аутентифицированные
+		auth.GET("/:id", h.permissionMiddleware(models.PermGroupRead), h.getGroupByID)
+		// Обновление группы - техник, инженер, админ
+		auth.PUT("/:id", h.permissionMiddleware(models.PermGroupUpdate), h.updateGroup)
+		// Удаление группы - только инженер и админ
+		auth.DELETE("/:id", h.permissionMiddleware(models.PermGroupDelete), h.deleteGroup)
 	}
 }
 

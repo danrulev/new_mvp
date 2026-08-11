@@ -11,29 +11,37 @@ import (
 
 func (h *Handler) initOrganizationRoutes(api *gin.RouterGroup) {
 	h.log.Debug("Init organization routes")
+	// Организации требуют аутентификации
 	organizations := api.Group("/organizations")
+	organizations.Use(h.authMiddleware)
 	{
-		organizations.POST("/", h.createOrganization)
-		organizations.GET("/:id", h.getOrganizationByID)
-		organizations.GET("/name/:name", h.getOrganizationByName)
-		organizations.GET("/", h.listOrganizations)
-		organizations.PUT("/:id", h.updateOrganization)
-		organizations.DELETE("/:id", h.deleteOrganization)
+		// Создание организации - только админ
+		organizations.POST("/", h.permissionMiddleware(models.PermOrganizationCreate), h.createOrganization)
+		// Чтение организаций - все аутентифицированные
+		organizations.GET("/:id", h.permissionMiddleware(models.PermOrganizationRead), h.getOrganizationByID)
+		organizations.GET("/name/:name", h.permissionMiddleware(models.PermOrganizationRead), h.getOrganizationByName)
+		organizations.GET("/", h.permissionMiddleware(models.PermOrganizationRead), h.listOrganizations)
+		// Обновление и удаление - только админ
+		organizations.PUT("/:id", h.permissionMiddleware(models.PermOrganizationUpdate), h.updateOrganization)
+		organizations.DELETE("/:id", h.permissionMiddleware(models.PermOrganizationDelete), h.deleteOrganization)
 
-		// Organization Users routes
-		organizations.POST("/:id/users", h.createOrganizationUser)
-		organizations.GET("/:id/users/:userID", h.getOrganizationUserByID)
-		organizations.GET("/:id/users", h.listOrganizationUsers)
-		organizations.GET("/:id/users/role/:role", h.getOrganizationUserByRole)
-		organizations.PUT("/:id/users/:userID", h.updateOrganizationUser)
-		organizations.DELETE("/:id/users/:userID", h.deleteOrganizationUser)
+		// Organization Users routes - управление пользователями организации
+		// Создание пользователя в организации - только админ
+		organizations.POST("/:id/users", h.permissionMiddleware(models.PermUserCreate), h.createOrganizationUser)
+		// Чтение пользователей - все аутентифицированные
+		organizations.GET("/:id/users/:userID", h.permissionMiddleware(models.PermUserRead), h.getOrganizationUserByID)
+		organizations.GET("/:id/users", h.permissionMiddleware(models.PermUserRead), h.listOrganizationUsers)
+		organizations.GET("/:id/users/role/:role", h.permissionMiddleware(models.PermUserRead), h.getOrganizationUserByRole)
+		// Обновление и удаление пользователей - только админ
+		organizations.PUT("/:id/users/:userID", h.permissionMiddleware(models.PermUserUpdate), h.updateOrganizationUser)
+		organizations.DELETE("/:id/users/:userID", h.permissionMiddleware(models.PermUserDelete), h.deleteOrganizationUser)
 
-		// Organization Tests routes
-		organizations.POST("/:id/tests", h.createOrganizationTest)
-		organizations.GET("/tests/:testID", h.getOrganizationTest)
-		organizations.GET("/tests", h.listOrganizationTests)
-		organizations.PUT("/:id/tests/:testID", h.updateOrganizationTest)
-		organizations.DELETE("/:id/tests/:testID", h.deleteOrganizationTest)
+		// Organization Tests routes - тесты организации (только админ)
+		organizations.POST("/:id/tests", h.requireRoleMiddleware(models.RoleAdmin), h.createOrganizationTest)
+		organizations.GET("/tests/:testID", h.requireRoleMiddleware(models.RoleAdmin), h.getOrganizationTest)
+		organizations.GET("/tests", h.requireRoleMiddleware(models.RoleAdmin), h.listOrganizationTests)
+		organizations.PUT("/:id/tests/:testID", h.requireRoleMiddleware(models.RoleAdmin), h.updateOrganizationTest)
+		organizations.DELETE("/:id/tests/:testID", h.requireRoleMiddleware(models.RoleAdmin), h.deleteOrganizationTest)
 	}
 }
 
