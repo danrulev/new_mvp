@@ -1,9 +1,9 @@
 module desktop_lab
 
-go 1.25.0
+go 1.19
 
 require (
-	github.com/SebastiaanKlippert/go-wkhtmltopdf v1.9.3
+	github.com/SebastiaanKlippert/go-wkhtmltopdf v1.8.0
 	github.com/gen2brain/dlgs v0.0.0-20220603100644-40c77870fa8d
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-playground/validator/v10 v10.14.0
@@ -13,9 +13,9 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/lestrrat-go/jwx/v2 v2.0.8
 	github.com/spf13/viper v1.15.0
-	go.uber.org/zap v1.28.0
+	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.53.0
-	modernc.org/sqlite v1.56.0
+	modernc.org/sqlite v1.20.0
 )
 
 require (
@@ -58,6 +58,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/arch v0.22.0 // indirect
 	golang.org/x/net v0.56.0 // indirect

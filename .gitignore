@@ -1,32 +1,30 @@
 ```
-# Build artifacts
-*.o
-*.obj
+# Go-specific ignores
+*.mod
+*.sum
 *.exe
 *.dll
 *.so
-*.a
-*.out
+*.dylib
+*.test
+*.prof
+cover.out
+coverage.txt
 
 # Dependencies
 vendor/
-node_modules/
-venv/
-.venv/
-__pycache__/
-*.egg-info/
-.Python
 
-# Logs and temp files
-*.log
-*.tmp
-*.swp
-*.swo
+# Build artifacts
+bin/
+pkg/
+*.a
+*.o
 
-# Environment
+# Environment and temp files
 .env
 .env.local
-*.env.*
+*.tmp
+*.log
 
 # Editors
 .vscode/
@@ -37,20 +35,4 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# Distribution / packaging
-dist/
-build/
-*.tar.gz
-*.whl
-*.zip
-
-# Go specific
-*.test
-*.prof
 ```
