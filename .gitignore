@@ -1,7 +1,5 @@
 ```
-# Compiled and build artifacts
-*.pyc
-__pycache__/
+# Build artifacts
 *.o
 *.obj
 *.exe
@@ -11,13 +9,13 @@ __pycache__/
 *.out
 
 # Dependencies
-.venv/
-venv/
+vendor/
 node_modules/
-dist/
-build/
-target/
-.gradle/
+venv/
+.venv/
+__pycache__/
+*.egg-info/
+.Python
 
 # Logs and temp files
 *.log
@@ -28,7 +26,7 @@ target/
 # Environment
 .env
 .env.local
-.env.*
+*.env.*
 
 # Editors
 .vscode/
@@ -36,16 +34,23 @@ target/
 *.swp
 *.swo
 
+# OS
+.DS_Store
+Thumbs.db
+
 # Coverage
 coverage/
 htmlcov/
 .coverage
 
-# OS specific
-.DS_Store
-Thumbs.db
+# Distribution / packaging
+dist/
+build/
+*.tar.gz
+*.whl
+*.zip
 
-# Cache directories
-.mypy_cache/
-.pytest_cache/
+# Go specific
+*.test
+*.prof
 ```

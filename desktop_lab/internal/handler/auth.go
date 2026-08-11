@@ -16,6 +16,7 @@ func (h *Handler) initAuthRoutes(api *gin.RouterGroup) {
 		auth.POST("/sign-in", h.signIn)
 		auth.GET("/logout", h.logout)
 		auth.GET("/refresh", h.refresh)
+		auth.GET("/me", h.authMiddleware, h.getMe)
 	}
 }
 
@@ -30,6 +31,17 @@ func (h *Handler) signUp(c *gin.Context) {
 	if err := valid.ValidateStruct(user); err != nil {
 		h.newErrorResponse(c, http.StatusBadRequest, "sign up", "invalid request body", err)
 		return
+	}
+
+	// Запрещаем регистрацию с ролью администратора через публичный API
+	if user.Role == models.RoleAdmin {
+		h.newErrorResponse(c, http.StatusForbidden, "sign up", "admin registration is not allowed", nil)
+		return
+	}
+
+	// Если роль не указана или невалидна, устанавливаем роль по умолчанию (client)
+	if !user.Role.IsValid() {
+		user.Role = models.RoleClient
 	}
 
 	userID, err := h.auth.SignUp(c.Request.Context(), user)
@@ -95,4 +107,29 @@ func (h *Handler) refresh(c *gin.Context) {
 
 	c.SetCookie(refreshToken, token.RefreshToken, int(h.refreshTokenTTL.Seconds()), "/", "", false, true)
 	c.JSON(http.StatusOK, gin.H{accessToken: token.AccessToken})
+}
+
+// getMe возвращает информацию о текущем пользователе
+func (h *Handler) getMe(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil {
+		h.newErrorResponse(c, http.StatusUnauthorized, "get me", "unauthorized", err)
+		return
+	}
+
+	user, err := h.auth.GetUserByID(c.Request.Context(), userID)
+	if err != nil {
+		h.newErrorResponse(c, http.StatusInternalServerError, "get me", "service error", err)
+		return
+	}
+
+	// Возвращаем только безопасные данные (без пароля)
+	c.JSON(http.StatusOK, gin.H{
+		"id":         user.ID,
+		"name":       user.Name,
+		"email":      user.Email,
+		"role":       user.Role,
+		"created_at": user.CreatedAt,
+		"updated_at": user.UpdatedAt,
+	})
 }
