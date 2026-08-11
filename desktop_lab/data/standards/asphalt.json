@@ -1390,6 +1390,1044 @@
           ]
         }
       ]
+    },
+    {
+      "name": "ГОСТ 31015-2002",
+      "description": "Смеси асфальтобетонные и асфальтобетон щебеночно-мастичные. Технические условия",
+      "dimensions": [
+        {
+          "key_name": "sma_grade",
+          "label": "Марка ЩМА",
+          "data_type": "select",
+          "possible_values": ["ЩМА-10", "ЩМА-15", "ЩМА-20"]
+        },
+        {
+          "key_name": "fiber_type",
+          "label": "Тип стабилизирующей добавки",
+          "data_type": "select",
+          "possible_values": ["целлюлозное волокно", "базальтовое волокно", "асбест"]
+        }
+      ],
+      "methods": [
+        {
+          "code": "31015-SM-01",
+          "name": "Предел прочности при сжатии при 20°C",
+          "unit": "МПа",
+          "formula_expr": "(F / A) / 10",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F",
+              "label": "Разрушающая нагрузка",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "A",
+              "label": "Площадь сечения",
+              "unit": "см²",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 2.5,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "sma_grade",
+                  "operator": "=",
+                  "expected_value": "ЩМА-10"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 3.0,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "sma_grade",
+                  "operator": "=",
+                  "expected_value": "ЩМА-15"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 3.5,
+              "max_value": null,
+              "priority": 3,
+              "conditions": [
+                {
+                  "dimension_key": "sma_grade",
+                  "operator": "=",
+                  "expected_value": "ЩМА-20"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "31015-SM-02",
+          "name": "Предел прочности при сжатии при 50°C",
+          "unit": "МПа",
+          "formula_expr": "(F / A) / 10",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F",
+              "label": "Разрушающая нагрузка",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "A",
+              "label": "Площадь сечения",
+              "unit": "см²",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 1.5,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "31015-SM-03",
+          "name": "Водостойкость",
+          "unit": "доли ед.",
+          "formula_expr": "strength_wet / strength_dry",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "strength_wet",
+              "label": "Прочность водонасыщенного образца",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "strength_dry",
+              "label": "Прочность сухого образца",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 0.85,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "31015-SM-04",
+          "name": "Водостойкость после циклов замораживания-оттаивания",
+          "unit": "доли ед.",
+          "formula_expr": "strength_frost / strength_dry",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "strength_frost",
+              "label": "Прочность после циклов замораживания-оттаивания",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "strength_dry",
+              "label": "Прочность сухого образца",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 0.80,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "31015-SM-05",
+          "name": "Остаточная пористость",
+          "unit": "%",
+          "formula_expr": "((rho_theor - rho_actual) / rho_theor) * 100",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "rho_theor",
+              "label": "Теоретическая плотность",
+              "unit": "г/см³",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "rho_actual",
+              "label": "Фактическая плотность",
+              "unit": "г/см³",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 1.0,
+              "max_value": 3.0,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "31015-SM-06",
+          "name": "Содержание битума",
+          "unit": "%",
+          "formula_expr": "(m_bitumen / m_mix) * 100",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "m_bitumen",
+              "label": "Масса битума",
+              "unit": "г",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "m_mix",
+              "label": "Масса смеси",
+              "unit": "г",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 5.5,
+              "max_value": 7.0,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "sma_grade",
+                  "operator": "=",
+                  "expected_value": "ЩМА-10"
+                }
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 5.8,
+              "max_value": 7.2,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "sma_grade",
+                  "operator": "=",
+                  "expected_value": "ЩМА-15"
+                }
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 6.0,
+              "max_value": 7.5,
+              "priority": 3,
+              "conditions": [
+                {
+                  "dimension_key": "sma_grade",
+                  "operator": "=",
+                  "expected_value": "ЩМА-20"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "31015-SM-07",
+          "name": "Содержание волокон",
+          "unit": "%",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "fiber_percent",
+              "label": "Массовая доля волокон",
+              "unit": "%",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 0.3,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "31015-SM-08",
+          "name": "Температура укладки",
+          "unit": "°C",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "temp_lay",
+              "label": "Температура при укладке",
+              "unit": "°C",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 150,
+              "max_value": 180,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ГОСТ Р 58406.1-2020",
+      "description": "Дороги автомобильные общего пользования. Смеси асфальтобетонные дисперсно-армированные. Технические условия",
+      "dimensions": [
+        {
+          "key_name": "da_grade",
+          "label": "Марка ДА",
+          "data_type": "select",
+          "possible_values": ["ДА-10", "ДА-15", "ДА-20"]
+        },
+        {
+          "key_name": "reinforcement_type",
+          "label": "Тип армирования",
+          "data_type": "select",
+          "possible_values": ["стальная фибра", "полипропиленовая фибра", "базальтовая фибра"]
+        }
+      ],
+      "methods": [
+        {
+          "code": "58406.1-DA-01",
+          "name": "Предел прочности при сжатии при 20°C",
+          "unit": "МПа",
+          "formula_expr": "(F / A) / 10",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F",
+              "label": "Разрушающая нагрузка",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "A",
+              "label": "Площадь сечения",
+              "unit": "см²",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 3.0,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "da_grade",
+                  "operator": "=",
+                  "expected_value": "ДА-10"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 3.5,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "da_grade",
+                  "operator": "=",
+                  "expected_value": "ДА-15"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 4.0,
+              "max_value": null,
+              "priority": 3,
+              "conditions": [
+                {
+                  "dimension_key": "da_grade",
+                  "operator": "=",
+                  "expected_value": "ДА-20"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "58406.1-DA-02",
+          "name": "Предел прочности при растяжении-изгибе при 0°C",
+          "unit": "МПа",
+          "formula_expr": "(F * L) / (b * h * h)",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F",
+              "label": "Разрушающая нагрузка",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "L",
+              "label": "Расстояние между опорами",
+              "unit": "см",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "b",
+              "label": "Ширина образца",
+              "unit": "см",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "h",
+              "label": "Высота образца",
+              "unit": "см",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 3.5,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "58406.1-DA-03",
+          "name": "Коэффициент водостойкости",
+          "unit": "доли ед.",
+          "formula_expr": "strength_sat / strength_dry",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "strength_sat",
+              "label": "Прочность насыщенного образца",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "strength_dry",
+              "label": "Прочность сухого образца",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 0.90,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "58406.1-DA-04",
+          "name": "Коэффициент водостойкости при замораживании-оттаивании",
+          "unit": "доли ед.",
+          "formula_expr": "strength_frost / strength_dry",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "strength_frost",
+              "label": "Прочность после циклов замораживания-оттаивания",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "strength_dry",
+              "label": "Прочность сухого образца",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 0.85,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "58406.1-DA-05",
+          "name": "Остаточная пористость",
+          "unit": "%",
+          "formula_expr": "((rho_theor - rho_actual) / rho_theor) * 100",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "rho_theor",
+              "label": "Теоретическая плотность",
+              "unit": "г/см³",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "rho_actual",
+              "label": "Фактическая плотность",
+              "unit": "г/см³",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 1.5,
+              "max_value": 4.0,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "58406.1-DA-06",
+          "name": "Содержание фибры",
+          "unit": "%",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "fiber_content",
+              "label": "Массовая доля фибры",
+              "unit": "%",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 0.1,
+              "max_value": 0.5,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "58406.1-DA-07",
+          "name": "Трещиностойкость при многократном нагружении",
+          "unit": "циклы",
+          "formula_expr": "",
+          "is_mandatory": false,
+          "inputs": [
+            {
+              "param_key": "cycles_count",
+              "label": "Количество циклов до разрушения",
+              "unit": "циклы",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 5000,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ГОСТ Р 58406.2-2020",
+      "description": "Дороги автомобильные общего пользования. Смеси асфальтобетонные с модифицированным битумом. Технические условия",
+      "dimensions": [
+        {
+          "key_name": "mb_grade",
+          "label": "Марка смеси с МБ",
+          "data_type": "select",
+          "possible_values": ["I", "II", "III"]
+        },
+        {
+          "key_name": "modifier_type",
+          "label": "Тип модификатора",
+          "data_type": "select",
+          "possible_values": ["СБС", "СКС", "термоэластопласт"]
+        }
+      ],
+      "methods": [
+        {
+          "code": "58406.2-MB-01",
+          "name": "Предел прочности при сжатии при 20°C",
+          "unit": "МПа",
+          "formula_expr": "(F / A) / 10",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F",
+              "label": "Разрушающая нагрузка",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "A",
+              "label": "Площадь сечения",
+              "unit": "см²",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 2.8,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "mb_grade",
+                  "operator": "=",
+                  "expected_value": "I"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 2.5,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "mb_grade",
+                  "operator": "=",
+                  "expected_value": "II"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 2.2,
+              "max_value": null,
+              "priority": 3,
+              "conditions": [
+                {
+                  "dimension_key": "mb_grade",
+                  "operator": "=",
+                  "expected_value": "III"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "58406.2-MB-02",
+          "name": "Предел прочности при сжатии при 50°C",
+          "unit": "МПа",
+          "formula_expr": "(F / A) / 10",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F",
+              "label": "Разрушающая нагрузка",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "A",
+              "label": "Площадь сечения",
+              "unit": "см²",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 1.8,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "mb_grade",
+                  "operator": "=",
+                  "expected_value": "I"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 1.5,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "mb_grade",
+                  "operator": "=",
+                  "expected_value": "II"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 1.2,
+              "max_value": null,
+              "priority": 3,
+              "conditions": [
+                {
+                  "dimension_key": "mb_grade",
+                  "operator": "=",
+                  "expected_value": "III"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "58406.2-MB-03",
+          "name": "Предел прочности при растяжении-изгибе при 0°C",
+          "unit": "МПа",
+          "formula_expr": "(F * L) / (b * h * h)",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F",
+              "label": "Разрушающая нагрузка",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "L",
+              "label": "Расстояние между опорами",
+              "unit": "см",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "b",
+              "label": "Ширина образца",
+              "unit": "см",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "h",
+              "label": "Высота образца",
+              "unit": "см",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 3.0,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "mb_grade",
+                  "operator": "=",
+                  "expected_value": "I"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 2.5,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "mb_grade",
+                  "operator": "=",
+                  "expected_value": "II"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 2.0,
+              "max_value": null,
+              "priority": 3,
+              "conditions": [
+                {
+                  "dimension_key": "mb_grade",
+                  "operator": "=",
+                  "expected_value": "III"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "58406.2-MB-04",
+          "name": "Коэффициент водостойкости",
+          "unit": "доли ед.",
+          "formula_expr": "strength_sat / strength_dry",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "strength_sat",
+              "label": "Прочность водонасыщенного образца",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "strength_dry",
+              "label": "Прочность сухого образца",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 0.90,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "58406.2-MB-05",
+          "name": "Коэффициент водостойкости при замораживании-оттаивании",
+          "unit": "доли ед.",
+          "formula_expr": "strength_frost / strength_dry",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "strength_frost",
+              "label": "Прочность после циклов замораживания-оттаивания",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "strength_dry",
+              "label": "Прочность сухого образца",
+              "unit": "МПа",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 0.85,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "58406.2-MB-06",
+          "name": "Сдвиг при сжатии при 50°C",
+          "unit": "МПа",
+          "formula_expr": "F_shear / A",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "F_shear",
+              "label": "Нагрузка сдвига",
+              "unit": "Н",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "A",
+              "label": "Площадь сечения",
+              "unit": "см²",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 0.40,
+              "max_value": null,
+              "priority": 1,
+              "conditions": [
+                {
+                  "dimension_key": "mb_grade",
+                  "operator": "=",
+                  "expected_value": "I"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 0.35,
+              "max_value": null,
+              "priority": 2,
+              "conditions": [
+                {
+                  "dimension_key": "mb_grade",
+                  "operator": "=",
+                  "expected_value": "II"
+                }
+              ]
+            },
+            {
+              "limit_type": "min",
+              "min_value": 0.30,
+              "max_value": null,
+              "priority": 3,
+              "conditions": [
+                {
+                  "dimension_key": "mb_grade",
+                  "operator": "=",
+                  "expected_value": "III"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "58406.2-MB-07",
+          "name": "Остаточная пористость",
+          "unit": "%",
+          "formula_expr": "((rho_theor - rho_actual) / rho_theor) * 100",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "rho_theor",
+              "label": "Теоретическая плотность",
+              "unit": "г/см³",
+              "input_type": "number",
+              "is_required": true
+            },
+            {
+              "param_key": "rho_actual",
+              "label": "Фактическая плотность",
+              "unit": "г/см³",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 1.0,
+              "max_value": 4.0,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "58406.2-MB-08",
+          "name": "Температура размягчения битума",
+          "unit": "°C",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "softening_temp",
+              "label": "Температура размягчения",
+              "unit": "°C",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 65,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "58406.2-MB-09",
+          "name": "Эластичность битума",
+          "unit": "%",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "elasticity",
+              "label": "Эластичность",
+              "unit": "%",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 60,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        }
+      ]
     }
   ]
 }
