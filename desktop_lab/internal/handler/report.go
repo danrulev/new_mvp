@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"desktop_lab/internal/models"
 	"fmt"
 	"net/http"
 
@@ -9,10 +10,13 @@ import (
 
 // initReportRoutes регистрирует маршруты для генерации отчётов
 func (h *Handler) initReportRoutes(api *gin.RouterGroup) {
-	group := api.Group("/report")
+	// Отчеты требуют аутентификации
+	auth := api.Group("/report")
+	auth.Use(h.authMiddleware)
 	{
-		group.GET("/protocol/:id/pdf", h.downloadProtocolPDF)
-		group.GET("/group/:id/pdf", h.downloadGroupSummaryPDF)
+		// Генерация PDF - все аутентифицированные с правом чтения отчетов
+		auth.GET("/protocol/:id/pdf", h.permissionMiddleware(models.PermReportRead), h.downloadProtocolPDF)
+		auth.GET("/group/:id/pdf", h.permissionMiddleware(models.PermReportRead), h.downloadGroupSummaryPDF)
 	}
 }
 

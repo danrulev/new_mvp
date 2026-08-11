@@ -8,14 +8,18 @@ import (
 )
 
 func (h *Handler) initDimensionRoutes(api *gin.RouterGroup) {
-	group := api.Group("/dimension")
+	// Измерения требуют аутентификации
+	auth := api.Group("/dimension")
+	auth.Use(h.authMiddleware)
 	{
-		group.GET("/", h.getAvailableDimensions)
-		group.POST("/", h.addDimension)
-		group.GET("/key/:key", h.getDimensionByKey)
-		group.PUT("/:id/values", h.updatePossibleValues)
-		group.DELETE("/:id/values", h.deletePossibleValues)
-		group.DELETE("/:id", h.deleteDimension)
+		// Чтение измерений - все аутентифицированные
+		auth.GET("/", h.permissionMiddleware(models.PermDimensionRead), h.getAvailableDimensions)
+		auth.GET("/key/:key", h.permissionMiddleware(models.PermDimensionRead), h.getDimensionByKey)
+		// Создание, обновление, удаление - только инженер и админ
+		auth.POST("/", h.permissionMiddleware(models.PermDimensionCreate), h.addDimension)
+		auth.PUT("/:id/values", h.permissionMiddleware(models.PermDimensionUpdate), h.updatePossibleValues)
+		auth.DELETE("/:id/values", h.permissionMiddleware(models.PermDimensionDelete), h.deletePossibleValues)
+		auth.DELETE("/:id", h.permissionMiddleware(models.PermDimensionDelete), h.deleteDimension)
 	}
 }
 
