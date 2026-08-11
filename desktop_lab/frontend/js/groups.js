@@ -343,5 +343,3 @@ window.deleteGroup = deleteGroup;
 window.createGroup = createGroup;
 window.viewGroup = viewGroup;
 window.saveGroupUpdate = saveGroupUpdate;
-
-export { openCreateGroupModal, closeCreateGroupModal, createGroup, viewGroup, closeViewGroupModal, downloadGroupPDF, deleteGroup, editGroup, closeEditGroupModal, saveGroupUpdate };
