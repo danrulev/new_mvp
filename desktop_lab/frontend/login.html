@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход — ЛабСистема</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .auth-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: var(--bg-gradient);
+    }
+    .auth-card {
+      background: var(--card);
+      padding: 40px;
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-lg);
+      width: 100%;
+      max-width: 420px;
+      border: 1px solid var(--border);
+    }
+    .auth-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .auth-header h1 {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .auth-header p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .auth-footer {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+    .auth-footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .auth-footer a:hover {
+      text-decoration: underline;
+    }
+    .role-selector {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .role-option {
+      padding: 12px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: var(--transition);
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      background: var(--card);
+    }
+    .role-option:hover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+    .role-option.selected {
+      border-color: var(--primary);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    .role-option .role-icon {
+      font-size: 24px;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .role-description {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      font-weight: 400;
+    }
+    .role-option.selected .role-description {
+      color: rgba(255, 255, 255, 0.9);
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <h1>🧪 ЛабСистема</h1>
+        <p>Вход в систему</p>
+      </div>
+      
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email <span class="required">*</span></label>
+          <input type="email" id="email" name="email" required placeholder="name@example.com">
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Пароль <span class="required">*</span></label>
+          <input type="password" id="password" name="password" required placeholder="••••••••">
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          Войти
+        </button>
+      </form>
+      
+      <div class="auth-footer">
+        <p>Нет аккаунта? <a href="/register.html">Зарегистрироваться</a></p>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module">
+    import { api } from './js/api.js';
+    import { showToast } from './js/utils.js';
+    
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      
+      try {
+        const response = await fetch('/api/v1/auth/sign-in', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.message || err.error || 'Ошибка входа');
+        }
+        
+        const data = await response.json();
+        
+        // Сохраняем access токен
+        localStorage.setItem('access_token', data.access_token);
+        
+        // Загружаем информацию о пользователе
+        await loadUserInfo();
+        
+        showToast('Успешный вход!', false);
+        
+        // Редирект на главную страницу
+        setTimeout(() => {
+          window.location.href = '/protocols.html';
+        }, 500);
+        
+      } catch (error) {
+        console.error('Login error:', error);
+        showToast(error.message, true);
+      }
+    });
+    
+    async function loadUserInfo() {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+        
+        const response = await fetch('/api/v1/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+          const user = await response.json();
+          localStorage.setItem('user_info', JSON.stringify(user));
+        }
+      } catch (error) {
+        console.error('Failed to load user info:', error);
+      }
+    }
+    
+    // Проверяем, есть ли уже токен
+    (async () => {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        try {
+          const response = await fetch('/api/v1/auth/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (response.ok) {
+            window.location.href = '/protocols.html';
+          }
+        } catch (error) {
+          console.error('Token validation failed:', error);
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

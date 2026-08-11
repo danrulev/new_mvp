@@ -1,36 +1,19 @@
 ```
-# Go-specific ignores
+# Dependencies
+node_modules/
+vendor/
 *.mod
 *.sum
-*.exe
-*.dll
-*.so
-*.dylib
-*.out
-*.test
-
-# Dependencies
-vendor/
 
 # Build artifacts
-bin/
-pkg/
-*.exe
-*.dll
-*.so
-*.dylib
-*.out
-*.test
-
-# Logs and temp files
-*.log
-*.tmp
-*.swp
+dist/
+build/
+target/
 
 # Environment
 .env
 .env.local
-.env.*
+*.env.*
 
 # Editors
 .vscode/
@@ -38,7 +21,20 @@ pkg/
 *.swp
 *.swo
 
-# OS specific
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Temp files
+*.tmp
+*.temp
+
+# OS
 .DS_Store
 Thumbs.db
 
@@ -47,8 +43,7 @@ coverage/
 htmlcov/
 .coverage
 
-# Cache directories
-__pycache__/
+# Cache
 .mypy_cache/
 .pytest_cache/
 .gradle/

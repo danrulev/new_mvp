@@ -1,16 +1,48 @@
 // frontend/js/api.js
 const API_BASE = '/api/v1';
 
+/**
+ * Получает access токен из localStorage
+ */
+function getAuthToken() {
+  return localStorage.getItem('access_token');
+}
+
 async function apiRequest(endpoint, options = {}) {
   try {
+    const token = getAuthToken();
+    const headers = { 'Content-Type': 'application/json', ...options.headers };
+    
+    // Добавляем Authorization header если есть токен
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const res = await fetch(`${API_BASE}${endpoint}`, {
-      headers: { 'Content-Type': 'application/json', ...options.headers },
+      headers,
       ...options
     });
     
+    // Обрабатываем 401 Unauthorized
+    if (res.status === 401) {
+      // Токен недействителен, пробуем обновить или разлогиниваемся
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_info');
+      
+      if (!window.location.pathname.includes('login.html')) {
+        window.location.href = '/login.html';
+      }
+      throw new Error('Сессия истекла. Пожалуйста, войдите снова.');
+    }
+    
+    // Обрабатываем 403 Forbidden
+    if (res.status === 403) {
+      throw new Error('Доступ запрещен. Недостаточно прав.');
+    }
+    
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${res.status}`);
+      throw new Error(err.error || err.message || `HTTP ${res.status}`);
     }
     
     const ct = res.headers.get('Content-Type');
@@ -18,7 +50,6 @@ async function apiRequest(endpoint, options = {}) {
     return await res.json();
   } catch (e) {
     console.error(`API ${endpoint}:`, e);
-    showToast(e.message, true);
     throw e;
   }
 }
