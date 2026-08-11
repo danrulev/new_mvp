@@ -1,19 +1,34 @@
 ```
-# Dependencies
-node_modules/
-vendor/
-*.mod
-*.sum
+# Compiled and build artifacts
+*.pyc
+__pycache__/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
 
-# Build artifacts
+# Dependencies
+.venv/
+venv/
+node_modules/
 dist/
 build/
 target/
+.gradle/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
 
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
 
 # Editors
 .vscode/
@@ -21,30 +36,16 @@ target/
 *.swp
 *.swo
 
-# Logs
-*.log
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Temp files
-*.tmp
-*.temp
-
-# OS
-.DS_Store
-Thumbs.db
-
 # Coverage
 coverage/
 htmlcov/
 .coverage
 
-# Cache
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Cache directories
 .mypy_cache/
 .pytest_cache/
-.gradle/
 ```
