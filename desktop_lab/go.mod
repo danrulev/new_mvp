@@ -1,6 +1,6 @@
 module desktop_lab
 
-go 1.25.0
+go 1.19
 
 require (
 	github.com/SebastiaanKlippert/go-wkhtmltopdf v1.9.3
@@ -15,7 +15,7 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.18
 	github.com/spf13/viper v1.16.0
 	go.uber.org/zap v1.25.0
-	golang.org/x/crypto v0.53.0
+	golang.org/x/crypto v0.14.0
 	modernc.org/sqlite v1.56.0
 )
 

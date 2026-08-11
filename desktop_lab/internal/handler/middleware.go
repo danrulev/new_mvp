@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	contextkeys "desktop_lab/internal/contextKey"
+	"desktop_lab/internal/models"
 	"desktop_lab/pkg/ratelimiter"
 	"errors"
 	"fmt"
@@ -114,7 +115,7 @@ func (h *Handler) loggerWith(c *gin.Context, fields ...zap.Field) *zap.Logger {
 	return h.log.With(append(base, fields...)...)
 }
 
-// authMiddleware проверяет аутентификацию пользователя.
+// authMiddleware проверяет аутентификацию пользователя и загружает роль.
 func (h *Handler) authMiddleware(c *gin.Context) {
 	_, err := getRefreshToken(c)
 	if err != nil {
@@ -137,7 +138,26 @@ func (h *Handler) authMiddleware(c *gin.Context) {
 		return
 	}
 
+	// Загружаем информацию о пользователе из БД для получения роли
+	user, err := h.auth.GetUserByID(c.Request.Context(), userID)
+	if err != nil {
+		h.log.Error("failed to load user role",
+			zap.String("user_id", userID),
+			zap.Error(err),
+		)
+		c.Redirect(http.StatusUnauthorized, "/api/auth/login")
+		c.Abort()
+		return
+	}
+
+	// Сохраняем userID и роль в контексте
 	c.Set(userIDKey, userID)
+	c.Set(roleKey, user.Role)
+
+	// Также добавляем роль в контекст запроса для сервисов
+	ctx := context.WithValue(c.Request.Context(), contextkeys.RoleKey, user.Role)
+	c.Request = c.Request.WithContext(ctx)
+
 	c.Next()
 }
 
