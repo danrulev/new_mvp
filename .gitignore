@@ -1,1 +1,22 @@
-Nothing should be ignored based on the provided file changes. The only modified file is a JavaScript source file (`desktop_lab/frontend/js/groups.js`), which is a legitimate source code file that should not be ignored. There are no build artifacts, dependencies, temporary files, or other items in the change list that warrant being added to .gitignore.
+```
+# Compiled and build artifacts
+*.o
+*.obj
+*.out
+
+# Dependencies
+vendor/
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+.env.*
+
+# Editors
+.vscode/
+.idea/
+```

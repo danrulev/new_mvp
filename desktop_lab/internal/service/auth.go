@@ -247,3 +247,22 @@ func (a *AuthService) RefreshToken(ctx context.Context, tokenID string) (models.
 
 	return token, nil
 }
+
+// GetUserByID получает пользователя по ID
+func (s *AuthService) GetUserByID(ctx context.Context, userID string) (models.User, error) {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "GetUserByID"),
+		zap.String("user_id", userID),
+	)
+
+	log.Debug("fetching user by ID")
+
+	user, err := s.user.GetByID(ctx, userID)
+	if err != nil {
+		log.Error("failed to fetch user", zap.Error(err))
+		return models.User{}, err
+	}
+
+	log.Debug("user fetched successfully")
+	return user, nil
+}
