@@ -144,7 +144,10 @@ func (h *Handler) authMiddleware(c *gin.Context) {
 			zap.String("user_id", userID),
 			zap.Error(err),
 		)
-		c.Redirect(http.StatusUnauthorized, "/api/auth/login")
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "unauthorized",
+			"message": "Пользователь не найден",
+		})
 		c.Abort()
 		return
 	}
