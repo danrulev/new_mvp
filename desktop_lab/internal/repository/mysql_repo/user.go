@@ -23,7 +23,7 @@ func NewUserRepo(db *sqlx.DB, log *zap.Logger) *UserRepo {
 
 func (r *UserRepo) Create(ctx context.Context, user models.User) error {
 	log := logQuery(ctx, r.log, "INSERT", "users",
-		zap.String("id", user.ID), zap.String("name", user.Name), zap.String("email", user.Email), zap.String("role", user.Role),
+		zap.String("id", user.ID), zap.String("name", user.Name), zap.String("email", user.Email), zap.String("role", user.Role.String()),
 	)
 	log.Info("starting creating user")
 

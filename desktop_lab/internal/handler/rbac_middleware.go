@@ -2,9 +2,11 @@ package handler
 
 import (
 	"desktop_lab/internal/models"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // permissionMiddleware создает middleware для проверки прав доступа на основе ролей
@@ -93,12 +95,12 @@ func rolesToStrings(roles []models.Role) []string {
 func getRoleFromContext(c *gin.Context) (models.Role, error) {
 	roleRaw, exists := c.Get(roleKey)
 	if !exists {
-		return "", ErrRoleNotFound
+		return "", models.ErrNotFound
 	}
 
 	role, ok := roleRaw.(models.Role)
 	if !ok {
-		return "", ErrInvalidRoleType
+		return "", fmt.Errorf("role not found")
 	}
 
 	return role, nil
