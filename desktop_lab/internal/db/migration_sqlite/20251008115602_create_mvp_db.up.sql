@@ -152,6 +152,16 @@ CREATE TABLE IF NOT EXISTS samples (
     collection_place TEXT,
     -- Контекстные параметры пробы (значения Dimensions)
     -- Хранятся как JSON для гибкости: {"climate_zone": "II", "mix_grade": "I", "layer": "upper"}
+
+    photo_url TEXT,
+    length_mm REAL,
+    width_mm REAL,
+    height_mm REAL,
+    shape TEXT,
+    weight_grams REAL,
+    color TEXT,
+    batch_number TEXT,
+    manufacturer TEXT,
     context_params TEXT NOT NULL DEFAULT '{}', 
     note TEXT,
     created_at TEXT DEFAULT (datetime('now')),
