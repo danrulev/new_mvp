@@ -16,7 +16,19 @@ type Sample struct {
 	ContextParams   map[string]string `json:"context_params" db:"context_params"`
 	RawContext      string            `json:"-" db:"-"`
 	Note            string            `json:"note,omitempty" db:"note"`
-	CreatedAt       time.Time         `json:"created_at" db:"created_at"`
+	
+	// Расширенные поля для образца
+	PhotoURL      string  `json:"photo_url,omitempty" db:"photo_url"`       // URL или путь к фотографии
+	LengthMM      *float64 `json:"length_mm,omitempty" db:"length_mm"`       // Длина в мм
+	WidthMM       *float64 `json:"width_mm,omitempty" db:"width_mm"`         // Ширина в мм
+	HeightMM      *float64 `json:"height_mm,omitempty" db:"height_mm"`       // Высота в мм
+	Shape         string  `json:"shape,omitempty" db:"shape"`               // Форма (куб, цилиндр, призма и т.д.)
+	WeightGrams   *float64 `json:"weight_grams,omitempty" db:"weight_grams"` // Вес в граммах
+	Color         string  `json:"color,omitempty" db:"color"`               // Цвет
+	BatchNumber   string  `json:"batch_number,omitempty" db:"batch_number"` // Номер партии
+	Manufacturer  string  `json:"manufacturer,omitempty" db:"manufacturer"` // Производитель
+	
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
 }
 
 type CreateSampleDTO struct {
@@ -26,6 +38,17 @@ type CreateSampleDTO struct {
 	CollectionPlace string            `json:"collection_place,omitempty"`
 	ContextParams   map[string]string `json:"context_params"`
 	Note            string            `json:"note,omitempty"`
+	
+	// Расширенные поля для образца
+	PhotoURL     string            `json:"photo_url,omitempty"`
+	LengthMM     *float64          `json:"length_mm,omitempty"`
+	WidthMM      *float64          `json:"width_mm,omitempty"`
+	HeightMM     *float64          `json:"height_mm,omitempty"`
+	Shape        string            `json:"shape,omitempty"`
+	WeightGrams  *float64          `json:"weight_grams,omitempty"`
+	Color        string            `json:"color,omitempty"`
+	BatchNumber  string            `json:"batch_number,omitempty"`
+	Manufacturer string            `json:"manufacturer,omitempty"`
 }
 
 func (s *Sample) ToJSON() (string, error) {
