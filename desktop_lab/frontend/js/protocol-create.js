@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function setupFormListeners() {
-  const optionalInputs = ['sampleNote', 'protocolNote', 'collectionDate'];
+  const optionalInputs = ['sampleNote', 'protocolNote', 'collectionDate', 'lengthMM', 'widthMM', 'heightMM', 'weightGrams', 'shape', 'color', 'batchNumber', 'manufacturer', 'photoURL'];
   optionalInputs.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
@@ -488,6 +488,17 @@ async function saveProtocol() {
     collectionDate = new Date(collectionDateEl.value + 'T00:00:00Z').toISOString();
   }
 
+  // 🔥 Сбор расширенных параметров образца
+  const lengthMM = document.getElementById('lengthMM')?.value ? parseFloat(document.getElementById('lengthMM').value) : null;
+  const widthMM = document.getElementById('widthMM')?.value ? parseFloat(document.getElementById('widthMM').value) : null;
+  const heightMM = document.getElementById('heightMM')?.value ? parseFloat(document.getElementById('heightMM').value) : null;
+  const weightGrams = document.getElementById('weightGrams')?.value ? parseFloat(document.getElementById('weightGrams').value) : null;
+  const shape = document.getElementById('shape')?.value || '';
+  const color = document.getElementById('color')?.value.trim() || '';
+  const batchNumber = document.getElementById('batchNumber')?.value.trim() || '';
+  const manufacturer = document.getElementById('manufacturer')?.value.trim() || '';
+  const photoURL = document.getElementById('photoURL')?.value.trim() || '';
+
   const results = [];
   let rawInputs = {};
 
@@ -519,7 +530,17 @@ async function saveProtocol() {
       collection_place: document.getElementById('samplePlace').value,
       collection_date: collectionDate,
       context_params: contextParams, // 🔥 Передаем собранные параметры контекста
-      note: sampleNote
+      note: sampleNote,
+      // Расширенные поля образца
+      length_mm: lengthMM,
+      width_mm: widthMM,
+      height_mm: heightMM,
+      weight_grams: weightGrams,
+      shape: shape,
+      color: color,
+      batch_number: batchNumber,
+      manufacturer: manufacturer,
+      photo_url: photoURL
     },
     lab_name: document.getElementById('labName').value,
     operator_name: document.getElementById('operator').value,

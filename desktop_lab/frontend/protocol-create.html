@@ -147,6 +147,67 @@
             </select>
           </div>
 
+          <!-- 🔹 Расширенные параметры образца -->
+          <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
+            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">📐 Параметры образца</h4>
+            
+            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group">
+                <label>Длина (мм)</label>
+                <input type="number" step="0.01" id="lengthMM" placeholder="0.00">
+              </div>
+              <div class="form-group">
+                <label>Ширина (мм)</label>
+                <input type="number" step="0.01" id="widthMM" placeholder="0.00">
+              </div>
+            </div>
+            
+            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group">
+                <label>Высота (мм)</label>
+                <input type="number" step="0.01" id="heightMM" placeholder="0.00">
+              </div>
+              <div class="form-group">
+                <label>Вес (г)</label>
+                <input type="number" step="0.01" id="weightGrams" placeholder="0.00">
+              </div>
+            </div>
+            
+            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group">
+                <label>Форма</label>
+                <select id="shape">
+                  <option value="">-- Выберите форму --</option>
+                  <option value="cube">Куб</option>
+                  <option value="cylinder">Цилиндр</option>
+                  <option value="prism">Призма</option>
+                  <option value="sphere">Сфера</option>
+                  <option value="irregular">Неправильная</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Цвет</label>
+                <input type="text" id="color" placeholder="Серый">
+              </div>
+            </div>
+            
+            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group">
+                <label>Номер партии</label>
+                <input type="text" id="batchNumber" placeholder="BATCH-001">
+              </div>
+              <div class="form-group">
+                <label>Производитель</label>
+                <input type="text" id="manufacturer" placeholder="ООО Пример">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>URL фотографии</label>
+              <input type="url" id="photoURL" placeholder="https://example.com/photo.jpg">
+            </div>
+          </div>
+
           <!-- Разделитель -->
           <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
             <div class="form-group">
