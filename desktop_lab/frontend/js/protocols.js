@@ -196,15 +196,50 @@ async function viewProtocol(id) {
     // Основная информация
     const infoDiv = document.getElementById('viewInfo');
     if (infoDiv) {
+      const sample = full.sample || {};
+      
+      // 🔥 Формируем HTML для расширенных параметров образца
+      let extendedSampleHtml = '';
+      
+      if (sample.photo_url) {
+        extendedSampleHtml += `<div class="info-item photo-item" style="grid-column: 1 / -1;"><span class="info-label">Фото образца</span><br><img src="${escapeHtml(sample.photo_url)}" alt="Фото образца" style="max-width: 300px; max-height: 300px; border-radius: var(--radius-md); object-fit: cover;"></div>`;
+      }
+      
+      if (sample.length_mm != null) {
+        extendedSampleHtml += `<div class="info-item"><span class="info-label">Длина</span><span class="info-value">${sample.length_mm} мм</span></div>`;
+      }
+      if (sample.width_mm != null) {
+        extendedSampleHtml += `<div class="info-item"><span class="info-label">Ширина</span><span class="info-value">${sample.width_mm} мм</span></div>`;
+      }
+      if (sample.height_mm != null) {
+        extendedSampleHtml += `<div class="info-item"><span class="info-label">Высота</span><span class="info-value">${sample.height_mm} мм</span></div>`;
+      }
+      if (sample.weight_grams != null) {
+        extendedSampleHtml += `<div class="info-item"><span class="info-label">Вес</span><span class="info-value">${sample.weight_grams} г</span></div>`;
+      }
+      if (sample.shape) {
+        extendedSampleHtml += `<div class="info-item"><span class="info-label">Форма</span><span class="info-value">${translateShape(sample.shape)}</span></div>`;
+      }
+      if (sample.color) {
+        extendedSampleHtml += `<div class="info-item"><span class="info-label">Цвет</span><span class="info-value">${escapeHtml(sample.color)}</span></div>`;
+      }
+      if (sample.batch_number) {
+        extendedSampleHtml += `<div class="info-item"><span class="info-label">Номер партии</span><span class="info-value">${escapeHtml(sample.batch_number)}</span></div>`;
+      }
+      if (sample.manufacturer) {
+        extendedSampleHtml += `<div class="info-item"><span class="info-label">Производитель</span><span class="info-value">${escapeHtml(sample.manufacturer)}</span></div>`;
+      }
+      
       infoDiv.innerHTML = `
         <div class="info-item"><span class="info-label">№ Протокола</span><span class="info-value">${full.protocol?.protocol_number || '—'}</span></div>
         <div class="info-item"><span class="info-label">Дата испытания</span><span class="info-value">${formatDateOnly(full.protocol?.test_date || full.protocol?.created_at)}</span></div>
         <div class="info-item"><span class="info-label">Лаборатория</span><span class="info-value">${full.protocol?.lab_name || '—'}</span></div>
         <div class="info-item"><span class="info-label">Оператор</span><span class="info-value">${full.protocol?.operator_name || '—'}</span></div>
         <div class="info-item"><span class="info-label">Материал</span><span class="info-value">${full.material?.name || '—'}</span></div>
-        <div class="info-item"><span class="info-label">Место отбора</span><span class="info-value">${full.sample?.collection_place || '—'}</span></div>
-        <div class="info-item"><span class="info-label">Дата отбора</span><span class="info-value">${formatDateOnly(full.sample?.collection_date)}</span></div>
-        <div class="info-item"><span class="info-label">Номер пробы</span><span class="info-value">${full.sample?.sample_number || '—'}</span></div>
+        <div class="info-item"><span class="info-label">Место отбора</span><span class="info-value">${sample.collection_place || '—'}</span></div>
+        <div class="info-item"><span class="info-label">Дата отбора</span><span class="info-value">${formatDateOnly(sample.collection_date)}</span></div>
+        <div class="info-item"><span class="info-label">Номер пробы</span><span class="info-value">${sample.sample_number || '—'}</span></div>
+        ${extendedSampleHtml}
       `;
     }
     
@@ -402,6 +437,24 @@ async function saveProtocolEdit() {
 }
 
 // === HELPERS ===
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function translateShape(shape) {
+  const shapes = {
+    'cube': 'Куб',
+    'cylinder': 'Цилиндр',
+    'prism': 'Призма',
+    'sphere': 'Сфера',
+    'irregular': 'Неправильная'
+  };
+  return shapes[shape] || shape;
+}
 
 function renderNoteBlock(label, note, className = '') {
   if (!note || typeof note !== 'string' || note.trim() === '') return '';
