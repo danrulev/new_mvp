@@ -267,11 +267,8 @@
         document.getElementById('userAvatar').textContent = (userInfo.name || '?')[0].toUpperCase();
       }
       
-      // Проверка: только engineer и admin могут доступать к странице организаций
-      const role = auth.getRole();
-      if (role !== 'engineer' && role !== 'admin') {
-        window.location.href = '/protocols.html';
-      }
+      // Убираем редирект - если у пользователя нет прав, раздел просто не будет виден в меню
+      // Проверка прав происходит на уровне UI через data-requires-role атрибуты
     }
     
     // Функция выхода
