@@ -175,6 +175,13 @@ body {
 .nav-item[style*="display: none"], .nav-item[aria-hidden="true"] {
   display: none !important;
 }
+/* Общие стили для скрытия элементов по data-requires-role */
+[data-requires-role][style*="display: none"],
+[data-requires-role][aria-hidden="true"],
+[data-show-for-role][style*="display: none"],
+[data-show-for-role][aria-hidden="true"] {
+  display: none !important;
+}
 .nav-link {
   display: flex;
   align-items: center;
