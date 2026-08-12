@@ -1,6 +1,6 @@
 auth:
-  access_token_ttl: 15m
-  refresh_token_ttl: 30m
+  access_token_ttl: 150m
+  refresh_token_ttl: 300m
   jwt_secret: "secret"
 
 db:
