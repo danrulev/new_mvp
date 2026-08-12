@@ -203,7 +203,15 @@ CREATE TABLE samples (
     
     -- Контекстные параметры пробы: нативный JSONB с GIN-индексом
     context_params JSONB NOT NULL DEFAULT '{}',
-    
+    photo_url TEXT,
+    length_mm NUMERIC,
+    width_mm NUMERIC,
+    height_mm NUMERIC,
+    shape TEXT,
+    weight_grams NUMERIC,
+    color TEXT,
+    batch_number TEXT,
+    manufacturer TEXT,
     note TEXT,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(36),
