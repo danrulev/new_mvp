@@ -172,7 +172,7 @@
         </div>
         <div class="header-row">
             <span class="header-label">Размеры (мм):</span>
-            <span>{{if .Sample.LengthMM}}Д: {{printf "%.2f" .Sample.LengthMM}}{{end}} {{if .Sample.WidthMM}}× Ш: {{printf "%.2f" .Sample.WidthMM}}{{end}} {{if .Sample.HeightMM}}× В: {{printf "%.2f" .Sample.HeightMM}}{{end}}{{if and (not .Sample.LengthMM) (not .Sample.WidthMM) (not .Sample.HeightMM)}}—{{end}}</span>
+            <span>{{if or .Sample.LengthMM .Sample.WidthMM .Sample.HeightMM}}{{if .Sample.LengthMM}}Д: {{printf "%.2f" .Sample.LengthMM}}{{end}}{{if .Sample.WidthMM}}{{if .Sample.LengthMM}} × {{end}}Ш: {{printf "%.2f" .Sample.WidthMM}}{{end}}{{if .Sample.HeightMM}}{{if or .Sample.LengthMM .Sample.WidthMM}} × {{end}}В: {{printf "%.2f" .Sample.HeightMM}}{{end}}{{else}}—{{end}}</span>
         </div>
         <div class="header-row">
             <span class="header-label">Вес (г):</span>
