@@ -285,10 +285,13 @@ export const auth = {
     document.querySelectorAll('[data-requires-role]').forEach(el => {
       const requiredRoles = el.dataset.requiresRole.split(',');
       const hasAccess = requiredRoles.some(r => this.hasRole(r.trim()));
+      // Используем CSS класс для скрытия вместо inline style для лучшей производительности
       if (!hasAccess) {
         el.style.display = 'none';
+        el.setAttribute('aria-hidden', 'true');
       } else {
         el.style.display = '';
+        el.removeAttribute('aria-hidden');
       }
     });
     
@@ -298,8 +301,10 @@ export const auth = {
       const hasAccess = allowedRoles.some(r => this.getRole() === r.trim());
       if (!hasAccess) {
         el.style.display = 'none';
+        el.setAttribute('aria-hidden', 'true');
       } else {
         el.style.display = '';
+        el.removeAttribute('aria-hidden');
       }
     });
     

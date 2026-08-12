@@ -132,6 +132,11 @@ function renderProtocolsTable(protocols, meta) {
     const statusClass = isDraft ? 'badge-warning' : 'badge-success';
     const statusText = isDraft ? 'Черновик' : 'Завершён';
     
+    // Проверяем права доступа
+    const canEdit = canEditProtocol();
+    const canDelete = canDeleteProtocol();
+    const hasAnyAction = canEdit || canDelete;
+    
     html += `
       <tr>
         <td><strong>${p.protocol_number || (p.id ? p.id.substring(0,8) : '')}</strong></td>
@@ -139,18 +144,15 @@ function renderProtocolsTable(protocols, meta) {
         <td>${p.lab_name || '—'}</td>
         <td>${p.sample_number || '—'}</td>
         <td><span class="badge ${statusClass}">${statusText}</span></td>
-        <td>
+        ${hasAnyAction ? `<td>
           <div class="actions">
             <button class="btn btn-small btn-secondary" onclick="viewProtocol('${p.id}')" title="Просмотр">👁️</button>
             <button class="btn btn-small btn-secondary" onclick="downloadPDF('${p.id}')" title="Скачать PDF">📥</button>
-            ${isDraft && canEditProtocol() ? 
-              `<button class="btn btn-small btn-warning" onclick="editProtocol('${p.id}')" title="Редактировать">✏️</button>` : 
-              (canEditProtocol() ? `<button class="btn btn-small btn-secondary" disabled title="Только для черновиков">✏️</button>` : '')}
-            ${isDraft && canEditProtocol() ? 
-              `<button class="btn btn-small btn-success" onclick="completeProtocol('${p.id}')" title="Завершить">✓</button>` : ''}
-            ${canDeleteProtocol() ? `<button class="btn btn-small btn-danger" onclick="deleteProtocol('${p.id}')" title="Удалить">🗑️</button>` : ''}
+            ${isDraft && canEdit ? `<button class="btn btn-small btn-warning" onclick="editProtocol('${p.id}')" title="Редактировать">✏️</button>` : ''}
+            ${isDraft && canEdit ? `<button class="btn btn-small btn-success" onclick="completeProtocol('${p.id}')" title="Завершить">✓</button>` : ''}
+            ${canDelete ? `<button class="btn btn-small btn-danger" onclick="deleteProtocol('${p.id}')" title="Удалить">🗑️</button>` : ''}
           </div>
-        </td>
+        </td>` : '<td class="text-muted">—</td>'}
       </tr>`;
   });
   

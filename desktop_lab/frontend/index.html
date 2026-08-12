@@ -6,21 +6,24 @@
   <title>ЛабСистема — Лабораторная система</title>
   <link rel="stylesheet" href="css/style.css">
   <script type="module">
-    // Редирект на страницу протоколов после проверки авторизации
+    // Скрываем элементы по ролям сразу при загрузке, до проверки авторизации
     import { auth } from './js/auth.js';
     
+    // Инициализируем UI по ролям сразу
+    auth.init();
+    
+    // Проверка аутентификации - не делаем редирект, просто скрываем контент
     if (!auth.isAuthenticated()) {
-      window.location.href = '/login.html';
-    } else {
-      auth.init();
-      const role = auth.getRole();
-      
-      // RBAC: Клиенты не имеют доступа к созданию протоколов
-      if (role === 'client') {
-        window.location.href = '/protocols.html';
-      } else {
-        window.location.href = '/protocols.html';
-      }
+      // Показываем сообщение о необходимости входа
+      document.querySelector('.main').innerHTML = `
+        <div class="card text-center" style="padding: 40px;">
+          <h2>Требуется авторизация</h2>
+          <p class="text-muted">Для доступа к системе необходимо войти</p>
+          <button class="btn btn-primary" onclick="window.location.href='/login.html'" style="margin-top: 20px;">
+            Войти в систему
+          </button>
+        </div>
+      `;
     }
   </script>
 </head>

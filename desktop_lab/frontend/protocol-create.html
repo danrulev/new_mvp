@@ -235,11 +235,8 @@
         document.getElementById('userAvatar').textContent = (userInfo.name || '?')[0].toUpperCase();
       }
       
-      // Проверка: только technician, engineer и admin могут создавать протоколы
-      const role = auth.getRole();
-      if (role !== 'technician' && role !== 'engineer' && role !== 'admin') {
-        window.location.href = '/protocols.html';
-      }
+      // Убираем редирект - если у пользователя нет прав, кнопка просто не будет видна
+      // Проверка прав происходит на уровне UI через data-requires-role атрибуты
     }
     
     // Функция выхода
