@@ -171,6 +171,10 @@ body {
 }
 .nav { list-style: none; }
 .nav-item { margin: 8px 12px; position: relative; }
+/* Скрытые nav-item элементы не должны занимать место */
+.nav-item[style*="display: none"], .nav-item[aria-hidden="true"] {
+  display: none !important;
+}
 .nav-link {
   display: flex;
   align-items: center;

@@ -224,6 +224,14 @@
     if (!auth.isAuthenticated()) {
       window.location.href = '/login.html';
     } else {
+      // Проверяем права на создание протокола (technician, engineer, admin)
+      const role = auth.getRole();
+      if (role === 'client') {
+        // У клиента нет прав на создание протокола - перенаправляем на протоколы
+        window.location.href = '/protocols.html';
+        return;
+      }
+      
       // Инициализируем UI по ролям
       auth.init();
       
@@ -234,9 +242,6 @@
         document.getElementById('userRole').textContent = auth.getRoleDisplayName(userInfo.role);
         document.getElementById('userAvatar').textContent = (userInfo.name || '?')[0].toUpperCase();
       }
-      
-      // Убираем редирект - если у пользователя нет прав, кнопка просто не будет видна
-      // Проверка прав происходит на уровне UI через data-requires-role атрибуты
     }
     
     // Функция выхода
