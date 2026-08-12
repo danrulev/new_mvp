@@ -2,11 +2,25 @@
 import { api, downloadBlob } from './api.js';
 import { formatDate, formatDateOnly, showToast, showConfirm, setLoading } from './utils.js';
 import { initNavigation } from './navigation.js';
+import { auth } from './auth.js';
 
 let currentPage = 1;
 const limit = 10;
 let viewingProtocolId = null;
 let editGroupsCache = [];
+
+// Проверяем права доступа для действий с протоколами
+function canEditProtocol() {
+  return auth.isEngineer();
+}
+
+function canDeleteProtocol() {
+  return auth.isEngineer();
+}
+
+function canCreateProtocol() {
+  return auth.isTechnician();
+}
 
 // === INIT ===
 document.addEventListener('DOMContentLoaded', async () => {
@@ -129,12 +143,12 @@ function renderProtocolsTable(protocols, meta) {
           <div class="actions">
             <button class="btn btn-small btn-secondary" onclick="viewProtocol('${p.id}')" title="Просмотр">👁️</button>
             <button class="btn btn-small btn-secondary" onclick="downloadPDF('${p.id}')" title="Скачать PDF">📥</button>
-            ${isDraft ? 
+            ${isDraft && canEditProtocol() ? 
               `<button class="btn btn-small btn-warning" onclick="editProtocol('${p.id}')" title="Редактировать">✏️</button>` : 
-              `<button class="btn btn-small btn-secondary" disabled title="Только для черновиков">✏️</button>`}
-            ${isDraft ? 
+              (canEditProtocol() ? `<button class="btn btn-small btn-secondary" disabled title="Только для черновиков">✏️</button>` : '')}
+            ${isDraft && canEditProtocol() ? 
               `<button class="btn btn-small btn-success" onclick="completeProtocol('${p.id}')" title="Завершить">✓</button>` : ''}
-            <button class="btn btn-small btn-danger" onclick="deleteProtocol('${p.id}')" title="Удалить">🗑️</button>
+            ${canDeleteProtocol() ? `<button class="btn btn-small btn-danger" onclick="deleteProtocol('${p.id}')" title="Удалить">🗑️</button>` : ''}
           </div>
         </td>
       </tr>`;

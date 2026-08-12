@@ -99,7 +99,7 @@
     <main class="main">
       <header class="page-header">
         <h2 class="page-title">📋 Протоколы</h2>
-        <button class="btn btn-primary" onclick="window.location.href='/protocol-create.html'">
+        <button class="btn btn-primary" onclick="window.location.href='/protocol-create.html'" data-requires-role="technician,engineer,admin">
           + Новый протокол
         </button>
       </header>
@@ -145,7 +145,7 @@
                 <th>Лаборатория</th>
                 <th>Проба</th>
                 <th>Статус</th>
-                <th>Действия</th>
+                <th data-requires-role="technician,engineer,admin">Действия</th>
               </tr>
             </thead>
             <tbody id="protocolsTable">
