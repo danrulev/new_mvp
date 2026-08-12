@@ -90,6 +90,17 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		CollectionDate:  *req.Sample.CollectionDate,
 		ContextParams:   req.Sample.ContextParams,
 		Note:            req.Sample.Note,
+		
+		// Расширенные поля образца
+		PhotoURL:     req.Sample.PhotoURL,
+		LengthMM:     req.Sample.LengthMM,
+		WidthMM:      req.Sample.WidthMM,
+		HeightMM:     req.Sample.HeightMM,
+		Shape:        req.Sample.Shape,
+		WeightGrams:  req.Sample.WeightGrams,
+		Color:        req.Sample.Color,
+		BatchNumber:  req.Sample.BatchNumber,
+		Manufacturer: req.Sample.Manufacturer,
 	}
 
 	protocol := models.Protocol{
