@@ -105,6 +105,57 @@ export const auth = {
   },
 
   /**
+   * Проверяет доступ по permission (на основе роли)
+   * Соответствует backend логике из internal/models/role.go
+   */
+  hasPermission(permission) {
+    const role = this.getRole();
+    if (!role) return false;
+    
+    // Маппинг разрешений для каждой роли (как в backend)
+    const permissions = {
+      'admin': [
+        'user:read', 'user:create', 'user:update', 'user:delete',
+        'protocol:read', 'protocol:create', 'protocol:update', 'protocol:delete',
+        'standard:read', 'standard:create', 'standard:update', 'standard:delete',
+        'sample:read', 'sample:create', 'sample:update', 'sample:delete',
+        'group:read', 'group:create', 'group:update', 'group:delete',
+        'material:read', 'material:create', 'material:update', 'material:delete',
+        'dimension:read', 'dimension:create', 'dimension:update', 'dimension:delete',
+        'report:read', 'report:create',
+        'organization:read', 'organization:create', 'organization:update', 'organization:delete'
+      ],
+      'engineer': [
+        'user:read',
+        'protocol:read', 'protocol:create', 'protocol:update', 'protocol:delete',
+        'standard:read', 'standard:create', 'standard:update', 'standard:delete',
+        'report:read', 'report:create',
+        'material:read', 'dimension:read',
+        'group:read', 'group:create', 'group:update', 'group:delete',
+        'sample:read', 'sample:create', 'sample:update', 'sample:delete',
+        'organization:read'
+      ],
+      'technician': [
+        'user:read',
+        'protocol:read', 'protocol:create',
+        'standard:read',
+        'sample:read', 'sample:create', 'sample:update',
+        'group:read', 'group:create',
+        'material:read', 'dimension:read',
+        'report:read',
+        'organization:read'
+      ],
+      'client': [
+        'protocol:read',
+        'report:read',
+        'organization:read'
+      ]
+    };
+    
+    return permissions[role]?.includes(permission) || false;
+  },
+
+  /**
    * Выполняет вход
    */
   async login(email, password) {
@@ -312,4 +363,49 @@ export function canCreateUsers() {
 
 export function canManageOrganization() {
   return auth.isAdmin() || auth.isEngineer();
+}
+
+// Дополнительные функции для проверки прав доступа
+export function canCreateGroup() {
+  return auth.isTechnician();
+}
+
+export function canEditGroup() {
+  return auth.isTechnician();
+}
+
+export function canDeleteGroup() {
+  return auth.isEngineer();
+}
+
+export function canCreateStandard() {
+  return auth.isEngineer();
+}
+
+export function canEditStandard() {
+  return auth.isEngineer();
+}
+
+export function canDeleteStandard() {
+  return auth.isEngineer();
+}
+
+export function canCreateSample() {
+  return auth.isTechnician();
+}
+
+export function canEditSample() {
+  return auth.isTechnician();
+}
+
+export function canDeleteSample() {
+  return auth.isEngineer();
+}
+
+export function canManageDimensions() {
+  return auth.isEngineer();
+}
+
+export function canManageMaterials() {
+  return auth.isAdmin();
 }

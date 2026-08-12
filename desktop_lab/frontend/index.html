@@ -6,8 +6,22 @@
   <title>ЛабСистема — Лабораторная система</title>
   <link rel="stylesheet" href="css/style.css">
   <script type="module">
-    // Редирект на страницу протоколов
-    window.location.href = '/protocols.html';
+    // Редирект на страницу протоколов после проверки авторизации
+    import { auth } from './js/auth.js';
+    
+    if (!auth.isAuthenticated()) {
+      window.location.href = '/login.html';
+    } else {
+      auth.init();
+      const role = auth.getRole();
+      
+      // RBAC: Клиенты не имеют доступа к созданию протоколов
+      if (role === 'client') {
+        window.location.href = '/protocols.html';
+      } else {
+        window.location.href = '/protocols.html';
+      }
+    }
   </script>
 </head>
 <body>
@@ -19,10 +33,13 @@
       </div>
       <nav>
         <ul class="nav">
-          <li class="nav-item"><a href="/protocol-create.html" class="nav-link">📝 Новый протокол</a></li>
+          <li class="nav-item" data-requires-role="technician,engineer,admin"><a href="/protocol-create.html" class="nav-link">📝 Новый протокол</a></li>
           <li class="nav-item"><a href="/protocols.html" class="nav-link">📋 Протоколы</a></li>
-          <li class="nav-item"><a href="/groups.html" class="nav-link">🗂️ Группы</a></li>
-          <li class="nav-item"><a href="/organizations.html" class="nav-link">🏢 Организации</a></li>
+          <li class="nav-item" data-requires-role="technician,engineer,admin"><a href="/groups.html" class="nav-link">🗂️ Группы</a></li>
+          <li class="nav-item" data-requires-role="engineer,admin"><a href="/organizations.html" class="nav-link">🏢 Организации</a></li>
+          <li class="nav-item" style="margin-top: auto; border-top: 1px solid var(--sidebar-border); padding-top: 10px;">
+            <a href="/settings.html" class="nav-link">⚙️ Настройки</a>
+          </li>
         </ul>
       </nav>
     </aside>
@@ -33,5 +50,6 @@
       </div>
     </main>
   </div>
+  <script type="module" src="js/auth.js"></script>
 </body>
 </html>

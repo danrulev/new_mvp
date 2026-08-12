@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Группы</title>
+  <title>Группы — ЛабСистема</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -16,14 +16,26 @@
       </div>
       <nav>
         <ul class="nav">
-          <li class="nav-item"><a href="/protocol-create.html" class="nav-link">📝 Новый протокол</a></li>
+          <li class="nav-item" data-requires-role="technician,engineer,admin"><a href="/protocol-create.html" class="nav-link">📝 Новый протокол</a></li>
           <li class="nav-item"><a href="/protocols.html" class="nav-link">📋 Протоколы</a></li>
-          <li class="nav-item"><a href="/groups.html" class="nav-link active">🗂️ Группы</a></li>
-          <li class="nav-item"><a href="/organizations.html" class="nav-link">🏢 Организации</a></li>
-          <li class="nav-item" style="margin-top: auto; border-top: 1px solid #eee; padding-top: 10px;">
+          <li class="nav-item" data-requires-role="technician,engineer,admin"><a href="/groups.html" class="nav-link active">🗂️ Группы</a></li>
+          <li class="nav-item" data-requires-role="engineer,admin"><a href="/organizations.html" class="nav-link">🏢 Организации</a></li>
+          <li class="nav-item" style="margin-top: auto; border-top: 1px solid var(--sidebar-border); padding-top: 10px;">
             <a href="/settings.html" class="nav-link">⚙️ Настройки</a>
           </li>
+          <li class="nav-item" style="margin-top: 16px; border-top: 1px solid var(--sidebar-border); padding-top: 10px;">
+            <button id="theme-toggle" onclick="toggleTheme()" class="nav-link" style="background:none;border:none;color:inherit;cursor:pointer;width:100%;" title="Переключить тему">🌙</button>
+          </li>
         </ul>
+        <!-- Информация о пользователе -->
+        <div class="user-info">
+          <div class="user-avatar" id="userAvatar">?</div>
+          <div class="user-details">
+            <div class="user-name" id="userName">Гость</div>
+            <div class="user-role" id="userRole">—</div>
+          </div>
+          <button class="logout-btn" onclick="logout()" title="Выйти">🚪</button>
+        </div>
       </nav>
     </aside>
 
@@ -31,7 +43,7 @@
     <main class="main">
       <header class="page-header">
         <h2 class="page-title">🗂️ Группы испытаний</h2>
-        <button class="btn btn-primary" onclick="openCreateGroupModal()">+ Новая группа</button>
+        <button class="btn btn-primary" onclick="openCreateGroupModal()" data-requires-role="technician,engineer,admin">+ Новая группа</button>
       </header>
 
       <div class="card">
@@ -62,7 +74,7 @@
                 <th>Материал</th>
                 <th>Протоколов</th>
                 <th>Создана</th>
-                <th>Действия</th>
+                <th data-requires-role="technician,engineer,admin">Действия</th>
               </tr>
             </thead>
             <tbody id="groupsTable">
@@ -83,7 +95,7 @@
   </div>
 
   <!-- Modal: Создание группы -->
-  <div id="createGroupModal" class="modal">
+  <div id="createGroupModal" class="modal" data-requires-role="technician,engineer,admin">
     <div class="modal-content">
       <div class="modal-header">
         <h3>Новая группа</h3>
@@ -158,7 +170,7 @@
   </div>
 
   <!-- Modal: Редактирование группы -->
-  <div id="editGroupModal" class="modal">
+  <div id="editGroupModal" class="modal" data-requires-role="technician,engineer,admin">
     <div class="modal-content">
       <div class="modal-header">
         <h3>Редактировать группу</h3>
@@ -187,10 +199,91 @@
   </div>
 
   <!-- Scripts -->
+  <script type="module">
+    import { auth } from './js/auth.js';
+    
+    // Проверка аутентификации
+    if (!auth.isAuthenticated()) {
+      window.location.href = '/login.html';
+    } else {
+      // Инициализируем UI по ролям
+      auth.init();
+      
+      // Обновляем информацию о пользователе в sidebar
+      const userInfo = auth.getUserInfo();
+      if (userInfo) {
+        document.getElementById('userName').textContent = userInfo.name || userInfo.email;
+        document.getElementById('userRole').textContent = auth.getRoleDisplayName(userInfo.role);
+        document.getElementById('userAvatar').textContent = (userInfo.name || '?')[0].toUpperCase();
+      }
+    }
+    
+    // Функция выхода
+    window.logout = async () => {
+      await auth.logout();
+    };
+  </script>
+  <script type="module" src="js/theme.js"></script>
   <script type="module" src="js/api.js"></script>
   <script type="module" src="js/utils.js"></script>
   <script type="module" src="js/navigation.js"></script>
   <script type="module" src="js/protocols.js"></script>
   <script type="module" src="js/groups.js"></script>
+  
+  <style>
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      border-top: 1px solid var(--sidebar-border);
+      margin-top: auto;
+    }
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .user-details {
+      flex: 1;
+      min-width: 0;
+    }
+    .user-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--sidebar-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .user-role {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.7);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .logout-btn {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      border: none;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: var(--transition);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .logout-btn:hover {
+      background: rgba(239, 68, 68, 0.3);
+      color: #fef2f2;
+    }
+  </style>
 </body>
 </html>
