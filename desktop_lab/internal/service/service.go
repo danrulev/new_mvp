@@ -96,6 +96,8 @@ type SampleRepo interface {
 	Create(ctx context.Context, s models.Sample) error
 	GetByID(ctx context.Context, id string) (models.Sample, error)
 	GetByGroupID(ctx context.Context, groupID string) ([]models.Sample, error)
+	Update(ctx context.Context, s models.Sample) error
+	Delete(ctx context.Context, id string) error
 }
 
 // ProtocolRepo управляет протоколами и результатами
