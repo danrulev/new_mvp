@@ -18,18 +18,26 @@ func (h *Handler) initSampleRoutes(api *gin.RouterGroup) {
 }
 
 func (h *Handler) createSample(c *gin.Context) {
-	var req struct {
-		GroupID       string            `json:"group_id" binding:"required"`
-		Number        string            `json:"number" binding:"required"`
-		ContextParams map[string]string `json:"context_params"`
-		Note          string            `json:"note"`
-	}
-	if err := c.BindJSON(&req); err != nil {
-		h.newErrorResponse(c, http.StatusInternalServerError, "createSample", "invalid data", err)
+	var dto models.CreateSampleDTO
+	if err := c.BindJSON(&dto); err != nil {
+		h.newErrorResponse(c, http.StatusBadRequest, "createSample", "invalid data", err)
 		return
 	}
 
-	sample, err := h.sample.CreateSample(c.Request.Context(), req.GroupID, req.Number, req.ContextParams, req.Note)
+	groupID := c.PostForm("group_id")
+	if groupID == "" {
+		// Пробуем получить из JSON если не в form
+		var req struct {
+			GroupID string `json:"group_id"`
+		}
+		if err := c.BindJSON(&req); err != nil || req.GroupID == "" {
+			h.newErrorResponse(c, http.StatusBadRequest, "createSample", "group_id is required", err)
+			return
+		}
+		groupID = req.GroupID
+	}
+
+	sample, err := h.sample.CreateSample(c.Request.Context(), dto, groupID)
 	if err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "createSample", "service error", err)
 		return

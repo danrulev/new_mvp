@@ -2,6 +2,7 @@ package mysql_repo
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -10,6 +11,22 @@ import (
 
 // timeLayout - единый формат времени для всех репозиториев (UTC)
 const timeLayout = "2006-01-02 15:04:05"
+
+// nullString возвращает sql.NullString для строк (пустая строка = NULL)
+func nullString(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{String: s, Valid: true}
+}
+
+// nullFloat64 возвращает sql.NullFloat64 для *float64 (nil = NULL)
+func nullFloat64(f *float64) sql.NullFloat64 {
+	if f == nil {
+		return sql.NullFloat64{Valid: false}
+	}
+	return sql.NullFloat64{Float64: *f, Valid: true}
+}
 
 // parseTime парсит время из строки в формате UTC и возвращает локальное время
 func parseTime(raw interface{}) (time.Time, error) {

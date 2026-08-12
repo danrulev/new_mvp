@@ -1,21 +1,21 @@
 module desktop_lab
 
-go 1.25.0
+go 1.19
 
 require (
 	github.com/SebastiaanKlippert/go-wkhtmltopdf v1.8.0
 	github.com/gen2brain/dlgs v0.0.0-20220603100644-40c77870fa8d
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-playground/validator/v10 v10.14.0
-	github.com/google/uuid v1.6.0
+	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/joho/godotenv v1.5.1
 	github.com/lestrrat-go/jwx/v2 v2.0.8
 	github.com/spf13/viper v1.15.0
 	go.uber.org/zap v1.24.0
-	golang.org/x/crypto v0.53.0
-	modernc.org/sqlite v1.56.0
+	golang.org/x/crypto v0.14.0
+	modernc.org/sqlite v1.20.0
 )
 
 require (
