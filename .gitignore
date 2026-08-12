@@ -1,1 +1,46 @@
-Nothing should be ignored in this case, as the modified files are source code files (.js and .html) and there are no build artifacts, dependencies, or temporary files in the changes.
+```
+# Go-specific ignores
+*.mod
+*.sum
+*.exe
+*.dll
+*.so
+*.dylib
+*.o
+*.a
+*.obj
+*.out
+
+# Dependencies
+vendor/
+
+# Build artifacts
+bin/
+dist/
+build/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Environment
+.env
+.env.local
+.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# OS
+.DS_Store
+Thumbs.db
+```
