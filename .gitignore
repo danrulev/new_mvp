@@ -1,1 +1,1 @@
-Nothing should be ignored in this case, as the modified files are source code files (.go files) and there are no build artifacts, dependencies, or temporary files in the changes.
+Nothing should be ignored in this case, as the modified files are source code files (.js and .html) and there are no build artifacts, dependencies, or temporary files in the changes.
