@@ -15,17 +15,32 @@
       </div>
       <nav>
         <ul class="nav">
-          <li class="nav-item"><a href="/protocol-create.html" class="nav-link">📝 Новый протокол</a></li>
+          <li class="nav-item" data-requires-role="technician,engineer,admin"><a href="/protocol-create.html" class="nav-link">📝 Новый протокол</a></li>
           <li class="nav-item"><a href="/protocols.html" class="nav-link">📋 Протоколы</a></li>
-          <li class="nav-item"><a href="/groups.html" class="nav-link">🗂️ Группы</a></li>
-          <li class="nav-item"><a href="/organizations.html" class="nav-link active">🏢 Организации</a></li>
+          <li class="nav-item" data-requires-role="technician,engineer,admin"><a href="/groups.html" class="nav-link">🗂️ Группы</a></li>
+          <li class="nav-item" data-requires-role="engineer,admin"><a href="/organizations.html" class="nav-link active">🏢 Организации</a></li>
+          <li class="nav-item" style="margin-top: auto; border-top: 1px solid var(--sidebar-border); padding-top: 10px;">
+            <a href="/settings.html" class="nav-link">⚙️ Настройки</a>
+          </li>
+          <li class="nav-item" style="margin-top: 16px; border-top: 1px solid var(--sidebar-border); padding-top: 10px;">
+            <button id="theme-toggle" onclick="toggleTheme()" class="nav-link" style="background:none;border:none;color:inherit;cursor:pointer;width:100%;" title="Переключить тему">🌙</button>
+          </li>
         </ul>
+        <!-- Информация о пользователе -->
+        <div class="user-info">
+          <div class="user-avatar" id="userAvatar">?</div>
+          <div class="user-details">
+            <div class="user-name" id="userName">Гость</div>
+            <div class="user-role" id="userRole">—</div>
+          </div>
+          <button class="logout-btn" onclick="logout()" title="Выйти">🚪</button>
+        </div>
       </nav>
     </aside>
     <main class="main">
       <header class="page-header">
         <h2 class="page-title">🏢 Организации</h2>
-        <button class="btn btn-primary" onclick="openCreateModal()">
+        <button class="btn btn-primary" onclick="openCreateModal()" data-requires-role="admin">
           <span>➕</span> Добавить организацию
         </button>
       </header>
@@ -54,9 +69,9 @@
                 <th>Адрес</th>
                 <th>Телефон</th>
                 <th>Email</th>
-                <th>Участники</th>
-                <th>Услуги</th>
-                <th>Действия</th>
+                <th data-requires-role="admin">Участники</th>
+                <th data-requires-role="admin">Услуги</th>
+                <th data-requires-role="admin">Действия</th>
               </tr>
             </thead>
             <tbody id="organizationsTableBody">
@@ -69,8 +84,8 @@
     </main>
   </div>
 
-  <!-- Модальное окно создания/редактирования организации -->
-  <div class="modal" id="orgModal">
+  <!-- Модальное окно создания/редактирования организации - ТОЛЬКО ДЛЯ АДМИНА -->
+  <div class="modal" id="orgModal" data-requires-role="admin">
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="modalTitle">Новая организация</h3>
@@ -106,8 +121,8 @@
     </div>
   </div>
 
-  <!-- Модальное окно участников -->
-  <div class="modal" id="usersModal">
+  <!-- Модальное окно участников - ТОЛЬКО ДЛЯ АДМИНА -->
+  <div class="modal" id="usersModal" data-requires-role="admin">
     <div class="modal-content modal-large">
       <div class="modal-header">
         <h3 id="usersModalTitle">Участники организации</h3>
@@ -116,7 +131,7 @@
       <div class="modal-body">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
           <p class="text-muted" id="currentOrgName"></p>
-          <button class="btn btn-success btn-small" onclick="openAddUserModal()">
+          <button class="btn btn-success btn-small" onclick="openAddUserModal()" data-requires-role="admin">
             <span>➕</span> Добавить участника
           </button>
         </div>
@@ -127,7 +142,7 @@
                 <th>ID пользователя</th>
                 <th>Роль</th>
                 <th>Дата добавления</th>
-                <th>Действия</th>
+                <th data-requires-role="admin">Действия</th>
               </tr>
             </thead>
             <tbody id="usersTableBody">
@@ -139,8 +154,8 @@
     </div>
   </div>
 
-  <!-- Модальное окно добавления участника -->
-  <div class="modal" id="addUserModal">
+  <!-- Модальное окно добавления участника - ТОЛЬКО ДЛЯ АДМИНА -->
+  <div class="modal" id="addUserModal" data-requires-role="admin">
     <div class="modal-content">
       <div class="modal-header">
         <h3>Добавить участника</h3>
@@ -157,9 +172,9 @@
             <select id="newUserRole" required>
               <option value="">Выберите роль</option>
               <option value="admin">Администратор</option>
-              <option value="manager">Менеджер</option>
-              <option value="lab_technician">Лаборант</option>
-              <option value="viewer">Наблюдатель</option>
+              <option value="engineer">Инженер</option>
+              <option value="technician">Техник</option>
+              <option value="client">Клиент</option>
             </select>
           </div>
           <div class="modal-footer" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
@@ -171,8 +186,8 @@
     </div>
   </div>
 
-  <!-- Модальное окно услуг организации -->
-  <div class="modal" id="testsModal">
+  <!-- Модальное окно услуг организации - ТОЛЬКО ДЛЯ АДМИНА -->
+  <div class="modal" id="testsModal" data-requires-role="admin">
     <div class="modal-content modal-large">
       <div class="modal-header">
         <h3 id="testsModalTitle">Услуги организации</h3>
@@ -181,7 +196,7 @@
       <div class="modal-body">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
           <p class="text-muted" id="testsOrgName"></p>
-          <button class="btn btn-success btn-small" onclick="openAddTestModal()">
+          <button class="btn btn-success btn-small" onclick="openAddTestModal()" data-requires-role="admin">
             <span>➕</span> Добавить услугу
           </button>
         </div>
@@ -192,7 +207,7 @@
                 <th>ID метода</th>
                 <th>Цена</th>
                 <th>Описание</th>
-                <th>Действия</th>
+                <th data-requires-role="admin">Действия</th>
               </tr>
             </thead>
             <tbody id="testsTableBody">
@@ -204,8 +219,8 @@
     </div>
   </div>
 
-  <!-- Модальное окно добавления услуги -->
-  <div class="modal" id="addTestModal">
+  <!-- Модальное окно добавления услуги - ТОЛЬКО ДЛЯ АДМИНА -->
+  <div class="modal" id="addTestModal" data-requires-role="admin">
     <div class="modal-content">
       <div class="modal-header">
         <h3>Добавить услугу</h3>
@@ -234,6 +249,93 @@
     </div>
   </div>
 
+  <script type="module">
+    import { auth } from './js/auth.js';
+    
+    // Проверка аутентификации и прав доступа
+    if (!auth.isAuthenticated()) {
+      window.location.href = '/login.html';
+    } else {
+      // Инициализируем UI по ролям
+      auth.init();
+      
+      // Обновляем информацию о пользователе в sidebar
+      const userInfo = auth.getUserInfo();
+      if (userInfo) {
+        document.getElementById('userName').textContent = userInfo.name || userInfo.email;
+        document.getElementById('userRole').textContent = auth.getRoleDisplayName(userInfo.role);
+        document.getElementById('userAvatar').textContent = (userInfo.name || '?')[0].toUpperCase();
+      }
+      
+      // Проверка: только engineer и admin могут доступать к странице организаций
+      const role = auth.getRole();
+      if (role !== 'engineer' && role !== 'admin') {
+        window.location.href = '/protocols.html';
+      }
+    }
+    
+    // Функция выхода
+    window.logout = async () => {
+      await auth.logout();
+    };
+  </script>
+  <script type="module" src="js/theme.js"></script>
   <script type="module" src="js/organizations.js"></script>
+  
+  <style>
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      border-top: 1px solid var(--sidebar-border);
+      margin-top: auto;
+    }
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .user-details {
+      flex: 1;
+      min-width: 0;
+    }
+    .user-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--sidebar-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .user-role {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.7);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .logout-btn {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      border: none;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: var(--transition);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .logout-btn:hover {
+      background: rgba(239, 68, 68, 0.3);
+      color: #fef2f2;
+    }
+  </style>
 </body>
 </html>

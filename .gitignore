@@ -1,38 +1,51 @@
 ```
-# Go-specific ignores
-*.mod
-*.sum
-*.exe
-*.dll
-*.so
-*.dylib
-*.test
-*.prof
-cover.out
-coverage.txt
+# Compiled and build artifacts
+*.pyc
+__pycache__/
+*.o
+*.obj
+dist/
+build/
 
 # Dependencies
-vendor/
+.venv/
+venv/
+node_modules/
 
-# Build artifacts
-bin/
-pkg/
-*.a
-*.o
+# Logs and temp files
+*.log
+*.tmp
+*.swp
 
-# Environment and temp files
+# Environment
 .env
 .env.local
-*.tmp
-*.log
+*.env.*
 
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# OS
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# Python specific
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+
+# Web specific
+*.min.js
+*.min.css
+.sass-cache/
+.cache/
+
+# OS generated files
 .DS_Store
 Thumbs.db
 ```
