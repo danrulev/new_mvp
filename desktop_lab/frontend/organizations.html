@@ -256,6 +256,14 @@
     if (!auth.isAuthenticated()) {
       window.location.href = '/login.html';
     } else {
+      // Проверяем права на управление организациями (только admin)
+      const role = auth.getRole();
+      if (role !== 'admin') {
+        // У не-admin пользователей нет прав на управление организациями - перенаправляем на протоколы
+        window.location.href = '/protocols.html';
+        return;
+      }
+      
       // Инициализируем UI по ролям
       auth.init();
       
@@ -266,9 +274,6 @@
         document.getElementById('userRole').textContent = auth.getRoleDisplayName(userInfo.role);
         document.getElementById('userAvatar').textContent = (userInfo.name || '?')[0].toUpperCase();
       }
-      
-      // Убираем редирект - если у пользователя нет прав, раздел просто не будет виден в меню
-      // Проверка прав происходит на уровне UI через data-requires-role атрибуты
     }
     
     // Функция выхода

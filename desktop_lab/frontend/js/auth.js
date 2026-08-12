@@ -276,6 +276,7 @@ export const auth = {
 
   /**
    * Обновляет UI в зависимости от роли пользователя
+   * Полностью скрывает элементы без соответствующих прав
    */
   updateUIByRole() {
     const role = this.getRole();
@@ -285,7 +286,7 @@ export const auth = {
     document.querySelectorAll('[data-requires-role]').forEach(el => {
       const requiredRoles = el.dataset.requiresRole.split(',');
       const hasAccess = requiredRoles.some(r => this.hasRole(r.trim()));
-      // Используем CSS класс для скрытия вместо inline style для лучшей производительности
+      // Полностью скрываем элементы без доступа
       if (!hasAccess) {
         el.style.display = 'none';
         el.setAttribute('aria-hidden', 'true');
