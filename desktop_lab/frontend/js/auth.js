@@ -280,7 +280,6 @@ export const auth = {
    */
   updateUIByRole() {
     const role = this.getRole();
-    if (!role) return;
     
     // Скрываем/показываем элементы по ролям через data-requires-role
     document.querySelectorAll('[data-requires-role]').forEach(el => {
@@ -309,18 +308,26 @@ export const auth = {
       }
     });
     
-    // Отображаем имя пользователя и роль
-    const userInfo = this.getUserInfo();
-    if (userInfo) {
-      const userNameEls = document.querySelectorAll('.user-name');
-      userNameEls.forEach(el => {
-        el.textContent = userInfo.name || userInfo.email;
-      });
-      
-      const userRoleEls = document.querySelectorAll('.user-role');
-      userRoleEls.forEach(el => {
-        el.textContent = this.getRoleDisplayName(role);
-      });
+    // Отображаем имя пользователя и роль только если пользователь авторизован
+    if (role) {
+      const userInfo = this.getUserInfo();
+      if (userInfo) {
+        const userNameEls = document.querySelectorAll('.user-name');
+        userNameEls.forEach(el => {
+          el.textContent = userInfo.name || userInfo.email;
+        });
+        
+        const userRoleEls = document.querySelectorAll('.user-role');
+        userRoleEls.forEach(el => {
+          el.textContent = this.getRoleDisplayName(role);
+        });
+        
+        const userAvatarEls = document.querySelectorAll('.user-avatar');
+        userAvatarEls.forEach(el => {
+          const initial = (userInfo.name || userInfo.email || '?')[0].toUpperCase();
+          el.textContent = initial;
+        });
+      }
     }
   },
 
@@ -340,17 +347,18 @@ export const auth = {
   /**
    * Инициализирует аутентификацию при загрузке страницы
    */
-  init() {
-    // Проверяем сессию при загрузке
-    this.validateSession().then(isValid => {
-      if (!isValid && !window.location.pathname.includes('login.html') && !window.location.pathname.includes('register.html')) {
-        // Не редиректим сразу, даем странице загрузиться
-        console.log('Session invalid, will redirect to login');
-      }
-    });
+  async init() {
+    // Сначала проверяем сессию и загружаем данные пользователя
+    const isValid = await this.validateSession();
     
-    // Обновляем UI по ролям
+    if (!isValid && !window.location.pathname.includes('login.html') && !window.location.pathname.includes('register.html')) {
+      console.log('Session invalid, will redirect to login');
+      return false;
+    }
+    
+    // Обновляем UI по ролям только после загрузки данных пользователя
     this.updateUIByRole();
+    return true;
   }
 };
 

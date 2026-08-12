@@ -203,27 +203,29 @@
     import { auth } from './js/auth.js';
     
     // Проверка аутентификации и прав доступа
-    if (!auth.isAuthenticated()) {
-      window.location.href = '/login.html';
-    } else {
-      // Проверяем права на управление группами (technician, engineer, admin)
-      const role = auth.getRole();
-      if (role === 'client') {
-        // У клиента нет прав на создание/редактирование групп - показываем только просмотр
-        // Оставляем на странице но скрываем кнопки действий через CSS
-      }
+    document.addEventListener('DOMContentLoaded', async () => {
+      const isValid = await auth.init();
       
-      // Инициализируем UI по ролям
-      auth.init();
+      if (!isValid) {
+        window.location.href = '/login.html';
+        return;
+      }
       
       // Обновляем информацию о пользователе в sidebar
       const userInfo = auth.getUserInfo();
       if (userInfo) {
-        document.getElementById('userName').textContent = userInfo.name || userInfo.email;
-        document.getElementById('userRole').textContent = auth.getRoleDisplayName(userInfo.role);
-        document.getElementById('userAvatar').textContent = (userInfo.name || '?')[0].toUpperCase();
+        const userNameEl = document.getElementById('userName');
+        const userRoleEl = document.getElementById('userRole');
+        const userAvatarEl = document.getElementById('userAvatar');
+        
+        if (userNameEl) userNameEl.textContent = userInfo.name || userInfo.email;
+        if (userRoleEl) userRoleEl.textContent = auth.getRoleDisplayName(userInfo.role);
+        if (userAvatarEl) {
+          const initial = (userInfo.name || userInfo.email || '?')[0].toUpperCase();
+          userAvatarEl.textContent = initial;
+        }
       }
-    }
+    });
     
     // Функция выхода
     window.logout = async () => {
