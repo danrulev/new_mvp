@@ -154,8 +154,42 @@
         <span class="header-label">Место отбора:</span>
         <span>{{.Sample.CollectionPlace}}</span>
     </div>
+    
+    {{if .Sample.PhotoURL}}
+    <div class="header-row" style="margin-top: 10px;">
+        <img src="{{.Sample.PhotoURL}}" alt="Фото образца" style="max-width: 200px; max-height: 150px; border: 1px solid #ccc;">
+    </div>
+    {{end}}
+    
+    <div style="margin-top: 10px; padding: 8px; background-color: #f9f9f9; border: 1px solid #ddd;">
+        <div class="header-row">
+            <span class="header-label">Форма:</span>
+            <span>{{if .Sample.Shape}}{{.Sample.Shape}}{{else}}—{{end}}</span>
+        </div>
+        <div class="header-row">
+            <span class="header-label">Цвет:</span>
+            <span>{{if .Sample.Color}}{{.Sample.Color}}{{else}}—{{end}}</span>
+        </div>
+        <div class="header-row">
+            <span class="header-label">Размеры (мм):</span>
+            <span>{{if .Sample.LengthMM}}Д: {{printf "%.2f" .Sample.LengthMM}}{{end}} {{if .Sample.WidthMM}}× Ш: {{printf "%.2f" .Sample.WidthMM}}{{end}} {{if .Sample.HeightMM}}× В: {{printf "%.2f" .Sample.HeightMM}}{{end}}{{if and (not .Sample.LengthMM) (not .Sample.WidthMM) (not .Sample.HeightMM)}}—{{end}}</span>
+        </div>
+        <div class="header-row">
+            <span class="header-label">Вес (г):</span>
+            <span>{{if .Sample.WeightGrams}}{{printf "%.2f" .Sample.WeightGrams}}{{else}}—{{end}}</span>
+        </div>
+        <div class="header-row">
+            <span class="header-label">Партия:</span>
+            <span>{{if .Sample.BatchNumber}}{{.Sample.BatchNumber}}{{else}}—{{end}}</span>
+        </div>
+        <div class="header-row">
+            <span class="header-label">Производитель:</span>
+            <span>{{if .Sample.Manufacturer}}{{.Sample.Manufacturer}}{{else}}—{{end}}</span>
+        </div>
+    </div>
+    
     {{if .Sample.Note}}
-    <div class="header-row">
+    <div class="header-row" style="margin-top: 10px;">
         <span class="header-label">Примечание:</span>
         <span>{{.Sample.Note}}</span>
     </div>

@@ -486,6 +486,17 @@ type SampleView struct {
 	CollectionPlace string
 	Note            string
 	MaterialName    string
+	
+	// Расширенные поля образца
+	PhotoURL     string
+	LengthMM     *float64
+	WidthMM      *float64
+	HeightMM     *float64
+	Shape        string
+	WeightGrams  *float64
+	Color        string
+	BatchNumber  string
+	Manufacturer string
 }
 
 type MaterialView struct {
@@ -535,6 +546,16 @@ func (s *ReportService) prepareProtocolTemplateData(
 			CollectionPlace: full.Sample.CollectionPlace,
 			Note:            full.Sample.Note,
 			MaterialName:    full.Material.Name,
+			// Расширенные поля образца
+			PhotoURL:     full.Sample.PhotoURL,
+			LengthMM:     full.Sample.LengthMM,
+			WidthMM:      full.Sample.WidthMM,
+			HeightMM:     full.Sample.HeightMM,
+			Shape:        full.Sample.Shape,
+			WeightGrams:  full.Sample.WeightGrams,
+			Color:        full.Sample.Color,
+			BatchNumber:  full.Sample.BatchNumber,
+			Manufacturer: full.Sample.Manufacturer,
 		},
 		Material: MaterialView{
 			Name: full.Material.Name,
