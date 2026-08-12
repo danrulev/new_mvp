@@ -18,17 +18,18 @@ type Sample struct {
 	Note            string            `json:"note,omitempty" db:"note"`
 	
 	// Расширенные поля для образца
-	PhotoURL      string  `json:"photo_url,omitempty" db:"photo_url"`       // URL или путь к фотографии
+	PhotoURL      string   `json:"photo_url,omitempty" db:"photo_url"`       // URL или путь к фотографии
 	LengthMM      *float64 `json:"length_mm,omitempty" db:"length_mm"`       // Длина в мм
 	WidthMM       *float64 `json:"width_mm,omitempty" db:"width_mm"`         // Ширина в мм
 	HeightMM      *float64 `json:"height_mm,omitempty" db:"height_mm"`       // Высота в мм
-	Shape         string  `json:"shape,omitempty" db:"shape"`               // Форма (куб, цилиндр, призма и т.д.)
+	Shape         string   `json:"shape,omitempty" db:"shape"`               // Форма (куб, цилиндр, призма и т.д.)
 	WeightGrams   *float64 `json:"weight_grams,omitempty" db:"weight_grams"` // Вес в граммах
-	Color         string  `json:"color,omitempty" db:"color"`               // Цвет
-	BatchNumber   string  `json:"batch_number,omitempty" db:"batch_number"` // Номер партии
-	Manufacturer  string  `json:"manufacturer,omitempty" db:"manufacturer"` // Производитель
+	Color         string   `json:"color,omitempty" db:"color"`               // Цвет
+	BatchNumber   string   `json:"batch_number,omitempty" db:"batch_number"` // Номер партии
+	Manufacturer  string   `json:"manufacturer,omitempty" db:"manufacturer"` // Производитель
 	
 	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at,omitempty" db:"updated_at"`
 }
 
 type CreateSampleDTO struct {

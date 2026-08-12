@@ -44,8 +44,8 @@ func (r *SampleRepo) Create(ctx context.Context, s models.Sample) error {
 	_, err = r.db.ExecContext(ctx,
 		`INSERT INTO samples (id, group_id, material_id, sample_number, collection_place, collection_date, 
 		                      context_params, note, photo_url, length_mm, width_mm, height_mm, shape, 
-		                      weight_grams, color, batch_number, manufacturer, created_at) 
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		                      weight_grams, color, batch_number, manufacturer, created_at, updated_at) 
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		s.ID, s.GroupID, s.MaterialID, s.SampleNumber, s.CollectionPlace, collDateStr, 
 		jsonData, s.Note, 
 		nullString(s.PhotoURL),
@@ -57,6 +57,7 @@ func (r *SampleRepo) Create(ctx context.Context, s models.Sample) error {
 		nullString(s.Color),
 		nullString(s.BatchNumber),
 		nullString(s.Manufacturer),
+		nowStr,
 		nowStr,
 	)
 	if err != nil {
@@ -72,19 +73,19 @@ func (r *SampleRepo) GetByID(ctx context.Context, id string) (models.Sample, err
 		zap.String("sample_id", id))
 	log.Debug("fetching sample by ID")
 	s := models.Sample{}
-	var collDateStr, rawJSON, createdAt string
+	var collDateStr, rawJSON, createdAt, updatedAt string
 	var photoURL, shape, color, batchNum, manufacturer sql.NullString
 	var lengthMM, widthMM, heightMM, weightGrams sql.NullFloat64
 
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, group_id, material_id, sample_number, collection_place, collection_date, 
 		        context_params, note, photo_url, length_mm, width_mm, height_mm, shape, 
-		        weight_grams, color, batch_number, manufacturer, created_at 
+		        weight_grams, color, batch_number, manufacturer, created_at, updated_at 
 		 FROM samples WHERE id = ?`,
 		id,
 	).Scan(&s.ID, &s.GroupID, &s.MaterialID, &s.SampleNumber, &s.CollectionPlace, &collDateStr, 
 	       &rawJSON, &s.Note, &photoURL, &lengthMM, &widthMM, &heightMM, &shape, 
-	       &weightGrams, &color, &batchNum, &manufacturer, &createdAt)
+	       &weightGrams, &color, &batchNum, &manufacturer, &createdAt, &updatedAt)
 
 	if err == sql.ErrNoRows {
 		log.Debug("sample not found")
@@ -98,6 +99,13 @@ func (r *SampleRepo) GetByID(ctx context.Context, id string) (models.Sample, err
 	if err != nil {
 		r.log.Warn("failed parse created at date", zap.Error(err), zap.String("val", createdAt))
 		s.CreatedAt = time.Now()
+	}
+
+	if updatedAt != "" {
+		s.UpdatedAt, err = parseTime(updatedAt)
+		if err != nil {
+			r.log.Warn("failed parse updated at date", zap.Error(err), zap.String("val", updatedAt))
+		}
 	}
 
 	s.CollectionDate, err = parseTime(collDateStr)
@@ -153,7 +161,7 @@ func (r *SampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, group_id, material_id, sample_number, collection_place, collection_date, 
 		        context_params, note, photo_url, length_mm, width_mm, height_mm, shape, 
-		        weight_grams, color, batch_number, manufacturer, created_at 
+		        weight_grams, color, batch_number, manufacturer, created_at, updated_at 
 		 FROM samples WHERE group_id = ?`,
 		groupID,
 	)
@@ -167,7 +175,7 @@ func (r *SampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 		s := models.Sample{
 			ContextParams: make(map[string]string),
 		}
-		var collDateStr, rawJSON, createdAt string
+		var collDateStr, rawJSON, createdAt, updatedAt string
 		var photoURL, shape, color, batchNum, manufacturer sql.NullString
 		var lengthMM, widthMM, heightMM, weightGrams sql.NullFloat64
 
@@ -190,6 +198,7 @@ func (r *SampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 			&batchNum,
 			&manufacturer,
 			&createdAt,
+			&updatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan sample: %w", err)
@@ -199,6 +208,13 @@ func (r *SampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 		if err != nil {
 			r.log.Warn("failed parse created at date", zap.Error(err))
 			s.CreatedAt = time.Now()
+		}
+
+		if updatedAt != "" {
+			s.UpdatedAt, err = parseTime(updatedAt)
+			if err != nil {
+				r.log.Warn("failed parse updated at date", zap.Error(err))
+			}
 		}
 
 		s.CollectionDate, err = parseTime(collDateStr)

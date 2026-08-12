@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	"desktop_lab/internal/models"
+	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -28,6 +29,7 @@ func (s *SampleService) CreateSample(ctx context.Context, dto models.CreateSampl
 	)
 	log.Debug("creating new sample")
 
+	nowUTC := time.Now().UTC()
 	sample := models.Sample{
 		ID:           uuid.New().String(),
 		GroupID:      groupID,
@@ -44,6 +46,8 @@ func (s *SampleService) CreateSample(ctx context.Context, dto models.CreateSampl
 		Color:        dto.Color,
 		BatchNumber:  dto.BatchNumber,
 		Manufacturer: dto.Manufacturer,
+		CreatedAt:    nowUTC,
+		UpdatedAt:    nowUTC,
 	}
 
 	if dto.CollectionDate != nil {

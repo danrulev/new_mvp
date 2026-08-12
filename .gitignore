@@ -1,76 +1,33 @@
 ```
-# Dependencies
-go.sum
-vendor/
-
-# Binaries
-*.exe
-*.dll
+# Compiled and build artifacts
+*.o
+*.obj
+*.out
+*.a
 *.so
-*.dylib
+*.dll
+*.exe
 
-# Build artifacts
-bin/
-build/
-dist/
+# Dependencies
+vendor/
+Godeps/
 
-# Logs
+# Logs and temp files
 *.log
+*.tmp
+*.swp
+
+# Editors
+.vscode/
+.idea/
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
 
 # Environment
 .env
 .env.local
-.env.*
-
-# Coverage
-.coverage
-coverage/
-htmlcov/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-.eggs/
-.mypy_cache/
-.pytest_cache/
-.tox/
-
-# Compressed
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
+*.env.*
 ```

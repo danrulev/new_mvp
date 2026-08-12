@@ -182,6 +182,7 @@ func (r *ProtocolRepo) CreateWithSample(ctx context.Context, sample models.Sampl
 	protocol.CreatedAt = nowUTC
 	protocol.UpdatedAt = nowUTC
 	sample.CreatedAt = nowUTC
+	sample.UpdatedAt = nowUTC
 
 	// 1. Создаем пробу (Sample)
 	rawContext, err := sample.ToJSON()
@@ -190,9 +191,21 @@ func (r *ProtocolRepo) CreateWithSample(ctx context.Context, sample models.Sampl
 	}
 
 	_, err = tx.ExecContext(ctx,
-		`INSERT INTO samples (id, group_id, material_id, sample_number, collection_place, collection_date, context_params, note, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		sample.ID, sample.GroupID, sample.MaterialID, sample.SampleNumber, sample.CollectionPlace, collDate, rawContext, sample.Note, nowStr,
+		`INSERT INTO samples (id, group_id, material_id, sample_number, collection_place, collection_date, context_params, note, 
+		                      photo_url, length_mm, width_mm, height_mm, shape, weight_grams, color, batch_number, manufacturer, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		sample.ID, sample.GroupID, sample.MaterialID, sample.SampleNumber, sample.CollectionPlace, collDate, rawContext, sample.Note,
+		nullString(sample.PhotoURL),
+		nullFloat64(sample.LengthMM),
+		nullFloat64(sample.WidthMM),
+		nullFloat64(sample.HeightMM),
+		nullString(sample.Shape),
+		nullFloat64(sample.WeightGrams),
+		nullString(sample.Color),
+		nullString(sample.BatchNumber),
+		nullString(sample.Manufacturer),
+		nowStr,
+		nowStr,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert sample: %w", err)
