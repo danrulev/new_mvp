@@ -148,7 +148,14 @@ export const api = {
   downloadGroupPDF: (id) => apiRequest(`/report/group/${id}/pdf`),
   
   // === УТИЛИТЫ ===
-  request: apiRequest
+  request: apiRequest,
+  
+  // === ОБРАЗЦЫ (SAMPLES) ===
+  createSample: (data) => apiRequest('/sample', { method: 'POST', body: JSON.stringify(data) }),
+  getSampleById: (id) => apiRequest(`/sample/${id}`),
+  updateSample: (id, data) => apiRequest(`/sample/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteSample: (id) => apiRequest(`/sample/${id}`, { method: 'DELETE' }),
+  getSamplesByGroup: (groupID) => apiRequest(`/sample/group/${groupID}`)
 };
 
 export function downloadBlob(blob, filename) {

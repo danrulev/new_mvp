@@ -52,6 +52,28 @@ type CreateSampleDTO struct {
 	Manufacturer string            `json:"manufacturer,omitempty"`
 }
 
+// UpdateSampleDTO используется для обновления существующего образца
+// Все поля опциональны, кроме sample_number и material_id которые должны быть переданы
+type UpdateSampleDTO struct {
+	SampleNumber    string            `json:"sample_number"`
+	MaterialID      string            `json:"material_id"`
+	CollectionDate  *time.Time        `json:"collection_date,omitempty"`
+	CollectionPlace string            `json:"collection_place,omitempty"`
+	ContextParams   map[string]string `json:"context_params,omitempty"`
+	Note            string            `json:"note,omitempty"`
+	
+	// Расширенные поля для образца
+	PhotoURL     string            `json:"photo_url,omitempty"`
+	LengthMM     *float64          `json:"length_mm,omitempty"`
+	WidthMM      *float64          `json:"width_mm,omitempty"`
+	HeightMM     *float64          `json:"height_mm,omitempty"`
+	Shape        string            `json:"shape,omitempty"`
+	WeightGrams  *float64          `json:"weight_grams,omitempty"`
+	Color        string            `json:"color,omitempty"`
+	BatchNumber  string            `json:"batch_number,omitempty"`
+	Manufacturer string            `json:"manufacturer,omitempty"`
+}
+
 func (s *Sample) ToJSON() (string, error) {
 	if s.ContextParams == nil {
 		return "{}", nil

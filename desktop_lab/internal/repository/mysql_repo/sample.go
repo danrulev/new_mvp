@@ -274,3 +274,105 @@ func (r *SampleRepo) GetByGroupID(ctx context.Context, groupID string) ([]models
 
 	return samples, nil
 }
+
+// Update обновляет данные образца в базе данных
+func (r *SampleRepo) Update(ctx context.Context, s models.Sample) error {
+	log := logQuery(ctx, r.log, "UPDATE", "samples",
+		zap.String("sample_id", s.ID),
+		zap.String("sample_number", s.SampleNumber),
+	)
+	log.Debug("updating sample")
+
+	jsonData, err := s.ToJSON()
+	if err != nil {
+		log.Error("failed to marshal context params", zap.Error(err))
+		return fmt.Errorf("failed to marshal context params: %w", err)
+	}
+
+	nowUTC := time.Now().UTC()
+	nowStr := nowUTC.Format(timeLayout)
+
+	result, err := r.db.ExecContext(ctx,
+		`UPDATE samples SET 
+		    sample_number = ?, 
+		    material_id = ?, 
+		    collection_place = ?, 
+		    collection_date = ?,
+		    context_params = ?, 
+		    note = ?, 
+		    photo_url = ?, 
+		    length_mm = ?, 
+		    width_mm = ?, 
+		    height_mm = ?, 
+		    shape = ?, 
+		    weight_grams = ?, 
+		    color = ?, 
+		    batch_number = ?, 
+		    manufacturer = ?,
+		    updated_at = ?
+		 WHERE id = ?`,
+		s.SampleNumber,
+		s.MaterialID,
+		s.CollectionPlace,
+		s.CollectionDate.Format(timeLayout),
+		jsonData,
+		s.Note,
+		nullString(s.PhotoURL),
+		nullFloat64(s.LengthMM),
+		nullFloat64(s.WidthMM),
+		nullFloat64(s.HeightMM),
+		nullString(s.Shape),
+		nullFloat64(s.WeightGrams),
+		nullString(s.Color),
+		nullString(s.BatchNumber),
+		nullString(s.Manufacturer),
+		nowStr,
+		s.ID,
+	)
+	if err != nil {
+		log.Error("failed to update sample", zap.Error(err))
+		return fmt.Errorf("failed to update sample: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Warn("failed to get rows affected", zap.Error(err))
+	} else if rowsAffected == 0 {
+		log.Warn("no sample found to update", zap.String("id", s.ID))
+		return fmt.Errorf("sample not found")
+	}
+
+	log.Info("sample updated successfully",
+		zap.String("id", s.ID),
+		zap.Int64("rows_affected", rowsAffected))
+	return nil
+}
+
+// Delete удаляет образец по ID
+func (r *SampleRepo) Delete(ctx context.Context, id string) error {
+	log := logQuery(ctx, r.log, "DELETE", "samples",
+		zap.String("sample_id", id))
+	log.Debug("deleting sample")
+
+	result, err := r.db.ExecContext(ctx,
+		`DELETE FROM samples WHERE id = ?`,
+		id,
+	)
+	if err != nil {
+		log.Error("failed to delete sample", zap.Error(err))
+		return fmt.Errorf("failed to delete sample: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Warn("failed to get rows affected", zap.Error(err))
+	} else if rowsAffected == 0 {
+		log.Warn("no sample found to delete", zap.String("id", id))
+		return fmt.Errorf("sample not found")
+	}
+
+	log.Info("sample deleted successfully",
+		zap.String("id", id),
+		zap.Int64("rows_affected", rowsAffected))
+	return nil
+}
