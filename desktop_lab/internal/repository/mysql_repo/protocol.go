@@ -588,6 +588,7 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		SELECT 
 			p.id, p.sample_id, p.protocol_number, p.lab_name, p.operator_name, p.test_date, p.status, p.note, p.created_at, p.updated_at,
 			s.id, s.group_id, s.material_id, s.sample_number, s.collection_place, s.collection_date, s.context_params, s.note, s.created_at,
+			s.photo_url, s.length_mm, s.width_mm, s.height_mm, s.shape, s.weight_grams, s.color, s.batch_number, s.manufacturer,
 			m.id, m.name, m.code, m.created_at
 		FROM protocols p
 		INNER JOIN samples s ON p.sample_id = s.id
@@ -597,12 +598,17 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 
 	var rawContext sql.NullString
 	var testDateStr, collDateStr, protCreatedAt, protUpdatedAt, sampCreatedAt, matCreatedAt string
+	var photoURL sql.NullString
+	var lengthMM, widthMM, heightMM, weightGrams sql.NullFloat64
+	var shape, color, batchNumber, manufacturer sql.NullString
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&full.Protocol.ID, &full.Protocol.SampleID, &full.Protocol.ProtocolNumber, &full.Protocol.LabName,
 		&full.Protocol.OperatorName, &testDateStr, &full.Protocol.Status, &full.Protocol.Note, &protCreatedAt, &protUpdatedAt,
 
 		&full.Sample.ID, &full.Sample.GroupID, &full.Sample.MaterialID, &full.Sample.SampleNumber, &full.Sample.CollectionPlace, &collDateStr, &rawContext, &full.Sample.Note, &sampCreatedAt,
+
+		&photoURL, &lengthMM, &widthMM, &heightMM, &shape, &weightGrams, &color, &batchNumber, &manufacturer,
 
 		&full.Material.ID, &full.Material.Name, &full.Material.Code, &matCreatedAt,
 	)
@@ -629,6 +635,36 @@ func (r *ProtocolRepo) GetProtocolFull(ctx context.Context, id string) (models.P
 		}
 	} else {
 		full.Sample.ContextParams = make(map[string]string)
+	}
+
+	// Заполняем расширенные поля образца из результата запроса
+	if photoURL.Valid {
+		full.Sample.PhotoURL = photoURL.String
+	}
+	if lengthMM.Valid {
+		full.Sample.LengthMM = &lengthMM.Float64
+	}
+	if widthMM.Valid {
+		full.Sample.WidthMM = &widthMM.Float64
+	}
+	if heightMM.Valid {
+		full.Sample.HeightMM = &heightMM.Float64
+	}
+	if shape.Valid {
+		full.Sample.Shape = shape.String
+	}
+	if weightGrams.Valid {
+		full.Sample.WeightGrams = &weightGrams.Float64
+	}
+
+	if color.Valid {
+		full.Sample.Color = color.String
+	}
+	if batchNumber.Valid {
+		full.Sample.BatchNumber = batchNumber.String
+	}
+	if manufacturer.Valid {
+		full.Sample.Manufacturer = manufacturer.String
 	}
 
 	// Оптимизированный запрос результатов с предварительной подготовкой statement
