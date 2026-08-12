@@ -112,7 +112,7 @@ export const auth = {
     const role = this.getRole();
     if (!role) return false;
     
-    // Маппинг разрешений для каждой роли (как в backend)
+    // Маппинг разрешений для каждой роли (как в backend internal/models/role.go)
     const permissions = {
       'admin': [
         'user:read', 'user:create', 'user:update', 'user:delete',
@@ -129,10 +129,10 @@ export const auth = {
         'user:read',
         'protocol:read', 'protocol:create', 'protocol:update', 'protocol:delete',
         'standard:read', 'standard:create', 'standard:update', 'standard:delete',
-        'report:read', 'report:create',
-        'material:read', 'dimension:read',
-        'group:read', 'group:create', 'group:update', 'group:delete',
         'sample:read', 'sample:create', 'sample:update', 'sample:delete',
+        'group:read', 'group:create', 'group:update', 'group:delete',
+        'material:read', 'dimension:read',
+        'report:read', 'report:create',
         'organization:read'
       ],
       'technician': [
@@ -281,18 +281,26 @@ export const auth = {
     const role = this.getRole();
     if (!role) return;
     
-    // Скрываем/показываем элементы по ролям
+    // Скрываем/показываем элементы по ролям через data-requires-role
     document.querySelectorAll('[data-requires-role]').forEach(el => {
       const requiredRoles = el.dataset.requiresRole.split(',');
       const hasAccess = requiredRoles.some(r => this.hasRole(r.trim()));
-      el.style.display = hasAccess ? '' : 'none';
+      if (!hasAccess) {
+        el.style.display = 'none';
+      } else {
+        el.style.display = '';
+      }
     });
     
-    // Показываем элементы только для определенных ролей
+    // Показываем элементы только для определенных ролей через data-show-for-role
     document.querySelectorAll('[data-show-for-role]').forEach(el => {
       const allowedRoles = el.dataset.showForRole.split(',');
       const hasAccess = allowedRoles.some(r => this.getRole() === r.trim());
-      el.style.display = hasAccess ? '' : 'none';
+      if (!hasAccess) {
+        el.style.display = 'none';
+      } else {
+        el.style.display = '';
+      }
     });
     
     // Отображаем имя пользователя и роль
