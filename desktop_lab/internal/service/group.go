@@ -127,3 +127,48 @@ func (s *ExperimentGroupService) DeleteGroupByID(ctx context.Context, id string)
 	log.Info("experiment group successfully deleted")
 	return nil
 }
+
+// AddSampleToGroup добавляет пробу в группу
+func (s *ExperimentGroupService) AddSampleToGroup(ctx context.Context, sampleID, groupID string) error {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "AddSampleToGroup"),
+		zap.String("sample_id", sampleID),
+		zap.String("group_id", groupID),
+	)
+	log.Debug("adding sample to group")
+
+	if sampleID == "" || groupID == "" {
+		return fmt.Errorf("sample_id and group_id are required")
+	}
+
+	err := s.repo.AddSampleToGroup(ctx, sampleID, groupID)
+	if err != nil {
+		log.Error("failed to add sample to group", zap.Error(err))
+		return err
+	}
+
+	log.Info("sample successfully added to group")
+	return nil
+}
+
+// RemoveSampleFromGroup удаляет пробу из группы
+func (s *ExperimentGroupService) RemoveSampleFromGroup(ctx context.Context, sampleID string) error {
+	log := loggerWith(ctx, s.log,
+		zap.String("service_name", "RemoveSampleFromGroup"),
+		zap.String("sample_id", sampleID),
+	)
+	log.Debug("removing sample from group")
+
+	if sampleID == "" {
+		return fmt.Errorf("sample_id is required")
+	}
+
+	err := s.repo.RemoveSampleFromGroup(ctx, sampleID)
+	if err != nil {
+		log.Error("failed to remove sample from group", zap.Error(err))
+		return err
+	}
+
+	log.Info("sample successfully removed from group")
+	return nil
+}
