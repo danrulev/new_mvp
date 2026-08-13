@@ -28,3 +28,8 @@ func (s *ProfileService) UpdateProfile(ctx context.Context, userID string, req m
 func (s *ProfileService) DeleteProfile(ctx context.Context, userID string) error {
 	return s.userRepo.Delete(ctx, userID)
 }
+
+// GetEmployeesList возвращает список всех активных сотрудников
+func (s *ProfileService) GetEmployeesList(ctx context.Context) ([]models.User, error) {
+	return s.userRepo.ListActive(ctx)
+}

@@ -16,6 +16,9 @@ func (h *Handler) initProfileRoutes(api *gin.RouterGroup) {
 		profile.PUT("/", h.updateProfile)
 		profile.DELETE("/", h.deleteProfile)
 	}
+
+	// Endpoint для получения списка активных сотрудников
+	api.GET("/employees", h.permissionMiddleware(models.PermUserRead), h.getEmployeesList)
 }
 
 func (h *Handler) getProfile(c *gin.Context) {
@@ -79,4 +82,17 @@ func (h *Handler) deleteProfile(c *gin.Context) {
 
 	newSuccessResponse(c, http.StatusOK, "message", "profile deleted")
 	c.JSON(http.StatusOK, "user deleted")
+}
+
+// getEmployeesList возвращает список всех активных сотрудников
+func (h *Handler) getEmployeesList(c *gin.Context) {
+	h.log.Debug("fetching employees list")
+
+	users, err := h.profile.GetEmployeesList(c.Request.Context())
+	if err != nil {
+		h.newErrorResponse(c, http.StatusInternalServerError, "getEmployeesList", "service error", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"employees": users})
 }

@@ -122,6 +122,7 @@ type UserRepo interface {
 	Credential(ctx context.Context, email string) (string, string, error)
 	Update(ctx context.Context, id string, user models.UpdateUserRequest) (models.User, error)
 	Delete(ctx context.Context, id string) error
+	ListActive(ctx context.Context) ([]models.User, error)
 }
 
 type TokenRepo interface {
