@@ -150,14 +150,19 @@ type GroupSummaryTemplateData struct {
 }
 
 type GroupView struct {
-	ID             string
-	Name           string
-	MaterialName   string
-	MaterialCode   string
-	Project        string
-	Location       string
-	CreatedAt      string
-	TotalProtocols int
+	ID                  string
+	Name                string
+	MaterialName        string
+	MaterialCode        string
+	Project             string
+	ObjectType          string
+	Customer            string
+	ContractNumber      string
+	Status              string
+	ResponsiblePersonID string
+	Location            string
+	CreatedAt           string
+	TotalProtocols      int
 }
 
 type StatisticsView struct {
@@ -312,14 +317,19 @@ func (s *ReportService) prepareGroupSummaryTemplateData(
 
 	data := GroupSummaryTemplateData{
 		Group: GroupView{
-			ID:             group.ID,
-			Name:           group.Name,
-			MaterialName:   material.Name,
-			MaterialCode:   material.Code,
-			Project:        group.ProjectName,
-			Location:       group.Location,
-			CreatedAt:      dateStr,
-			TotalProtocols: len(completedProtocolsMap),
+			ID:                  group.ID,
+			Name:                group.Name,
+			MaterialName:        material.Name,
+			MaterialCode:        material.Code,
+			Project:             group.ProjectName,
+			ObjectType:          group.ObjectType,
+			Customer:            group.Customer,
+			ContractNumber:      group.ContractNumber,
+			Status:              group.Status,
+			ResponsiblePersonID: group.ResponsiblePersonID,
+			Location:            group.Location,
+			CreatedAt:           dateStr,
+			TotalProtocols:      len(completedProtocolsMap),
 		},
 		FormattedDate: formattedFullDate,
 		QRCodeData:    group.ID,
