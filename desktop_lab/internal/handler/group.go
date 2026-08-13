@@ -28,8 +28,6 @@ func (h *Handler) initGroupRoutes(api *gin.RouterGroup) {
 		auth.PUT("/:id/samples/:sampleID", h.permissionMiddleware(models.PermGroupUpdate), h.addSampleToGroup)
 		// Удаление пробы из группы - техник, инженер, админ
 		auth.DELETE("/:id/samples/:sampleID", h.permissionMiddleware(models.PermGroupUpdate), h.removeSampleFromGroup)
-		// Получение проб группы - все аутентифицированные
-		auth.GET("/:id/samples", h.permissionMiddleware(models.PermGroupRead), h.getSamplesByGroupID)
 	}
 }
 
@@ -172,25 +170,4 @@ func (h *Handler) removeSampleFromGroup(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "sample removed from group"})
-}
-
-// getSamplesByGroupID возвращает все пробы группы
-func (h *Handler) getSamplesByGroupID(c *gin.Context) {
-	groupID := c.Param("id")
-	if groupID == "" {
-		h.newErrorResponse(c, http.StatusBadRequest, "getSamplesByGroupID", "group id is required", nil)
-		return
-	}
-
-	samples, err := h.sample.GetSamplesByGroupID(c.Request.Context(), groupID)
-	if err != nil {
-		h.newErrorResponse(c, http.StatusInternalServerError, "getSamplesByGroupID", "service error", err)
-		return
-	}
-
-	if samples == nil {
-		samples = []models.Sample{}
-	}
-
-	c.JSON(http.StatusOK, samples)
 }
