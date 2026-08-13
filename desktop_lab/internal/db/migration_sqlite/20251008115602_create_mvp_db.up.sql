@@ -135,10 +135,17 @@ CREATE TABLE IF NOT EXISTS experiment_groups (
     name TEXT NOT NULL,
     material_id TEXT NOT NULL,
     project_name TEXT NOT NULL,
+    object_type TEXT NOT NULL,
+    customer TEXT,
+    contract_number TEXT,
+    status TEXT NOT NULL DEFAULT 'draft',
+    responsible_person_id TEXT
     location TEXT,
+    description TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE RESTRICT
+    FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE RESTRICT,
+    FOREIGN KEY (responsible_person_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Пробы (Образцы)
