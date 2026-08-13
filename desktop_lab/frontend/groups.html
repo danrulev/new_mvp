@@ -71,14 +71,16 @@
               <tr>
                 <th>Название</th>
                 <th>Проект</th>
+                <th>Тип объекта</th>
                 <th>Материал</th>
-                <th>Протоколов</th>
+                <th>Статус</th>
+                <th>Заказчик</th>
                 <th>Создана</th>
                 <th data-requires-role="technician,engineer,admin">Действия</th>
               </tr>
             </thead>
             <tbody id="groupsTable">
-              <tr><td colspan="6" class="text-center">Загрузка...</td></tr>
+              <tr><td colspan="8" class="text-center">Загрузка...</td></tr>
             </tbody>
           </table>
         </div>
@@ -107,8 +109,33 @@
           <input type="text" id="newGroupName">
         </div>
         <div class="form-group">
-          <label>Проект</label>
+          <label>Проект <span class="required">*</span></label>
           <input type="text" id="newGroupProject">
+        </div>
+        <div class="form-group">
+          <label>Тип объекта</label>
+          <input type="text" id="newGroupObjectType" placeholder="Например: дорога, здание, мост">
+        </div>
+        <div class="form-group">
+          <label>Заказчик</label>
+          <input type="text" id="newGroupCustomer" placeholder="Название организации заказчика">
+        </div>
+        <div class="form-group">
+          <label>Номер контракта</label>
+          <input type="text" id="newGroupContractNumber" placeholder="№ контракта/договора">
+        </div>
+        <div class="form-group">
+          <label>Статус</label>
+          <select id="newGroupStatus">
+            <option value="draft">Черновик</option>
+            <option value="in_progress">В работе</option>
+            <option value="completed">Завершено</option>
+            <option value="archived">Архивировано</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ответственный</label>
+          <input type="text" id="newGroupResponsiblePerson" placeholder="ID или имя ответственного">
         </div>
         <div class="form-group">
           <label>Место</label>
@@ -119,6 +146,10 @@
           <select id="newGroupMaterial">
             <option value="">-- Загрузка... --</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label>Описание</label>
+          <textarea id="newGroupDescription" rows="3" placeholder="Дополнительная информация"></textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -139,6 +170,8 @@
         <div id="viewGroupInfo" class="info-grid"></div>
         <h4 class="mt-4">Протоколы группы</h4>
         <div id="viewGroupProtocols" class="table-wrap"></div>
+        <h4 class="mt-4">Пробы группы</h4>
+        <div id="viewGroupSamples" class="table-wrap"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeViewGroupModal()">Закрыть</button>
@@ -183,12 +216,41 @@
           <input type="text" id="editGroupName">
         </div>
         <div class="form-group">
-          <label>Проект</label>
+          <label>Проект <span class="required">*</span></label>
           <input type="text" id="editGroupProject">
+        </div>
+        <div class="form-group">
+          <label>Тип объекта</label>
+          <input type="text" id="editGroupObjectType">
+        </div>
+        <div class="form-group">
+          <label>Заказчик</label>
+          <input type="text" id="editGroupCustomer">
+        </div>
+        <div class="form-group">
+          <label>Номер контракта</label>
+          <input type="text" id="editGroupContractNumber">
+        </div>
+        <div class="form-group">
+          <label>Статус</label>
+          <select id="editGroupStatus">
+            <option value="draft">Черновик</option>
+            <option value="in_progress">В работе</option>
+            <option value="completed">Завершено</option>
+            <option value="archived">Архивировано</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ответственный</label>
+          <input type="text" id="editGroupResponsiblePerson">
         </div>
         <div class="form-group">
           <label>Место</label>
           <input type="text" id="editGroupLocation">
+        </div>
+        <div class="form-group">
+          <label>Описание</label>
+          <textarea id="editGroupDescription" rows="3"></textarea>
         </div>
       </div>
       <div class="modal-footer">
