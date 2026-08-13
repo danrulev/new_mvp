@@ -1,1 +1,40 @@
-Nothing should be ignored based on the provided file changes. The only modified file is a Go source code file (`desktop_lab/internal/handler/group.go`), which should not be ignored. There are no build artifacts, dependencies, temporary files, or other items that require ignoring.
+```
+# Compiled and build artifacts
+*.o
+*.obj
+*.out
+
+# Dependencies
+vendor/
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Database migrations (if they follow a pattern)
+*.sql
+
+# Coverage reports
+coverage/
+htmlcov/
+*.coverage
+
+# Build directories (common in Go projects)
+bin/
+dist/
+build/
+
+# Package management
+node_modules/
+__pycache__/
+*.egg-info/
+```

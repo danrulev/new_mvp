@@ -176,12 +176,34 @@
                 <span class="info-value">{{.Group.CreatedAt}}</span>
             </div>
             <div class="info-item">
-                <span class="info-label">Всего протоколов:</span>
-                <span class="info-value">{{.Group.TotalProtocols}}</span>
+                <span class="info-label">Тип объекта:</span>
+                <span class="info-value">{{if .Group.ObjectType}}{{.Group.ObjectType}}{{else}}—{{end}}</span>
             </div>
             <div class="info-item">
-                <span class="info-label">Всего проб:</span>
-                <span class="info-value">{{.Statistics.TotalSamples}}</span>
+                <span class="info-label">Статус:</span>
+                <span class="info-value">
+                    {{if eq .Group.Status "draft"}}Черновик
+                    {{else if eq .Group.Status "in_progress"}}В работе
+                    {{else if eq .Group.Status "completed"}}Завершено
+                    {{else if eq .Group.Status "archived"}}Архивировано
+                    {{else}}{{.Group.Status}}{{end}}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Заказчик:</span>
+                <span class="info-value">{{if .Group.Customer}}{{.Group.Customer}}{{else}}—{{end}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Номер договора:</span>
+                <span class="info-value">{{if .Group.ContractNumber}}{{.Group.ContractNumber}}{{else}}—{{end}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Ответственный:</span>
+                <span class="info-value">{{if .Group.ResponsiblePersonID}}{{.Group.ResponsiblePersonID}}{{else}}—{{end}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Всего протоколов:</span>
+                <span class="info-value">{{.Group.TotalProtocols}}</span>
             </div>
         </div>
     </div>

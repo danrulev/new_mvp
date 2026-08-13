@@ -180,17 +180,27 @@ CREATE TABLE experiment_groups (
     name TEXT NOT NULL,
     material_id VARCHAR(36) NOT NULL,
     project_name TEXT NOT NULL,
+    object_type TEXT,
+    customer TEXT,
+    contract_number TEXT,
+    status TEXT NOT NULL DEFAULT 'draft',
+    responsible_person_id VARCHAR(36),
     location TEXT,
-    metadata JSONB DEFAULT '{}',  -- Дополнительные поля
+    description TEXT,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(36),  -- Ссылка на users.id
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36),
     
     FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE RESTRICT,
+    FOREIGN KEY (responsible_person_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT groups_name_not_empty CHECK (char_length(name) > 0)
 );
 
 CREATE INDEX idx_groups_material ON experiment_groups(material_id);
 CREATE INDEX idx_groups_created_by ON experiment_groups(created_by);
+CREATE INDEX idx_groups_status ON experiment_groups(status);
+CREATE INDEX idx_groups_object_type ON experiment_groups(object_type);
+CREATE INDEX idx_groups_customer ON experiment_groups(customer);
 
 -- Пробы (Образцы)
 CREATE TABLE samples (
