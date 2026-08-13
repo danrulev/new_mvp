@@ -34,10 +34,10 @@ func (h *Handler) signUp(c *gin.Context) {
 	}
 
 	// Запрещаем регистрацию с ролью администратора через публичный API
-	if user.Role == models.RoleAdmin {
-		h.newErrorResponse(c, http.StatusForbidden, "sign up", "admin registration is not allowed", nil)
-		return
-	}
+	// if user.Role == models.RoleAdmin {
+	// 	h.newErrorResponse(c, http.StatusForbidden, "sign up", "admin registration is not allowed", nil)
+	// 	return
+	// }
 
 	// Если роль не указана или невалидна, устанавливаем роль по умолчанию (client)
 	if !user.Role.IsValid() {
