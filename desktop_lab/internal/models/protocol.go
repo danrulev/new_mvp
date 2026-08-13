@@ -43,12 +43,13 @@ type UpdateProtocolRequest struct {
 }
 
 type CreateProtocolRequest struct {
-	GroupID      string            `json:"group_id"`
-	Sample       CreateSampleDTO   `json:"sample"`
-	LabName      string            `json:"lab_name"`
-	OperatorName string            `json:"operator_name"`
-	Note         string            `json:"note"`
-	Results      []CreateResultDTO `json:"results"`
+	GroupID             string            `json:"group_id"`
+	Sample              CreateSampleDTO   `json:"sample"`
+	LabName             string            `json:"lab_name"`
+	OperatorName        string            `json:"operator_name"`
+	ResponsiblePersonID *string           `json:"responsible_person_id,omitempty"`
+	Note                string            `json:"note"`
+	Results             []CreateResultDTO `json:"results"`
 }
 
 type CreateResultDTO struct {
