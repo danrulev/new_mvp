@@ -258,3 +258,63 @@ func (r *UserRepo) Delete(ctx context.Context, id string) error {
 	log.Info("User deleted successfully", zap.String("id", id))
 	return nil
 }
+
+func (r *UserRepo) ListActive(ctx context.Context) ([]models.User, error) {
+	log := logQuery(ctx, r.log, "SELECT", "users")
+	log.Debug("fetching active users list")
+
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, name, email, role, created_at, updated_at, deleted_at 
+		 FROM users 
+		 WHERE deleted_at IS NULL
+		 ORDER BY name ASC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []models.User
+	for rows.Next() {
+		var u models.User
+		var createdAt, updatedAt, deletedAt sql.NullString
+
+		err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.Role, &createdAt, &updatedAt, &deletedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		if createdAt.Valid {
+			if t, err := parseTime(createdAt.String); err == nil {
+				u.CreatedAt = t
+			} else {
+				r.log.Warn("failed to parse created_at", zap.String("val", createdAt.String), zap.Error(err))
+			}
+		}
+
+		if updatedAt.Valid {
+			if t, err := parseTime(updatedAt.String); err == nil {
+				u.UpdatedAt = t
+			} else {
+				r.log.Warn("failed to parse updated_at", zap.String("val", updatedAt.String), zap.Error(err))
+			}
+		}
+
+		if deletedAt.Valid {
+			if t, err := parseTime(deletedAt.String); err == nil {
+				u.DeletedAt = &t
+			} else {
+				r.log.Warn("failed to parse deleted_at", zap.String("val", deletedAt.String), zap.Error(err))
+			}
+		}
+
+		users = append(users, u)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	log.Debug("active users fetched", zap.Int("count", len(users)))
+	return users, nil
+}

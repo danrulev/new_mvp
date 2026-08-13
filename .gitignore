@@ -20,21 +20,35 @@ vendor/
 .vscode/
 .idea/
 
-# Database migrations (if they follow a pattern)
-*.sql
-
 # Coverage reports
 coverage/
 htmlcov/
-*.coverage
+.coverage
 
-# Build directories (common in Go projects)
-bin/
-dist/
+# Build directories
 build/
+dist/
+target/
 
-# Package management
-node_modules/
+# Python specific
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
 *.egg-info/
+.eggs/
+
+# Go specific
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.prof
+go.mod
+go.sum
+
+# Original rules preserved
 ```
