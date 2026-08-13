@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS experiment_groups (
     customer TEXT,
     contract_number TEXT,
     status TEXT NOT NULL DEFAULT 'draft',
-    responsible_person_id TEXT
+    responsible_person_id TEXT,
     location TEXT,
     description TEXT,
     created_at TEXT DEFAULT (datetime('now')),

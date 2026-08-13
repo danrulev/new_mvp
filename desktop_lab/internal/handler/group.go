@@ -23,7 +23,7 @@ func (h *Handler) initGroupRoutes(api *gin.RouterGroup) {
 		auth.PUT("/:id", h.permissionMiddleware(models.PermGroupUpdate), h.updateGroup)
 		// Удаление группы - только инженер и админ
 		auth.DELETE("/:id", h.permissionMiddleware(models.PermGroupDelete), h.deleteGroup)
-		
+
 		// Добавление пробы в группу - техник, инженер, админ
 		auth.PUT("/:id/samples/:sampleID", h.permissionMiddleware(models.PermGroupUpdate), h.addSampleToGroup)
 		// Удаление пробы из группы - техник, инженер, админ
@@ -34,21 +34,32 @@ func (h *Handler) initGroupRoutes(api *gin.RouterGroup) {
 }
 
 type CreateGroupRequest struct {
-	Name        string `json:"name"`
-	ProjectName string `json:"project_name"`
-	Location    string `json:"location"`
-	MaterialID  string `json:"material_id"`
+	Name                string `json:"name" binding:"required"`
+	ProjectName         string `json:"project_name" binding:"required"`
+	ObjectType          string `json:"object_type"`
+	Customer            string `json:"customer"`
+	ContractNumber      string `json:"contract_number"`
+	Status              string `json:"status"`
+	ResponsiblePersonID string `json:"responsible_person_id"`
+	Location            string `json:"location"`
+	Description         string `json:"description"`
+	MaterialID          string `json:"material_id" binding:"required"`
 }
 
 func (h *Handler) createGroup(c *gin.Context) {
 	var input CreateGroupRequest
 
 	if err := c.BindJSON(&input); err != nil {
-		h.newErrorResponse(c, http.StatusInternalServerError, "createGroup", "invalid data", err)
+		h.newErrorResponse(c, http.StatusBadRequest, "createGroup", "invalid data", err)
 		return
 	}
 
-	group, err := h.group.Create(c, input.Name, input.ProjectName, input.Location, input.MaterialID)
+	// Set default status if not provided
+	if input.Status == "" {
+		input.Status = "draft"
+	}
+
+	group, err := h.group.Create(c, input.Name, input.ProjectName, input.Location, input.MaterialID, input.ObjectType, input.Customer, input.ContractNumber, input.Status, input.ResponsiblePersonID, input.Description)
 	if err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "createGroup", "service error", err)
 		return
