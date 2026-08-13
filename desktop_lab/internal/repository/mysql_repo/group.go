@@ -194,6 +194,35 @@ func (r *ExperimentGroupRepo) AddSampleToGroup(ctx context.Context, sampleID, gr
 	return nil
 }
 
+// RemoveSampleFromGroup удаляет привязку пробы к группе (устанавливает group_id в NULL)
+func (r *ExperimentGroupRepo) RemoveSampleFromGroup(ctx context.Context, sampleID string) error {
+	log := logQuery(ctx, r.log, "UPDATE", "samples",
+		zap.String("sample_id", sampleID))
+	log.Debug("unlinking sample from group")
+
+	var exists int
+	err := r.db.QueryRowContext(ctx, `SELECT 1 FROM samples WHERE id = ?`, sampleID).Scan(&exists)
+	if err == sql.ErrNoRows {
+		log.Warn("sample not found for unlinking",
+			zap.String("sample_id", sampleID))
+		return fmt.Errorf("sample not found")
+	}
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.ExecContext(ctx,
+		`UPDATE samples SET group_id = NULL WHERE id = ?`,
+		sampleID,
+	)
+	if err != nil {
+		return err
+	}
+
+	log.Info("sample successfully unlinked from group")
+	return nil
+}
+
 func (r *ExperimentGroupRepo) UpdateGroup(ctx context.Context, id string, g models.UpdateExperimentGroup) error {
 	log := logQuery(ctx, r.log, "UPDATE", "experiment_groups",
 		zap.String("group_id", id),

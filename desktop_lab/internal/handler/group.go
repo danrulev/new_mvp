@@ -23,6 +23,13 @@ func (h *Handler) initGroupRoutes(api *gin.RouterGroup) {
 		auth.PUT("/:id", h.permissionMiddleware(models.PermGroupUpdate), h.updateGroup)
 		// Удаление группы - только инженер и админ
 		auth.DELETE("/:id", h.permissionMiddleware(models.PermGroupDelete), h.deleteGroup)
+		
+		// Добавление пробы в группу - техник, инженер, админ
+		auth.PUT("/:id/samples/:sampleID", h.permissionMiddleware(models.PermGroupUpdate), h.addSampleToGroup)
+		// Удаление пробы из группы - техник, инженер, админ
+		auth.DELETE("/:id/samples/:sampleID", h.permissionMiddleware(models.PermGroupUpdate), h.removeSampleFromGroup)
+		// Получение проб группы - все аутентифицированные
+		auth.GET("/:id/samples", h.permissionMiddleware(models.PermGroupRead), h.getSamplesByGroupID)
 	}
 }
 
@@ -119,4 +126,60 @@ func (h *Handler) deleteGroup(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
+}
+
+// addSampleToGroup добавляет пробу в группу
+func (h *Handler) addSampleToGroup(c *gin.Context) {
+	groupID := c.Param("id")
+	sampleID := c.Param("sampleID")
+
+	if groupID == "" || sampleID == "" {
+		h.newErrorResponse(c, http.StatusBadRequest, "addSampleToGroup", "group_id and sample_id are required", nil)
+		return
+	}
+
+	if err := h.group.AddSampleToGroup(c.Request.Context(), sampleID, groupID); err != nil {
+		h.newErrorResponse(c, http.StatusInternalServerError, "addSampleToGroup", "failed to add sample to group", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "sample added to group"})
+}
+
+// removeSampleFromGroup удаляет пробу из группы
+func (h *Handler) removeSampleFromGroup(c *gin.Context) {
+	sampleID := c.Param("sampleID")
+
+	if sampleID == "" {
+		h.newErrorResponse(c, http.StatusBadRequest, "removeSampleFromGroup", "sample_id is required", nil)
+		return
+	}
+
+	if err := h.group.RemoveSampleFromGroup(c.Request.Context(), sampleID); err != nil {
+		h.newErrorResponse(c, http.StatusInternalServerError, "removeSampleFromGroup", "failed to remove sample from group", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "sample removed from group"})
+}
+
+// getSamplesByGroupID возвращает все пробы группы
+func (h *Handler) getSamplesByGroupID(c *gin.Context) {
+	groupID := c.Param("id")
+	if groupID == "" {
+		h.newErrorResponse(c, http.StatusBadRequest, "getSamplesByGroupID", "group id is required", nil)
+		return
+	}
+
+	samples, err := h.sample.GetSamplesByGroupID(c.Request.Context(), groupID)
+	if err != nil {
+		h.newErrorResponse(c, http.StatusInternalServerError, "getSamplesByGroupID", "service error", err)
+		return
+	}
+
+	if samples == nil {
+		samples = []models.Sample{}
+	}
+
+	c.JSON(http.StatusOK, samples)
 }
