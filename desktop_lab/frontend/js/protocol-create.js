@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   await loadMaterials();
   await loadGroups();
+  await loadEmployees();
 });
 
 function setupFormListeners() {
@@ -294,6 +295,31 @@ async function loadGroups() {
   }
 }
 
+async function loadEmployees() {
+  const sel = document.getElementById('responsibleSelect');
+  if (!sel) return;
+
+  try {
+    const employees = await api.getEmployees();
+    console.log('👥 Employees loaded:', employees);
+
+    sel.innerHTML = '<option value="">-- Без ответственного --</option>';
+    if (!employees || employees.length === 0) {
+      console.warn('⚠️ No employees found in database');
+      return;
+    }
+    employees.forEach(emp => {
+      const opt = document.createElement('option');
+      opt.value = emp.id;
+      opt.textContent = emp.name || emp.email || 'Сотрудник';
+      sel.appendChild(opt);
+    });
+  } catch (err) {
+    console.error('❌ Failed to load employees', err);
+    sel.innerHTML = '<option value="">-- Ошибка загрузки --</option>';
+  }
+}
+
 // === RENDER & LOGIC ===
 
 function renderMethodDetails(full) {
@@ -544,6 +570,7 @@ async function saveProtocol() {
     },
     lab_name: document.getElementById('labName').value,
     operator_name: document.getElementById('operator').value,
+    responsible_person_id: document.getElementById('responsibleSelect')?.value || null,
     note: protocolNote,
     results: results
   };

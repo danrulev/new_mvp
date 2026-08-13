@@ -155,7 +155,10 @@ export const api = {
   getSampleById: (id) => apiRequest(`/sample/${id}`),
   updateSample: (id, data) => apiRequest(`/sample/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteSample: (id) => apiRequest(`/sample/${id}`, { method: 'DELETE' }),
-  getSamplesByGroup: (groupID) => apiRequest(`/sample/group/${groupID}`)
+  getSamplesByGroup: (groupID) => apiRequest(`/sample/group/${groupID}`),
+  
+  // === СОТРУДНИКИ (EMPLOYEES) ===
+  getEmployees: () => apiRequest('/employees').then(res => res.employees || [])
 };
 
 export function downloadBlob(blob, filename) {

@@ -1,54 +1,62 @@
 ```
 # Compiled and build artifacts
+*.pyc
+__pycache__/
 *.o
 *.obj
-*.out
+*.exe
+*.dll
+*.so
+*.class
+dist/
+build/
+target/
 
 # Dependencies
-vendor/
+node_modules/
+venv/
+.venv/
+.env
+.env.local
+.env.*
 
 # Logs and temp files
 *.log
 *.tmp
-
-# Environment
-.env
-.env.local
-*.env.*
+*.swp
+*.swo
 
 # Editors
 .vscode/
 .idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+Thumbs.db
 
 # Coverage reports
 coverage/
 htmlcov/
 .coverage
 
-# Build directories
-build/
-dist/
-target/
-
 # Python specific
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
+.mypy_cache/
+.pytest_cache/
 *.egg-info/
-.eggs/
 
-# Go specific
-*.exe
-*.dll
-*.so
-*.dylib
-*.test
-*.prof
-go.mod
-go.sum
+# Java specific
+.gradle/
+*.jar
 
-# Original rules preserved
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
 ```

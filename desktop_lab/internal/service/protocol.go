@@ -104,14 +104,15 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 	}
 
 	protocol := models.Protocol{
-		ID:             protocolID,
-		SampleID:       sampleID,
-		ProtocolNumber: protocolNumber,
-		LabName:        req.LabName,
-		OperatorName:   req.OperatorName,
-		TestDate:       now,
-		Status:         "draft",
-		Note:           req.Note,
+		ID:                protocolID,
+		SampleID:          sampleID,
+		ProtocolNumber:    protocolNumber,
+		LabName:           req.LabName,
+		OperatorName:      req.OperatorName,
+		ResponsiblePersonID: req.ResponsiblePersonID,
+		TestDate:          now,
+		Status:            "draft",
+		Note:              req.Note,
 	}
 
 	// Обрабатываем результаты в сервисном слое (бизнес-логика)
