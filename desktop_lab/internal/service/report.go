@@ -486,14 +486,14 @@ type SampleView struct {
 	CollectionPlace string
 	Note            string
 	MaterialName    string
-	
+
 	// Расширенные поля образца
 	PhotoURL     string
-	LengthMM     *float64
-	WidthMM      *float64
-	HeightMM     *float64
+	LengthMM     float64
+	WidthMM      float64
+	HeightMM     float64
 	Shape        string
-	WeightGrams  *float64
+	WeightGrams  float64
 	Color        string
 	BatchNumber  string
 	Manufacturer string
@@ -532,6 +532,20 @@ func (s *ReportService) prepareProtocolTemplateData(
 	dateStr := reportTime.Format("02.01.2006")
 	formattedFullDate := reportTime.Format("02.01.2006 15:04")
 
+	var lengthMM, widthMM, heightMM, weightGrams float64
+	if full.Sample.LengthMM != nil {
+		lengthMM = *full.Sample.LengthMM
+	}
+	if full.Sample.WidthMM != nil {
+		widthMM = *full.Sample.WidthMM
+	}
+	if full.Sample.HeightMM != nil {
+		heightMM = *full.Sample.HeightMM
+	}
+	if full.Sample.WeightGrams != nil {
+		weightGrams = *full.Sample.WeightGrams
+	}
+
 	data := ProtocolTemplateData{
 		Protocol: ProtocolView{
 			Number:   full.Protocol.ProtocolNumber,
@@ -548,11 +562,11 @@ func (s *ReportService) prepareProtocolTemplateData(
 			MaterialName:    full.Material.Name,
 			// Расширенные поля образца
 			PhotoURL:     full.Sample.PhotoURL,
-			LengthMM:     full.Sample.LengthMM,
-			WidthMM:      full.Sample.WidthMM,
-			HeightMM:     full.Sample.HeightMM,
+			LengthMM:     lengthMM,
+			WidthMM:      widthMM,
+			HeightMM:     heightMM,
 			Shape:        full.Sample.Shape,
-			WeightGrams:  full.Sample.WeightGrams,
+			WeightGrams:  weightGrams,
 			Color:        full.Sample.Color,
 			BatchNumber:  full.Sample.BatchNumber,
 			Manufacturer: full.Sample.Manufacturer,
