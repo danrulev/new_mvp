@@ -27,7 +27,13 @@ func (r *ExperimentGroupRepo) Create(ctx context.Context, g models.ExperimentGro
 		zap.String("group_name", g.Name),
 		zap.String("material_id", g.MaterialID),
 		zap.String("project_name", g.ProjectName),
+		zap.String("object_type", g.ObjectType),
+		zap.String("customer", g.Customer),
+		zap.String("contract_number", g.ContractNumber),
+		zap.String("status", g.Status),
+		zap.String("responsible_person_id", g.ResponsiblePersonID),
 		zap.String("location", g.Location),
+		zap.String("description", g.Description),
 	)
 	log.Debug("creating new experiment group")
 
@@ -35,9 +41,9 @@ func (r *ExperimentGroupRepo) Create(ctx context.Context, g models.ExperimentGro
 	nowStr := nowUTC.Format(timeLayout)
 
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO experiment_groups (id, name, material_id, project_name, location, created_at) 
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		g.ID, g.Name, g.MaterialID, g.ProjectName, g.Location, nowStr,
+		`INSERT INTO experiment_groups (id, name, material_id, project_name, object_type, customer, contract_number, status, responsible_person_id, location, description, created_at) 
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		g.ID, g.Name, g.MaterialID, g.ProjectName, g.ObjectType, g.Customer, g.ContractNumber, g.Status, g.ResponsiblePersonID, g.Location, g.Description, nowStr,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create experiment group: %w", err)
@@ -51,12 +57,12 @@ func (r *ExperimentGroupRepo) GetByID(ctx context.Context, id string) (models.Ex
 		zap.String("group_id", id))
 	log.Debug("fetching experiment group by ID")
 
-	var createdAt string
+	var createdAt, updatedAt sql.NullString
 	var g models.ExperimentGroup
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, name, material_id, project_name, location, created_at 
+		`SELECT id, name, material_id, project_name, object_type, customer, contract_number, status, responsible_person_id, location, description, created_at, updated_at 
 		 FROM experiment_groups WHERE id = ?`, id,
-	).Scan(&g.ID, &g.Name, &g.MaterialID, &g.ProjectName, &g.Location, &createdAt)
+	).Scan(&g.ID, &g.Name, &g.MaterialID, &g.ProjectName, &g.ObjectType, &g.Customer, &g.ContractNumber, &g.Status, &g.ResponsiblePersonID, &g.Location, &g.Description, &createdAt, &updatedAt)
 
 	if err == sql.ErrNoRows {
 		log.Debug("group not found")
@@ -66,11 +72,19 @@ func (r *ExperimentGroupRepo) GetByID(ctx context.Context, id string) (models.Ex
 		return models.ExperimentGroup{}, err
 	}
 
-	g.CreatedAt, err = parseTime(createdAt)
+	g.CreatedAt, err = parseTime(createdAt.String)
 	if err != nil {
 		r.log.Warn("failed to parse created_at for group", zap.String("id", id), zap.Error(err))
 		g.CreatedAt = time.Now() // Fallback
 	}
+
+	if updatedAt.Valid {
+		g.UpdatedAt, err = parseTime(updatedAt.String)
+		if err != nil {
+			r.log.Warn("failed to parse updated_at for group", zap.String("id", id), zap.Error(err))
+		}
+	}
+
 	log.Debug("group retrieved successfully",
 		zap.String("group_name", g.Name))
 	return g, nil
@@ -102,6 +116,21 @@ func (r *ExperimentGroupRepo) GetList(ctx context.Context, p models.GroupListFil
 		filterArgs = append(filterArgs, "%"+*p.ProjectName+"%")
 	}
 
+	if p.ObjectType != nil {
+		filterFields = append(filterFields, "object_type LIKE ?")
+		filterArgs = append(filterArgs, "%"+*p.ObjectType+"%")
+	}
+
+	if p.Customer != nil {
+		filterFields = append(filterFields, "customer LIKE ?")
+		filterArgs = append(filterArgs, "%"+*p.Customer+"%")
+	}
+
+	if p.Status != nil {
+		filterFields = append(filterFields, "status = ?")
+		filterArgs = append(filterArgs, *p.Status)
+	}
+
 	if p.Material != nil && *p.Material != "" {
 		filterFields = append(filterFields, "material_id IN (SELECT id FROM materials WHERE name LIKE ?)")
 		filterArgs = append(filterArgs, "%"+*p.Material+"%")
@@ -126,7 +155,7 @@ func (r *ExperimentGroupRepo) GetList(ctx context.Context, p models.GroupListFil
 	selectArgs = append(selectArgs, p.Limit, p.Offset)
 
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, name, material_id, project_name, location, created_at 
+		`SELECT id, name, material_id, project_name, object_type, customer, contract_number, status, responsible_person_id, location, description, created_at, updated_at 
 		 FROM experiment_groups`+whereClause+`
 		 ORDER BY created_at DESC 
 		 LIMIT ? OFFSET ?`, selectArgs...,
@@ -139,18 +168,25 @@ func (r *ExperimentGroupRepo) GetList(ctx context.Context, p models.GroupListFil
 	groups := make([]models.ExperimentGroup, 0, p.Limit)
 	for rows.Next() {
 		var g models.ExperimentGroup
-		var createdAt string
-		err := rows.Scan(&g.ID, &g.Name, &g.MaterialID, &g.ProjectName, &g.Location, &createdAt)
+		var createdAt, updatedAt sql.NullString
+		err := rows.Scan(&g.ID, &g.Name, &g.MaterialID, &g.ProjectName, &g.ObjectType, &g.Customer, &g.ContractNumber, &g.Status, &g.ResponsiblePersonID, &g.Location, &g.Description, &createdAt, &updatedAt)
 		if err != nil {
 			return nil, 0, err
 		}
 
-		parsedTime, err := parseTime(createdAt)
+		parsedTime, err := parseTime(createdAt.String)
 		if err != nil {
 			r.log.Warn("failed to parse created_at in list", zap.Error(err))
 			parsedTime = time.Now()
 		}
 		g.CreatedAt = parsedTime
+
+		if updatedAt.Valid {
+			g.UpdatedAt, err = parseTime(updatedAt.String)
+			if err != nil {
+				r.log.Warn("failed to parse updated_at in list", zap.Error(err))
+			}
+		}
 
 		groups = append(groups, g)
 	}
@@ -228,7 +264,13 @@ func (r *ExperimentGroupRepo) UpdateGroup(ctx context.Context, id string, g mode
 		zap.String("group_id", id),
 		zap.Bool("name_provided", g.Name != nil),
 		zap.Bool("project_name_provided", g.ProjectName != nil),
-		zap.Bool("location_provided", g.Location != nil))
+		zap.Bool("object_type_provided", g.ObjectType != nil),
+		zap.Bool("customer_provided", g.Customer != nil),
+		zap.Bool("contract_number_provided", g.ContractNumber != nil),
+		zap.Bool("status_provided", g.Status != nil),
+		zap.Bool("responsible_person_id_provided", g.ResponsiblePersonID != nil),
+		zap.Bool("location_provided", g.Location != nil),
+		zap.Bool("description_provided", g.Description != nil))
 	log.Debug("preparing dynamic update for group")
 
 	var (
@@ -245,10 +287,40 @@ func (r *ExperimentGroupRepo) UpdateGroup(ctx context.Context, id string, g mode
 		groupUpdateValues = append(groupUpdateValues, *g.ProjectName)
 		log.Debug("including field update", zap.String("field", "project_name"), zap.String("new_value", *g.ProjectName))
 	}
+	if g.ObjectType != nil {
+		groupUpdateFields = append(groupUpdateFields, "object_type = ?")
+		groupUpdateValues = append(groupUpdateValues, *g.ObjectType)
+		log.Debug("including field update", zap.String("field", "object_type"), zap.String("new_value", *g.ObjectType))
+	}
+	if g.Customer != nil {
+		groupUpdateFields = append(groupUpdateFields, "customer = ?")
+		groupUpdateValues = append(groupUpdateValues, *g.Customer)
+		log.Debug("including field update", zap.String("field", "customer"), zap.String("new_value", *g.Customer))
+	}
+	if g.ContractNumber != nil {
+		groupUpdateFields = append(groupUpdateFields, "contract_number = ?")
+		groupUpdateValues = append(groupUpdateValues, *g.ContractNumber)
+		log.Debug("including field update", zap.String("field", "contract_number"), zap.String("new_value", *g.ContractNumber))
+	}
+	if g.Status != nil {
+		groupUpdateFields = append(groupUpdateFields, "status = ?")
+		groupUpdateValues = append(groupUpdateValues, *g.Status)
+		log.Debug("including field update", zap.String("field", "status"), zap.String("new_value", *g.Status))
+	}
+	if g.ResponsiblePersonID != nil {
+		groupUpdateFields = append(groupUpdateFields, "responsible_person_id = ?")
+		groupUpdateValues = append(groupUpdateValues, *g.ResponsiblePersonID)
+		log.Debug("including field update", zap.String("field", "responsible_person_id"), zap.String("new_value", *g.ResponsiblePersonID))
+	}
 	if g.Location != nil {
 		groupUpdateFields = append(groupUpdateFields, "location = ?")
 		groupUpdateValues = append(groupUpdateValues, *g.Location)
 		log.Debug("including field update", zap.String("field", "location"), zap.String("new_value", *g.Location))
+	}
+	if g.Description != nil {
+		groupUpdateFields = append(groupUpdateFields, "description = ?")
+		groupUpdateValues = append(groupUpdateValues, *g.Description)
+		log.Debug("including field update", zap.String("field", "description"), zap.String("new_value", *g.Description))
 	}
 
 	if len(groupUpdateFields) == 0 {

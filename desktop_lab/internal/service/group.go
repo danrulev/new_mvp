@@ -18,22 +18,34 @@ func NewExperimentGroupService(repo ExperimentGroupRepo, log *zap.Logger) *Exper
 	return &ExperimentGroupService{repo: repo, log: log}
 }
 
-func (s *ExperimentGroupService) Create(ctx context.Context, name, projectName, location, materialID string) (models.ExperimentGroup, error) {
+func (s *ExperimentGroupService) Create(ctx context.Context, name, projectName, location, materialID, objectType, customer, contractNumber, status, responsiblePersonID, description string) (models.ExperimentGroup, error) {
 	log := loggerWith(ctx, s.log,
 		zap.String("service_name", "Create"),
 		zap.String("group_name", name),
 		zap.String("project_name", projectName),
 		zap.String("location", location),
 		zap.String("material_id", materialID),
+		zap.String("object_type", objectType),
+		zap.String("customer", customer),
+		zap.String("contract_number", contractNumber),
+		zap.String("status", status),
+		zap.String("responsible_person_id", responsiblePersonID),
+		zap.String("description", description),
 	)
 	log.Debug("creating new experiment group")
 
 	g := models.ExperimentGroup{
-		ID:          uuid.New().String(),
-		Name:        name,
-		ProjectName: projectName,
-		Location:    location,
-		MaterialID:  materialID,
+		ID:                  uuid.New().String(),
+		Name:                name,
+		ProjectName:         projectName,
+		Location:            location,
+		MaterialID:          materialID,
+		ObjectType:          objectType,
+		Customer:            customer,
+		ContractNumber:      contractNumber,
+		Status:              status,
+		ResponsiblePersonID: responsiblePersonID,
+		Description:         description,
 	}
 
 	if err := s.repo.Create(ctx, g); err != nil {
