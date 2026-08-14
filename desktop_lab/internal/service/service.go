@@ -137,6 +137,7 @@ type Services struct {
 	Groups        *ExperimentGroupService
 	Materials     *MaterialService
 	Organizations *OrganizationService
+	Profile       *ProfileService
 	Standards     *StandardService
 	Protocols     *ProtocolService
 	Samples       *SampleService
@@ -153,6 +154,8 @@ func NewServices(
 	userRepo UserRepo,
 	dimRepo DimensionRepo,
 	orgRepo OrganizationRepo,
+	orgTestsRepo OrganizationTestsRepo,
+	orgUserRepo OrganizationUserRepo,
 
 	fontDir string,
 	templatesDir string,
@@ -166,16 +169,20 @@ func NewServices(
 	sample := NewSampleService(sampRepo, log)
 	group := NewExperimentGroupService(groupRepo, log)
 	protocol := NewProtocolService(protRepo, sampRepo, stdRepo, groupRepo, matRepo, log)
+	profile := NewProfileService(userRepo, log)
 	report := NewReportService(protocol, material, fontDir, templatesDir, wkhtmltopdfWindows, log)
 	dimension := NewDimensionService(dimRepo, log)
+	organization := NewOrganizationService(orgRepo, orgUserRepo, orgTestsRepo, log)
 	return &Services{
-		Auth:       auth,
-		Materials:  material,
-		Standards:  standards,
-		Protocols:  protocol,
-		Groups:     group,
-		Samples:    sample,
-		Reports:    report,
-		Dimensions: dimension,
+		Auth:          auth,
+		Materials:     material,
+		Organizations: organization,
+		Standards:     standards,
+		Profile:       profile,
+		Protocols:     protocol,
+		Groups:        group,
+		Samples:       sample,
+		Reports:       report,
+		Dimensions:    dimension,
 	}
 }
