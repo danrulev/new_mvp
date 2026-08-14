@@ -13,7 +13,7 @@ import (
 func (h *Handler) permissionMiddleware(requiredPermissions ...models.Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Получаем роль пользователя из контекста
-		roleRaw, exists := c.Get(roleKey)
+		roleRaw, exists := c.Get(models.RoleKey)
 		if !exists {
 			h.newErrorResponse(c, http.StatusUnauthorized, "permission denied", "role not found in context", nil)
 			c.Abort()
@@ -50,7 +50,7 @@ func (h *Handler) permissionMiddleware(requiredPermissions ...models.Permission)
 func (h *Handler) requireRoleMiddleware(allowedRoles ...models.Role) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Получаем роль пользователя из контекста
-		roleRaw, exists := c.Get(roleKey)
+		roleRaw, exists := c.Get(models.RoleKey)
 		if !exists {
 			h.newErrorResponse(c, http.StatusUnauthorized, "access denied", "role not found in context", nil)
 			c.Abort()
@@ -93,7 +93,7 @@ func rolesToStrings(roles []models.Role) []string {
 
 // getRoleFromContext извлекает роль из контекста Gin
 func getRoleFromContext(c *gin.Context) (models.Role, error) {
-	roleRaw, exists := c.Get(roleKey)
+	roleRaw, exists := c.Get(models.RoleKey)
 	if !exists {
 		return "", models.ErrNotFound
 	}

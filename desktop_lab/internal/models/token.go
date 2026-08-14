@@ -45,6 +45,7 @@ func (t TimeString) ToTime() time.Time {
 type Token struct {
 	ID        string     `db:"id"`
 	UserID    string     `db:"user_id"`
+	Role      Role       `db:"role"`
 	ExpiresAt TimeString `db:"expires_at"` // было time.Time
 	CreatedAt TimeString `db:"created_at"` // было time.Time
 }

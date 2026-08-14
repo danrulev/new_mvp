@@ -265,6 +265,7 @@ CREATE INDEX IF NOT EXISTS idx_users_id ON users(id);
 CREATE TABLE IF NOT EXISTS tokens (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
+    role TEXT NOT NULL,
     expires_at TEXT DEFAULT (datetime('now')),
     created_at TEXT DEFAULT (datetime('now')) 
 );

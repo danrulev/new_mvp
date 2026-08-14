@@ -85,7 +85,13 @@ func (s *AuthService) SignIn(ctx context.Context, req models.SignInRequest) (mod
 		return models.TokenResponse{}, err
 	}
 
-	token, err := s.generateAndSaveTokens(ctx, userID)
+	user, err := s.user.GetByID(ctx, userID)
+	if err != nil {
+		log.Error("error fetching user", zap.Error(err))
+		return models.TokenResponse{}, err
+	}
+
+	token, err := s.generateAndSaveTokens(ctx, userID, user.Role)
 	if err != nil {
 		log.Error("failed to generate or save tokens",
 			zap.String("user_id", userID),
@@ -114,8 +120,8 @@ func (a *AuthService) Logout(ctx context.Context, tokenID string) error {
 	return nil
 }
 
-func (a *AuthService) generateAndSaveTokens(ctx context.Context, userID string) (models.TokenResponse, error) {
-	accessToken, refreshToken, err := a.generateTokens(userID)
+func (a *AuthService) generateAndSaveTokens(ctx context.Context, userID string, role models.Role) (models.TokenResponse, error) {
+	accessToken, refreshToken, err := a.generateTokens(userID, role)
 	if err != nil {
 		return models.TokenResponse{}, err
 	}
@@ -130,17 +136,17 @@ func (a *AuthService) generateAndSaveTokens(ctx context.Context, userID string) 
 	}, nil
 }
 
-func (a *AuthService) generateTokens(userID string) (string, models.Token, error) {
-	accessToken, err := a.generateAccessToken(userID)
+func (a *AuthService) generateTokens(userID string, role models.Role) (string, models.Token, error) {
+	accessToken, err := a.generateAccessToken(userID, role)
 	if err != nil {
 		return "", models.Token{}, err
 	}
 
-	refreshToken := a.generateRefreshToken(userID)
+	refreshToken := a.generateRefreshToken(userID, role)
 	return accessToken, refreshToken, nil
 }
 
-func (a *AuthService) generateAccessToken(userID string) (string, error) {
+func (a *AuthService) generateAccessToken(userID string, role models.Role) (string, error) {
 	tkn := jwt.New()
 	if err := tkn.Set(jwt.SubjectKey, userID); err != nil {
 		return "", fmt.Errorf("failed to set subject in token: %w", err)
@@ -154,6 +160,10 @@ func (a *AuthService) generateAccessToken(userID string) (string, error) {
 		return "", fmt.Errorf("failed to set issued at in token: %w", err)
 	}
 
+	if err := tkn.Set(models.RoleKey, role); err != nil {
+		return "", fmt.Errorf("failed to set role in token: %w", err)
+	}
+
 	accessToken, err := jwt.Sign(tkn, jwt.WithKey(jwa.HS256, []byte(a.cfg.JwtSecret)))
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %s", err)
@@ -162,41 +172,50 @@ func (a *AuthService) generateAccessToken(userID string) (string, error) {
 	return string(accessToken), nil
 }
 
-func (a *AuthService) generateRefreshToken(userID string) models.Token {
+func (a *AuthService) generateRefreshToken(userID string, role models.Role) models.Token {
 	return models.Token{
 		ID:        uuid.New().String(),
 		UserID:    userID,
+		Role:      role,
 		ExpiresAt: models.NewTimeString(time.Now().Add(a.cfg.RefreshTokenTTL)),
 	}
 }
 
-func (a *AuthService) ParseToken(ctx context.Context, accessToken string) (string, error) {
+// Изменили сигнатуру: теперь возвращаем ещё и role
+func (a *AuthService) ParseToken(ctx context.Context, accessToken string) (string, string, error) {
 	log := loggerWith(ctx, a.log, zap.String("service_name", "ParseToken"))
 
 	log.Debug("parsing token")
 	verified, err := jwt.Parse([]byte(accessToken), jwt.WithKey(jwa.HS256, []byte(a.cfg.JwtSecret)))
 	if err != nil {
-		log.Debug("failed to parse or verify access token",
-			zap.Error(err),
-		)
-		return "", fmt.Errorf("invalid token")
+		log.Debug("failed to parse or verify access token", zap.Error(err))
+		return "", "", fmt.Errorf("invalid token")
 	}
 
 	subject, ok := verified.Get(jwt.SubjectKey)
 	if !ok {
 		log.Debug("token missing 'sub' claim")
-		return "", fmt.Errorf("invalid token")
+		return "", "", fmt.Errorf("invalid token")
 	}
 
 	userID, ok := subject.(string)
 	if !ok {
 		log.Debug("token 'sub' claim is not a string")
-		return "", fmt.Errorf("invalid token")
+		return "", "", fmt.Errorf("invalid token")
 	}
 
-	log.Debug("token verified", zap.String("user_id", userID))
+	var role string
+	if roleClaim, ok := verified.Get("role"); ok {
+		if r, ok := roleClaim.(string); ok {
+			role = r
+		} else {
+			log.Debug("token 'role' claim is not a string")
+		}
+	}
 
-	return userID, nil
+	log.Debug("token verified", zap.String("user_id", userID), zap.String("role", role))
+
+	return userID, role, nil
 }
 
 func (a *AuthService) RefreshToken(ctx context.Context, tokenID string) (models.TokenResponse, error) {
@@ -232,7 +251,7 @@ func (a *AuthService) RefreshToken(ctx context.Context, tokenID string) (models.
 		return models.TokenResponse{}, fmt.Errorf("token expired")
 	}
 
-	token, err := a.generateAndSaveTokens(ctx, tokenDB.UserID)
+	token, err := a.generateAndSaveTokens(ctx, tokenDB.UserID, tokenDB.Role)
 	if err != nil {
 		log.Error("failed to generate new tokens during refresh",
 			zap.String("user_id", tokenDB.UserID),

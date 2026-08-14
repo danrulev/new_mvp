@@ -2,7 +2,9 @@ package mysql_repo
 
 import (
 	"context"
+	"database/sql"
 	"desktop_lab/internal/models"
+	"errors"
 	"fmt"
 	"time"
 
@@ -34,8 +36,8 @@ func (r *TokenRepo) Create(ctx context.Context, token models.Token) error {
 	expiresStr := token.ExpiresAt.ToTime().Format(timeLayout)
 
 	_, err := r.db.ExecContext(ctx,
-		"INSERT INTO tokens (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)",
-		token.ID, token.UserID, expiresStr, nowStr,
+		"INSERT INTO tokens (id, user_id, role, expires_at, created_at) VALUES (?, ?, ?, ?, ?)",
+		token.ID, token.UserID, token.Role, expiresStr, nowStr,
 	)
 	if err != nil {
 		log.Error("failed to create token", zap.Error(err))
@@ -56,9 +58,12 @@ func (r *TokenRepo) TokenByID(ctx context.Context, id string) (models.Token, err
 
 	var token models.Token
 	err := r.db.GetContext(ctx, &token,
-		"SELECT id, user_id, expires_at, created_at FROM tokens WHERE id = ?", id)
+		"SELECT id, user_id, role, expires_at, created_at FROM tokens WHERE id = ?", id)
 	if err != nil {
-		log.Debug("token not found", zap.Error(err))
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.Token{}, models.ErrNotFound // ✅ Возвращаем правильную ошибку
+		}
+		log.Error("failed to scan token", zap.Error(err))
 		return models.Token{}, err
 	}
 

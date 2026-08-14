@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	contextkeys "desktop_lab/internal/contextKey"
+	"desktop_lab/internal/models"
 	"desktop_lab/pkg/ratelimiter"
 	"errors"
 	"fmt"
@@ -17,16 +18,11 @@ import (
 
 // Константы для контекста и cookie.
 const (
-	userIDKey      = "user_id"
-	roleKey        = "role"
-	adminKey       = "admin"
-	userKey        = "user"
-	refreshToken   = "refresh_token"
-	accessToken    = "access_token"
-	authHeader     = "Authorization"
-	requestHeader  = "X-Request-ID"
-	requestContext = "request_id"
-	requestIDKey   = "request_id"
+	userIDKey    = "user_id"
+	refreshToken = "refresh_token"
+	accessToken  = "access_token"
+	authHeader   = "Authorization"
+	requestIDKey = "request_id"
 )
 
 // rateLimitMiddleware создает middleware для ограничения частоты запросов.
@@ -148,7 +144,7 @@ func (h *Handler) authMiddleware(c *gin.Context) {
 		return
 	}
 
-	userID, err := h.auth.ParseToken(c.Request.Context(), accessToken)
+	userID, role, err := h.auth.ParseToken(c.Request.Context(), accessToken)
 	if err != nil {
 		// Для API запросов возвращаем JSON ошибку вместо редиректа
 		if c.GetHeader("Accept") == "application/json" || strings.HasPrefix(c.Request.URL.Path, "/api/") {
@@ -164,33 +160,12 @@ func (h *Handler) authMiddleware(c *gin.Context) {
 		return
 	}
 
-	// Загружаем информацию о пользователе из БД для получения роли
-	user, err := h.auth.GetUserByID(c.Request.Context(), userID)
-	if err != nil {
-		h.log.Error("failed to load user role",
-			zap.String("user_id", userID),
-			zap.Error(err),
-		)
-		// Для API запросов возвращаем JSON ошибку вместо редиректа
-		if c.GetHeader("Accept") == "application/json" || strings.HasPrefix(c.Request.URL.Path, "/api/") {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error":   "unauthorized",
-				"message": "Пользователь не найден",
-			})
-			c.Abort()
-			return
-		}
-		c.Redirect(http.StatusSeeOther, "/api/auth/login")
-		c.Abort()
-		return
-	}
-
 	// Сохраняем userID и роль в контексте
 	c.Set(userIDKey, userID)
-	c.Set(roleKey, user.Role)
+	c.Set(models.RoleKey, models.Role(role))
 
 	// Также добавляем роль в контекст запроса для сервисов
-	ctx := context.WithValue(c.Request.Context(), contextkeys.RoleKey, user.Role)
+	ctx := context.WithValue(c.Request.Context(), contextkeys.RoleKey, models.Role(role))
 	c.Request = c.Request.WithContext(ctx)
 
 	c.Next()

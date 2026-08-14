@@ -11,6 +11,7 @@ import (
 func (h *Handler) initProfileRoutes(api *gin.RouterGroup) {
 	h.log.Debug("init profile routes")
 	profile := api.Group("/profile")
+	profile.Use(h.authMiddleware)
 	{
 		profile.GET("/", h.getProfile)
 		profile.PUT("/", h.updateProfile)
@@ -18,7 +19,11 @@ func (h *Handler) initProfileRoutes(api *gin.RouterGroup) {
 	}
 
 	// Endpoint для получения списка активных сотрудников
-	api.GET("/employees", h.permissionMiddleware(models.PermUserRead), h.getEmployeesList)
+	api.GET("/employees",
+		h.authMiddleware,
+		h.permissionMiddleware(models.PermUserRead),
+		h.getEmployeesList,
+	)
 }
 
 func (h *Handler) getProfile(c *gin.Context) {
@@ -70,7 +75,7 @@ func (h *Handler) updateProfile(c *gin.Context) {
 func (h *Handler) deleteProfile(c *gin.Context) {
 	userID, err := getUserID(c)
 	if err != nil {
-		h.newErrorResponse(c, http.StatusUnauthorized, "update profile", "unauthorized", err)
+		h.newErrorResponse(c, http.StatusUnauthorized, "delete profile", "unauthorized", err)
 		return
 	}
 
@@ -81,7 +86,6 @@ func (h *Handler) deleteProfile(c *gin.Context) {
 	}
 
 	newSuccessResponse(c, http.StatusOK, "message", "profile deleted")
-	c.JSON(http.StatusOK, "user deleted")
 }
 
 // getEmployeesList возвращает список всех активных сотрудников

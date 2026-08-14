@@ -77,13 +77,13 @@ func (h *Handler) signIn(c *gin.Context) {
 }
 
 func (h *Handler) logout(c *gin.Context) {
-	tokenID, err := getAccessToken(c)
+	refreshTknID, err := getRefreshToken(c)
 	if err != nil {
 		h.newErrorResponse(c, http.StatusUnauthorized, "logout", "invalid token", err)
 		return
 	}
 
-	if err := h.auth.Logout(c.Request.Context(), tokenID); err != nil {
+	if err := h.auth.Logout(c.Request.Context(), refreshTknID); err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "logout", "service error", err)
 		return
 	}

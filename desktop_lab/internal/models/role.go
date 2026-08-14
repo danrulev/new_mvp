@@ -4,6 +4,7 @@ package models
 type Role string
 
 const (
+	RoleKey string = "role"
 	// RoleAdmin - администратор системы (полный доступ)
 	RoleAdmin Role = "admin"
 	// RoleEngineer - инженер (создание и редактирование протоколов, стандартов)
@@ -34,56 +35,56 @@ type Permission string
 
 const (
 	// Пользователи
-	PermUserRead    Permission = "user:read"
-	PermUserCreate  Permission = "user:create"
-	PermUserUpdate  Permission = "user:update"
-	PermUserDelete  Permission = "user:delete"
+	PermUserRead   Permission = "user:read"
+	PermUserCreate Permission = "user:create"
+	PermUserUpdate Permission = "user:update"
+	PermUserDelete Permission = "user:delete"
 
 	// Протоколы
-	PermProtocolRead    Permission = "protocol:read"
-	PermProtocolCreate  Permission = "protocol:create"
-	PermProtocolUpdate  Permission = "protocol:update"
-	PermProtocolDelete  Permission = "protocol:delete"
+	PermProtocolRead   Permission = "protocol:read"
+	PermProtocolCreate Permission = "protocol:create"
+	PermProtocolUpdate Permission = "protocol:update"
+	PermProtocolDelete Permission = "protocol:delete"
 
 	// Стандарты
-	PermStandardRead    Permission = "standard:read"
-	PermStandardCreate  Permission = "standard:create"
-	PermStandardUpdate  Permission = "standard:update"
-	PermStandardDelete  Permission = "standard:delete"
+	PermStandardRead   Permission = "standard:read"
+	PermStandardCreate Permission = "standard:create"
+	PermStandardUpdate Permission = "standard:update"
+	PermStandardDelete Permission = "standard:delete"
 
 	// Проба
-	PermSampleRead    Permission = "sample:read"
-	PermSampleCreate  Permission = "sample:create"
-	PermSampleUpdate  Permission = "sample:update"
-	PermSampleDelete  Permission = "sample:delete"
+	PermSampleRead   Permission = "sample:read"
+	PermSampleCreate Permission = "sample:create"
+	PermSampleUpdate Permission = "sample:update"
+	PermSampleDelete Permission = "sample:delete"
 
 	// Группы экспериментов
-	PermGroupRead    Permission = "group:read"
-	PermGroupCreate  Permission = "group:create"
-	PermGroupUpdate  Permission = "group:update"
-	PermGroupDelete  Permission = "group:delete"
+	PermGroupRead   Permission = "group:read"
+	PermGroupCreate Permission = "group:create"
+	PermGroupUpdate Permission = "group:update"
+	PermGroupDelete Permission = "group:delete"
 
 	// Материалы
-	PermMaterialRead    Permission = "material:read"
-	PermMaterialCreate  Permission = "material:create"
-	PermMaterialUpdate  Permission = "material:update"
-	PermMaterialDelete  Permission = "material:delete"
+	PermMaterialRead   Permission = "material:read"
+	PermMaterialCreate Permission = "material:create"
+	PermMaterialUpdate Permission = "material:update"
+	PermMaterialDelete Permission = "material:delete"
 
 	// Измерения
-	PermDimensionRead    Permission = "dimension:read"
-	PermDimensionCreate  Permission = "dimension:create"
-	PermDimensionUpdate  Permission = "dimension:update"
-	PermDimensionDelete  Permission = "dimension:delete"
+	PermDimensionRead   Permission = "dimension:read"
+	PermDimensionCreate Permission = "dimension:create"
+	PermDimensionUpdate Permission = "dimension:update"
+	PermDimensionDelete Permission = "dimension:delete"
 
 	// Отчеты
 	PermReportRead   Permission = "report:read"
 	PermReportCreate Permission = "report:create"
 
 	// Организация
-	PermOrganizationRead    Permission = "organization:read"
-	PermOrganizationCreate  Permission = "organization:create"
-	PermOrganizationUpdate  Permission = "organization:update"
-	PermOrganizationDelete  Permission = "organization:delete"
+	PermOrganizationRead   Permission = "organization:read"
+	PermOrganizationCreate Permission = "organization:create"
+	PermOrganizationUpdate Permission = "organization:update"
+	PermOrganizationDelete Permission = "organization:delete"
 )
 
 // RolePermissions определяет разрешения для каждой роли
