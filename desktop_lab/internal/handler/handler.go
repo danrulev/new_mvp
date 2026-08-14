@@ -102,6 +102,7 @@ func (h *Handler) Init() *gin.Engine {
 	h.initReportRoutes(api)
 	h.initDBRoutes(api)
 	h.initOrganizationRoutes(api)
+	h.initProfileRoutes(api)
 
 	// Frontend routes (SPA)
 	router.NoRoute(h.serveFrontend)
