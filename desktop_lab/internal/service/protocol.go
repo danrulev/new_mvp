@@ -90,7 +90,7 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 		CollectionDate:  *req.Sample.CollectionDate,
 		ContextParams:   req.Sample.ContextParams,
 		Note:            req.Sample.Note,
-		
+
 		// Расширенные поля образца
 		PhotoURL:     req.Sample.PhotoURL,
 		LengthMM:     req.Sample.LengthMM,
@@ -104,15 +104,14 @@ func (s *ProtocolService) CreateProtocolWithSample(ctx context.Context, req mode
 	}
 
 	protocol := models.Protocol{
-		ID:                protocolID,
-		SampleID:          sampleID,
-		ProtocolNumber:    protocolNumber,
-		LabName:           req.LabName,
-		OperatorName:      req.OperatorName,
-		ResponsiblePersonID: req.ResponsiblePersonID,
-		TestDate:          now,
-		Status:            "draft",
-		Note:              req.Note,
+		ID:             protocolID,
+		SampleID:       sampleID,
+		ProtocolNumber: protocolNumber,
+		LabName:        req.LabName,
+		OperatorName:   req.OperatorName,
+		TestDate:       now,
+		Status:         "draft",
+		Note:           req.Note,
 	}
 
 	// Обрабатываем результаты в сервисном слое (бизнес-логика)
