@@ -66,7 +66,9 @@
           </div>
           <div class="form-group">
             <label>Материал</label>
-            <input type="text" id="filterMaterial" placeholder="Название материала...">
+            <select id="filterMaterial">
+              <option value="">Все материалы</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Статус</label>
@@ -81,6 +83,12 @@
           <div class="form-group">
             <label>Место</label>
             <input type="text" id="filterLocation" placeholder="Место проведения...">
+          </div>
+          <div class="form-group">
+            <label>Ответственный</label>
+            <select id="filterResponsible">
+              <option value="">Все сотрудники</option>
+            </select>
           </div>
         </div>
       </div>
@@ -97,12 +105,13 @@
                 <th>Материал</th>
                 <th>Статус</th>
                 <th>Заказчик</th>
+                <th>Ответственный</th>
                 <th>Создана</th>
                 <th data-requires-role="technician,engineer,admin">Действия</th>
               </tr>
             </thead>
             <tbody id="groupsTable">
-              <tr><td colspan="8" class="text-center">Загрузка...</td></tr>
+              <tr><td colspan="9" class="text-center">Загрузка...</td></tr>
             </tbody>
           </table>
         </div>
@@ -157,7 +166,9 @@
         </div>
         <div class="form-group">
           <label>Ответственный</label>
-          <input type="text" id="newGroupResponsiblePerson" placeholder="ID или имя ответственного">
+          <select id="newGroupResponsiblePerson">
+            <option value="">-- Загрузка... --</option>
+          </select>
         </div>
         <div class="form-group">
           <label>Место</label>
@@ -264,7 +275,9 @@
         </div>
         <div class="form-group">
           <label>Ответственный</label>
-          <input type="text" id="editGroupResponsiblePerson">
+          <select id="editGroupResponsiblePerson">
+            <option value="">-- Загрузка... --</option>
+          </select>
         </div>
         <div class="form-group">
           <label>Место</label>
