@@ -3,6 +3,20 @@
 const AUTH_STORAGE_KEY = 'access_token';
 const USER_INFO_KEY = 'user_info';
 
+// Защита токена от удаления другими вкладками
+let isLoggingOut = false;
+
+// Слушаем изменения в localStorage для синхронизации между вкладками
+window.addEventListener('storage', (event) => {
+  if (event.key === AUTH_STORAGE_KEY && !isLoggingOut) {
+    // Токен был изменён другой вкладкой
+    if (!event.newValue) {
+      // Токен удалён - возможно пользователь вышел в другой вкладке
+      console.log('Token removed by another tab');
+    }
+  }
+});
+
 export const auth = {
   /**
    * Проверяет, авторизован ли пользователь
@@ -29,8 +43,10 @@ export const auth = {
    * Удаляет токен (выход)
    */
   logout() {
+    isLoggingOut = true;
     localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem(USER_INFO_KEY);
+    isLoggingOut = false;
   },
 
   /**
@@ -216,12 +232,16 @@ export const auth = {
       if (token) {
         await fetch('/api/v1/auth/logout', {
           headers: { 'Authorization': `Bearer ${token}` }
-        });
+        }).catch(() => {}); // Игнорируем ошибки сети при выходе
       }
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      this.logout();
+      // Очищаем локальное хранилище
+      isLoggingOut = true;
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      localStorage.removeItem(USER_INFO_KEY);
+      isLoggingOut = false;
       window.location.href = '/login.html';
     }
   },

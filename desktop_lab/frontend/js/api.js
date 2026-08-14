@@ -8,6 +8,9 @@ function getAuthToken() {
   return localStorage.getItem('access_token');
 }
 
+// Флаг для предотвращения рекурсивного удаления токена
+let isRemovingToken = false;
+
 async function apiRequest(endpoint, options = {}) {
   try {
     const token = getAuthToken();
@@ -26,8 +29,12 @@ async function apiRequest(endpoint, options = {}) {
     // Обрабатываем 401 Unauthorized
     if (res.status === 401) {
       // Токен недействителен, пробуем обновить или разлогиниваемся
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user_info');
+      if (!isRemovingToken) {
+        isRemovingToken = true;
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user_info');
+        isRemovingToken = false;
+      }
       
       if (!window.location.pathname.includes('login.html')) {
         window.location.href = '/login.html';
