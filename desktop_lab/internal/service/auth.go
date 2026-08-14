@@ -166,7 +166,7 @@ func (a *AuthService) generateRefreshToken(userID string) models.Token {
 	return models.Token{
 		ID:        uuid.New().String(),
 		UserID:    userID,
-		ExpiresAt: time.Now().Add(a.cfg.RefreshTokenTTL),
+		ExpiresAt: models.TimeString(time.Now().Add(a.cfg.RefreshTokenTTL)),
 	}
 }
 
@@ -224,10 +224,10 @@ func (a *AuthService) RefreshToken(ctx context.Context, tokenID string) (models.
 		return models.TokenResponse{}, err
 	}
 
-	if tokenDB.ExpiresAt.Before(time.Now()) {
+	if tokenDB.ExpiresAt.ToTime().Before(time.Now()) {
 		log.Warn("attempt to refresh expired token",
 			zap.String("token_id", tokenID),
-			zap.Time("expires_at", tokenDB.ExpiresAt),
+			zap.Time("expires_at", tokenDB.ExpiresAt.ToTime()),
 		)
 		return models.TokenResponse{}, fmt.Errorf("token expired")
 	}
