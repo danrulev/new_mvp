@@ -45,11 +45,15 @@ func (t TimeString) ToTime() time.Time {
 type Token struct {
 	ID        string     `db:"id"`
 	UserID    string     `db:"user_id"`
-	ExpiresAt TimeString `db:"expires_at"`
-	CreatedAt TimeString `db:"created_at"`
+	ExpiresAt TimeString `db:"expires_at"` // было time.Time
+	CreatedAt TimeString `db:"created_at"` // было time.Time
 }
 
 type TokenResponse struct {
 	AccessToken  string
 	RefreshToken string
+}
+
+func NewTimeString(t time.Time) TimeString {
+	return TimeString(t)
 }

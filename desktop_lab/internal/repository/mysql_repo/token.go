@@ -26,12 +26,12 @@ func (r *TokenRepo) Create(ctx context.Context, token models.Token) error {
 
 	log := logQuery(ctx, r.log, "INSERT", "tokens",
 		zap.String("user_id", token.UserID),
-		zap.Time("expires_at", token.ExpiresAt),
+		zap.Time("expires_at", token.ExpiresAt.ToTime()),
 	)
 	log.Debug("creating new token")
 
 	nowStr := time.Now().UTC().Format(timeLayout)
-	expiresStr := token.ExpiresAt.Format(timeLayout)
+	expiresStr := token.ExpiresAt.ToTime().Format(timeLayout)
 
 	_, err := r.db.ExecContext(ctx,
 		"INSERT INTO tokens (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)",

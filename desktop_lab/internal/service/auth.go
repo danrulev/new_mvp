@@ -166,7 +166,7 @@ func (a *AuthService) generateRefreshToken(userID string) models.Token {
 	return models.Token{
 		ID:        uuid.New().String(),
 		UserID:    userID,
-		ExpiresAt: models.TimeString(time.Now().Add(a.cfg.RefreshTokenTTL)),
+		ExpiresAt: models.NewTimeString(time.Now().Add(a.cfg.RefreshTokenTTL)),
 	}
 }
 
