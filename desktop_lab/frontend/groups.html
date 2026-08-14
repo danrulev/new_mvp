@@ -47,7 +47,7 @@
       </header>
 
       <div class="card">
-        <div class="form-grid">
+        <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
           <div class="form-group">
             <label>Поиск по названию</label>
             <input type="text" id="groupSearchInput" placeholder="Название группы...">
@@ -57,8 +57,30 @@
             <input type="text" id="filterProject" placeholder="Название проекта...">
           </div>
           <div class="form-group">
+            <label>Тип объекта</label>
+            <input type="text" id="filterObjectType" placeholder="Тип объекта...">
+          </div>
+          <div class="form-group">
+            <label>Заказчик</label>
+            <input type="text" id="filterCustomer" placeholder="Название заказчика...">
+          </div>
+          <div class="form-group">
             <label>Материал</label>
             <input type="text" id="filterMaterial" placeholder="Название материала...">
+          </div>
+          <div class="form-group">
+            <label>Статус</label>
+            <select id="filterStatus">
+              <option value="">Все статусы</option>
+              <option value="draft">Черновик</option>
+              <option value="in_progress">В работе</option>
+              <option value="completed">Завершено</option>
+              <option value="archived">Архивировано</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Место</label>
+            <input type="text" id="filterLocation" placeholder="Место проведения...">
           </div>
         </div>
       </div>
