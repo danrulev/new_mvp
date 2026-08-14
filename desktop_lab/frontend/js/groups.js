@@ -4,12 +4,14 @@ import { formatDate, showToast, showConfirm } from './utils.js';
 import { initNavigation } from './navigation.js';
 
 let materials = [];
+let employees = [];
 let currentPage = 1;
 const limit = 20;
 
 document.addEventListener('DOMContentLoaded', async () => {
   initNavigation();
   await loadMaterials();
+  await loadEmployees();
   await loadGroups();
   setupGroupFilters();
 });
@@ -18,17 +20,66 @@ async function loadMaterials() {
   try {
     materials = await api.getMaterials();
     const sel = document.getElementById('newGroupMaterial');
-    if (!sel) return;
+    const filterSel = document.getElementById('filterMaterial');
     
-    sel.innerHTML = '<option value="">-- Выберите материал --</option>';
-    materials.forEach(m => {
-      sel.innerHTML += `<option value="${m.id}">${m.name}</option>`;
-    });
+    if (sel) {
+      sel.innerHTML = '<option value="">-- Выберите материал --</option>';
+      materials.forEach(m => {
+        sel.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+      });
+    }
     
-    // УДАЛЕНО: попытка заполнить текстовый input тегами <option>
+    if (filterSel) {
+      filterSel.innerHTML = '<option value="">Все материалы</option>';
+      materials.forEach(m => {
+        filterSel.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+      });
+    }
   } catch(e) {
     console.error('Load materials error:', e);
   }
+}
+
+async function loadEmployees() {
+  try {
+    employees = await api.getEmployees();
+    
+    // Заполняем select ответственных в модальном окне создания
+    const createSel = document.getElementById('newGroupResponsiblePerson');
+    if (createSel) {
+      createSel.innerHTML = '<option value="">-- Не назначен --</option>';
+      employees.forEach(emp => {
+        createSel.innerHTML += `<option value="${emp.id}">${emp.name || emp.email}</option>`;
+      });
+    }
+    
+    // Заполняем select ответственных в модальном окне редактирования
+    const editSel = document.getElementById('editGroupResponsiblePerson');
+    if (editSel) {
+      editSel.innerHTML = '<option value="">-- Не назначен --</option>';
+      employees.forEach(emp => {
+        editSel.innerHTML += `<option value="${emp.id}">${emp.name || emp.email}</option>`;
+      });
+    }
+    
+    // Заполняем фильтр по ответственным
+    const filterSel = document.getElementById('filterResponsible');
+    if (filterSel) {
+      filterSel.innerHTML = '<option value="">Все сотрудники</option>';
+      employees.forEach(emp => {
+        filterSel.innerHTML += `<option value="${emp.id}">${emp.name || emp.email}</option>`;
+      });
+    }
+  } catch(e) {
+    console.error('Load employees error:', e);
+  }
+}
+
+// Вспомогательная функция для получения имени сотрудника по ID
+function getEmployeeName(id) {
+  if (!id) return '—';
+  const emp = employees.find(e => e.id === id);
+  return emp ? (emp.name || emp.email) : id;
 }
 
 // === FILTERS & PAGINATION ===
@@ -40,6 +91,7 @@ function setupGroupFilters() {
   const filterMaterial = document.getElementById('filterMaterial');
   const filterStatus = document.getElementById('filterStatus');
   const filterLocation = document.getElementById('filterLocation');
+  const filterResponsible = document.getElementById('filterResponsible');
   const prevPage = document.getElementById('prevPage');
   const nextPage = document.getElementById('nextPage');
 
@@ -64,6 +116,11 @@ function setupGroupFilters() {
   }, 300));
 
   // Для select используем 'change' событие
+  if (filterMaterial) filterMaterial.addEventListener('change', () => {
+    currentPage = 1;
+    loadGroups();
+  });
+
   if (filterStatus) filterStatus.addEventListener('change', () => {
     currentPage = 1;
     loadGroups();
@@ -73,6 +130,11 @@ function setupGroupFilters() {
     currentPage = 1;
     loadGroups();
   }, 300));
+
+  if (filterResponsible) filterResponsible.addEventListener('change', () => {
+    currentPage = 1;
+    loadGroups();
+  });
 
   if (prevPage) prevPage.addEventListener('click', () => {
     if (currentPage > 1) { currentPage--; loadGroups(); }
@@ -96,7 +158,7 @@ async function loadGroups() {
   const offset = (currentPage - 1) * limit;
   const table = document.getElementById('groupsTable');
   if (!table) return;
-  table.innerHTML = '<tr><td colspan="8" class="text-center">Загрузка...</td></tr>';
+  table.innerHTML = '<tr><td colspan="9" class="text-center">Загрузка...</td></tr>';
   try {
     const searchQuery = document.getElementById('groupSearchInput')?.value || '';
     const projectQuery = document.getElementById('filterProject')?.value || '';
@@ -105,6 +167,7 @@ async function loadGroups() {
     const materialQuery = document.getElementById('filterMaterial')?.value || '';
     const statusQuery = document.getElementById('filterStatus')?.value || '';
     const locationQuery = document.getElementById('filterLocation')?.value || '';
+    const responsibleQuery = document.getElementById('filterResponsible')?.value || '';
 
     // Формируем query-параметры для фильтрации
     const params = new URLSearchParams();
@@ -115,15 +178,16 @@ async function loadGroups() {
     if (projectQuery) params.set('project_name', projectQuery);
     if (objectTypeQuery) params.set('object_type', objectTypeQuery);
     if (customerQuery) params.set('customer', customerQuery);
-    if (materialQuery) params.set('material', materialQuery);
+    if (materialQuery) params.set('material_id', materialQuery);
     if (statusQuery) params.set('status', statusQuery);
     if (locationQuery) params.set('location', locationQuery);
+    if (responsibleQuery) params.set('responsible_person_id', responsibleQuery);
 
     const res = await api.getGroups(params.toString());
     renderGroupsTable(res.items || [], res.meta);
   } catch(e) {
     console.error('Load groups error:', e);
-    table.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Ошибка загрузки</td></tr>';
+    table.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Ошибка загрузки</td></tr>';
   }
 }
 
@@ -134,13 +198,14 @@ function renderGroupsTable(groups, meta) {
   updatePagination(meta);
 
   if (!groups || !groups.length) {
-    table.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Нет групп</td></tr>';
+    table.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Нет групп</td></tr>';
     return;
   }
 
   let html = '';
   groups.forEach(g => {
     const mat = materials.find(m => m.id === g.material_id);
+    const responsibleName = getEmployeeName(g.responsible_person_id);
     const statusClass = g.status === 'draft' ? 'badge-warning' : (g.status === 'completed' ? 'badge-success' : 'badge-info');
     const statusLabel = g.status === 'draft' ? 'Черновик' : (g.status === 'completed' ? 'Завершено' : (g.status === 'in_progress' ? 'В работе' : g.status));
     html += `
@@ -151,6 +216,7 @@ function renderGroupsTable(groups, meta) {
         <td>${mat?.name || '—'}</td>
         <td><span class="badge ${statusClass}">${statusLabel}</span></td>
         <td>${g.customer || '—'}</td>
+        <td>${responsibleName}</td>
         <td>${formatDate(g.created_at)}</td>
         <td>
           <div class="actions">
@@ -247,7 +313,7 @@ window.viewGroup = async function(id) {
       <div class="info-item"><span class="info-label">Заказчик</span><span class="info-value">${group.customer || '—'}</span></div>
       <div class="info-item"><span class="info-label">Контракт</span><span class="info-value">${group.contract_number || '—'}</span></div>
       <div class="info-item"><span class="info-label">Статус</span><span class="info-value"><span class="badge ${group.status === 'draft' ? 'badge-warning' : 'badge-success'}">${statusLabel}</span></span></div>
-      <div class="info-item"><span class="info-label">Ответственный</span><span class="info-value">${group.responsible_person_id || '—'}</span></div>
+      <div class="info-item"><span class="info-label">Ответственный</span><span class="info-value">${getEmployeeName(group.responsible_person_id)}</span></div>
       <div class="info-item"><span class="info-label">Место</span><span class="info-value">${group.location || '—'}</span></div>
       <div class="info-item"><span class="info-label">Материал</span><span class="info-value">${mat?.name || '—'}</span></div>
       <div class="info-item"><span class="info-label">Описание</span><span class="info-value">${group.description || '—'}</span></div>
