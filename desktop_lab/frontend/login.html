@@ -138,6 +138,7 @@
         const response = await fetch('/api/v1/auth/sign-in', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Получаем refresh токен в cookie
           body: JSON.stringify({ email, password })
         });
         
@@ -173,7 +174,8 @@
         if (!token) return;
         
         const response = await fetch('/api/v1/auth/me', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${token}` },
+          credentials: 'include'
         });
         
         if (response.ok) {
@@ -191,7 +193,8 @@
       if (token) {
         try {
           const response = await fetch('/api/v1/auth/me', {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${token}` },
+            credentials: 'include'
           });
           
           if (response.ok) {

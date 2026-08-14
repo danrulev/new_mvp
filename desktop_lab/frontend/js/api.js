@@ -1,6 +1,10 @@
 // frontend/js/api.js
 const API_BASE = '/api/v1';
 
+// Флаг для предотвращения рекурсивных вызовов refresh
+let isRefreshing = false;
+let refreshPromise = null;
+
 /**
  * Получает access токен из localStorage
  */
@@ -8,12 +12,62 @@ function getAuthToken() {
   return localStorage.getItem('access_token');
 }
 
-// Флаг для предотвращения рекурсивного удаления токена
+// Флаг для предотвращения удаления токена при конкурентных запросах
 let isRemovingToken = false;
+
+/**
+ * Обновляет access токен используя refresh токен из cookie
+ */
+async function refreshAccessToken() {
+  if (isRefreshing) {
+    // Если уже идет процесс обновления, ждем его завершения
+    return refreshPromise;
+  }
+  
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'GET',
+        credentials: 'include' // Отправляем cookie с refresh токеном
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to refresh token');
+      }
+      
+      const data = await res.json();
+      const newAccessToken = data.access_token;
+      
+      // Сохраняем новый access токен
+      localStorage.setItem('access_token', newAccessToken);
+      
+      return newAccessToken;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      // Ошибка refresh - очищаем данные и редиректим на login
+      if (!isRemovingToken) {
+        isRemovingToken = true;
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user_info');
+        isRemovingToken = false;
+      }
+      if (!window.location.pathname.includes('login.html')) {
+        window.location.href = '/login.html';
+      }
+      throw error;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+  
+  return refreshPromise;
+}
 
 async function apiRequest(endpoint, options = {}) {
   try {
-    const token = getAuthToken();
+    let token = getAuthToken();
     const headers = { 'Content-Type': 'application/json', ...options.headers };
     
     // Добавляем Authorization header если есть токен
@@ -26,20 +80,64 @@ async function apiRequest(endpoint, options = {}) {
       ...options
     });
     
-    // Обрабатываем 401 Unauthorized
+    // Обрабатываем 401 Unauthorized - пытаемся обновить токен
     if (res.status === 401) {
-      // Токен недействителен, пробуем обновить или разлогиниваемся
-      if (!isRemovingToken) {
-        isRemovingToken = true;
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user_info');
-        isRemovingToken = false;
+      // Если токен истек, пробуем обновить его
+      if (!isRefreshing && token) {
+        try {
+          const newToken = await refreshAccessToken();
+          
+          // Повторяем исходный запрос с новым токеном
+          headers['Authorization'] = `Bearer ${newToken}`;
+          const retryRes = await fetch(`${API_BASE}${endpoint}`, {
+            headers,
+            ...options
+          });
+          
+          // Если повторный запрос успешен, возвращаем результат
+          if (retryRes.ok) {
+            const ct = retryRes.headers.get('Content-Type');
+            if (ct?.includes('application/pdf')) return await retryRes.blob();
+            return await retryRes.json();
+          }
+          
+          // Если повторный запрос вернул 401, значит refresh не помог
+          if (retryRes.status === 401) {
+            if (!isRemovingToken) {
+              isRemovingToken = true;
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('user_info');
+              isRemovingToken = false;
+            }
+            if (!window.location.pathname.includes('login.html')) {
+              window.location.href = '/login.html';
+            }
+            throw new Error('Сессия истекла. Пожалуйста, войдите снова.');
+          }
+          
+          // Обрабатываем другие ошибки повторного запроса
+          if (!retryRes.ok) {
+            const err = await retryRes.json().catch(() => ({}));
+            throw new Error(err.error || err.message || `HTTP ${retryRes.status}`);
+          }
+        } catch (refreshError) {
+          // Ошибка refresh уже обработана в refreshAccessToken
+          throw refreshError;
+        }
+      } else {
+        // Token уже удаляется или нет токена - сразу редирект
+        if (!isRemovingToken && token) {
+          isRemovingToken = true;
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user_info');
+          isRemovingToken = false;
+        }
+        
+        if (!window.location.pathname.includes('login.html')) {
+          window.location.href = '/login.html';
+        }
+        throw new Error('Сессия истекла. Пожалуйста, войдите снова.');
       }
-      
-      if (!window.location.pathname.includes('login.html')) {
-        window.location.href = '/login.html';
-      }
-      throw new Error('Сессия истекла. Пожалуйста, войдите снова.');
     }
     
     // Обрабатываем 403 Forbidden

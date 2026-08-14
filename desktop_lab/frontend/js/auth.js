@@ -179,6 +179,7 @@ export const auth = {
       const response = await fetch('/api/v1/auth/sign-in', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Получаем refresh токен в cookie
         body: JSON.stringify({ email, password })
       });
       
@@ -208,6 +209,7 @@ export const auth = {
       const response = await fetch('/api/v1/auth/sign-up', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ name, email, password, role })
       });
       
@@ -231,7 +233,8 @@ export const auth = {
       const token = this.getToken();
       if (token) {
         await fetch('/api/v1/auth/logout', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${token}` },
+          credentials: 'include'
         }).catch(() => {}); // Игнорируем ошибки сети при выходе
       }
     } catch (error) {
@@ -255,7 +258,8 @@ export const auth = {
       if (!token) return null;
       
       const response = await fetch('/api/v1/auth/me', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include'
       });
       
       if (response.ok) {
