@@ -35,7 +35,11 @@ async function loadMaterials() {
 function setupGroupFilters() {
   const searchInput = document.getElementById('groupSearchInput');
   const filterProject = document.getElementById('filterProject');
+  const filterObjectType = document.getElementById('filterObjectType');
+  const filterCustomer = document.getElementById('filterCustomer');
   const filterMaterial = document.getElementById('filterMaterial');
+  const filterStatus = document.getElementById('filterStatus');
+  const filterLocation = document.getElementById('filterLocation');
   const prevPage = document.getElementById('prevPage');
   const nextPage = document.getElementById('nextPage');
 
@@ -49,8 +53,23 @@ function setupGroupFilters() {
     loadGroups();
   }, 300));
 
-  // ИСПРАВЛЕНО: используем 'input' + debounce для текстового поля, а не 'change'
-  if (filterMaterial) filterMaterial.addEventListener('input', debounce(() => {
+  if (filterObjectType) filterObjectType.addEventListener('input', debounce(() => {
+    currentPage = 1;
+    loadGroups();
+  }, 300));
+
+  if (filterCustomer) filterCustomer.addEventListener('input', debounce(() => {
+    currentPage = 1;
+    loadGroups();
+  }, 300));
+
+  // Для select используем 'change' событие
+  if (filterStatus) filterStatus.addEventListener('change', () => {
+    currentPage = 1;
+    loadGroups();
+  });
+
+  if (filterLocation) filterLocation.addEventListener('input', debounce(() => {
     currentPage = 1;
     loadGroups();
   }, 300));
@@ -81,7 +100,11 @@ async function loadGroups() {
   try {
     const searchQuery = document.getElementById('groupSearchInput')?.value || '';
     const projectQuery = document.getElementById('filterProject')?.value || '';
+    const objectTypeQuery = document.getElementById('filterObjectType')?.value || '';
+    const customerQuery = document.getElementById('filterCustomer')?.value || '';
     const materialQuery = document.getElementById('filterMaterial')?.value || '';
+    const statusQuery = document.getElementById('filterStatus')?.value || '';
+    const locationQuery = document.getElementById('filterLocation')?.value || '';
 
     // Формируем query-параметры для фильтрации
     const params = new URLSearchParams();
@@ -90,7 +113,11 @@ async function loadGroups() {
 
     if (searchQuery) params.set('name', searchQuery);
     if (projectQuery) params.set('project_name', projectQuery);
+    if (objectTypeQuery) params.set('object_type', objectTypeQuery);
+    if (customerQuery) params.set('customer', customerQuery);
     if (materialQuery) params.set('material', materialQuery);
+    if (statusQuery) params.set('status', statusQuery);
+    if (locationQuery) params.set('location', locationQuery);
 
     const res = await api.getGroups(params.toString());
     renderGroupsTable(res.items || [], res.meta);
