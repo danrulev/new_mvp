@@ -12,6 +12,8 @@ type PaginatedMetadata struct {
 	TotalPages  int64 `json:"total_pages"`
 	HasNextPage bool  `json:"has_next_page"`
 	HasPrevPage bool  `json:"has_prev_page"`
+	Limit       int64 `json:"limit,omitempty"`
+	Offset      int64 `json:"offset,omitempty"`
 }
 
 // JSONStringSlice - кастомный тип для хранения []string в колонке TEXT (JSON)
