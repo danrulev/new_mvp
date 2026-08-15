@@ -1,18 +1,44 @@
 ```
-# Compiled and build artifacts
-*.o
-*.obj
+# Go-specific ignores
+*.mod
+*.sum
+*.exe
 *.out
+*.test
+
 # Dependencies
 vendor/
+
+# Build artifacts
+bin/
+*.o
+*.a
+*.so
+
 # Logs and temp files
 *.log
 *.tmp
+
 # Environment
 .env
 .env.local
-.env.*
+*.env.*
+
 # Editors
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Database migrations (if generated)
+*.sql
 ```
