@@ -17,5 +17,5 @@ var (
 )
 
 func MakeError(dErr, err error, object string) error {
-	return fmt.Errorf("%w %v: %w", dErr, object, err)
+	return fmt.Errorf("%w %s: %v", dErr, object, err)
 }

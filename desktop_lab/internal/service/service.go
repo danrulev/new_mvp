@@ -178,6 +178,7 @@ func NewServices(
 	dimension := NewDimensionService(dimRepo, log)
 	organization := NewOrganizationService(orgRepo, orgUserRepo, orgTestsRepo, log)
 	orders := NewOrderService(orderRepo, orgTestsRepo, log)
+	invitations := NewInvitationService(invRepo, orgRepo, userRepo, log)
 	return &Services{
 		Auth:          auth,
 		Materials:     material,
@@ -190,5 +191,6 @@ func NewServices(
 		Reports:       report,
 		Dimensions:    dimension,
 		Orders:        orders,
+		Invitations:   invitations,
 	}
 }
