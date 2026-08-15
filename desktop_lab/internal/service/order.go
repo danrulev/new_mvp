@@ -77,7 +77,7 @@ item := models.OrderItem{
 ID:              uuid.New().String(),
 OrderID:         orderID,
 TestMethodID:    itemReq.TestMethodID,
-TestMethodName:  orgTest.TestMethod.Name,
+TestMethodName:  orgTest.Description,
 Quantity:        itemReq.Quantity,
 UnitPrice:       orgTest.Price,
 SampleRequired:  itemReq.SampleRequired,
@@ -290,4 +290,67 @@ return err
 
 logger.Info("sample delivery info updated successfully")
 return nil
+}
+
+// GetOrderItems получает все позиции заявки
+func (s *OrderService) GetOrderItems(ctx context.Context, orderID string) ([]models.OrderItem, error) {
+logger := loggerWith(ctx, s.log, zap.String("order_id", orderID), zap.String("operation", "GetOrderItems"))
+logger.Debug("fetching order items")
+
+return s.repo.GetItemsByOrderID(ctx, orderID)
+}
+
+// CreateOrderItem создает позицию в заявке
+func (s *OrderService) CreateOrderItem(ctx context.Context, orderID string, req models.CreateOrderItemRequest) (models.OrderItem, error) {
+logger := loggerWith(ctx, s.log, zap.String("order_id", orderID), zap.String("operation", "CreateOrderItem"))
+logger.Info("creating order item")
+
+orgTest, err := s.orgTestsRepo.GetOrganizationTest(ctx, req.TestMethodID)
+if err != nil {
+logger.Error("failed to get test method", zap.Error(err))
+return models.OrderItem{}, fmt.Errorf("не удалось получить информацию о тесте: %w", err)
+}
+
+itemID := uuid.New().String()
+item := models.OrderItem{
+ID:             itemID,
+OrderID:        orderID,
+TestMethodID:   req.TestMethodID,
+TestMethodName: orgTest.Description,
+Quantity:       req.Quantity,
+UnitPrice:      orgTest.Price,
+SampleRequired: req.SampleRequired,
+SampleNotes:    req.SampleNotes,
+SampleCount:    req.SampleCount,
+Status:         "pending",
+}
+item.Subtotal = float64(item.Quantity) * item.UnitPrice
+
+if err := s.repo.CreateItem(ctx, item); err != nil {
+logger.Error("failed to create order item", zap.Error(err))
+return models.OrderItem{}, err
+}
+
+if err := s.repo.RecalculateTotal(ctx, orderID); err != nil {
+logger.Warn("failed to recalculate total", zap.Error(err))
+}
+
+logger.Info("order item created successfully", zap.String("item_id", itemID))
+return item, nil
+}
+
+// GetOrderItem получает позицию заявки по ID
+func (s *OrderService) GetOrderItem(ctx context.Context, itemID string) (models.OrderItem, error) {
+logger := loggerWith(ctx, s.log, zap.String("item_id", itemID), zap.String("operation", "GetOrderItem"))
+logger.Debug("fetching order item")
+
+return s.repo.GetItemByID(ctx, itemID)
+}
+
+// GetOrderWorkflow получает историю изменения статусов заявки
+func (s *OrderService) GetOrderWorkflow(ctx context.Context, orderID string) ([]models.OrderWorkflowEntry, error) {
+logger := loggerWith(ctx, s.log, zap.String("order_id", orderID), zap.String("operation", "GetOrderWorkflow"))
+logger.Debug("fetching order workflow")
+
+return s.repo.GetWorkflowByOrderID(ctx, orderID)
 }

@@ -17,24 +17,6 @@ func loggerWith(ctx context.Context, log *zap.Logger, fields ...zap.Field) *zap.
 	return log.With(fields...)
 }
 
-type OrderRepo interface {
-	Create(ctx context.Context, order models.Order) error
-	CreateItem(ctx context.Context, item models.OrderItem) error
-	GetByID(ctx context.Context, id string) (models.Order, error)
-	GetWithItemsAndWorkflow(ctx context.Context, id string) (models.OrderResponse, error)
-	GetItemsByOrderID(ctx context.Context, orderID string) ([]models.OrderItem, error)
-	GetWorkflowByOrderID(ctx context.Context, orderID string) ([]models.OrderWorkflowEntry, error)
-	AddWorkflowEntry(ctx context.Context, entry models.OrderWorkflowEntry) error
-	List(ctx context.Context, filter models.OrderListFilter) ([]models.Order, int64, error)
-	Update(ctx context.Context, id string, req models.UpdateOrderRequest) (models.Order, error)
-	UpdateStatus(ctx context.Context, id, newStatus, userID, userName, comment string) error
-	UpdateItem(ctx context.Context, id string, req models.UpdateOrderItemRequest) (models.OrderItem, error)
-	GetItemByID(ctx context.Context, id string) (models.OrderItem, error)
-	Delete(ctx context.Context, id string) error
-	DeleteItem(ctx context.Context, id string) error
-	RecalculateTotal(ctx context.Context, orderID string) error
-}
-
 type DimensionRepo interface {
 	GetAvailableDimensions(ctx context.Context) ([]models.ContextDimension, error)
 	GetDimensionByID(ctx context.Context, id string) (models.ContextDimension, error)
