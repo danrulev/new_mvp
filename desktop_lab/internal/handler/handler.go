@@ -32,7 +32,6 @@ type Handler struct {
 	sample          *service.SampleService
 	standard        *service.StandardService
 	organization    *service.OrganizationService
-	order           *service.OrderService
 	appRef          DatabaseSwitcher
 	frontendFS      embed.FS
 	frontendFSReady bool
