@@ -135,6 +135,7 @@ type Services struct {
 	Auth          *AuthService
 	Dimensions    *DimensionService
 	Groups        *ExperimentGroupService
+	Invitations   *InvitationService
 	Materials     *MaterialService
 	Organizations *OrganizationService
 	Profile       *ProfileService
@@ -158,6 +159,7 @@ func NewServices(
 	orgTestsRepo OrganizationTestsRepo,
 	orgUserRepo OrganizationUserRepo,
 	orderRepo OrderRepo,
+	invRepo InvitationRepo,
 
 	fontDir string,
 	templatesDir string,

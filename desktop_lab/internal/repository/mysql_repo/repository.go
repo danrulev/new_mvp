@@ -11,6 +11,7 @@ import (
 type Repository struct {
 	Dimension         *DimensionRepo
 	Group             *ExperimentGroupRepo
+	Invitation        *InvitationRepo
 	Material          *MaterialRepo
 	Order             *OrderRepo
 	Organization      *OrganizationRepo
@@ -27,6 +28,7 @@ func NewRepository(db *sqlx.DB, log *zap.Logger) *Repository {
 	return &Repository{
 		Dimension:         NewDimensionRepo(db, log),
 		Group:             NewExperimentGroupRepo(db, log),
+		Invitation:        NewInvitationRepo(db, log),
 		Material:          NewMaterialRepo(db, log),
 		Order:             NewOrderRepo(db, log),
 		Organization:      NewOrganizationRepo(db, log),

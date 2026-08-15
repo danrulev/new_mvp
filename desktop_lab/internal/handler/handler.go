@@ -23,6 +23,7 @@ type Handler struct {
 	log             *zap.Logger
 	auth            *service.AuthService
 	dimension       *service.DimensionService
+	invitation      *service.InvitationService
 	material        *service.MaterialService
 	profile         *service.ProfileService
 	group           *service.ExperimentGroupService
@@ -35,7 +36,6 @@ type Handler struct {
 	appRef          DatabaseSwitcher
 	frontendFS      embed.FS
 	frontendFSReady bool
-	invitation      *service.InvitationService
 	refreshTokenTTL time.Duration
 	rateLimiter     *ratelimiter.RateLimiter
 }
@@ -44,6 +44,7 @@ type Handler struct {
 func NewHandler(
 	auth *service.AuthService,
 	dimension *service.DimensionService,
+	invitation *service.InvitationService,
 	material *service.MaterialService,
 	group *service.ExperimentGroupService,
 	organization *service.OrganizationService,
@@ -63,6 +64,7 @@ func NewHandler(
 	return &Handler{
 		auth:            auth,
 		dimension:       dimension,
+		invitation:      invitation,
 		material:        material,
 		group:           group,
 		profile:         profile,
