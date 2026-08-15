@@ -1,36 +1,18 @@
 ```
-# Go build artifacts
+# Compiled and build artifacts
 *.o
-*.a
-*.so
-*.dylib
-*.dll
-*.exe
-
-# Go cache and build directories
-.cache/
-go/pkg/
-go/build/
-
+*.obj
+*.out
 # Dependencies
 vendor/
-
 # Logs and temp files
 *.log
 *.tmp
-
 # Environment
 .env
 .env.local
-*.env.*
-
+.env.*
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
-
-# OS generated files
-.DS_Store
-Thumbs.db
 ```

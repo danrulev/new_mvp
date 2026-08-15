@@ -35,6 +35,7 @@ type Handler struct {
 	appRef          DatabaseSwitcher
 	frontendFS      embed.FS
 	frontendFSReady bool
+	invitation     *service.InvitationService
 	refreshTokenTTL time.Duration
 	rateLimiter     *ratelimiter.RateLimiter
 }
