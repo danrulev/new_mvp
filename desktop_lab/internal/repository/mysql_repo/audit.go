@@ -3,17 +3,18 @@ package mysql_repo
 import (
 	"context"
 	"database/sql"
+	"desktop_lab/internal/models"
 	"encoding/json"
 	"fmt"
 	"time"
 
-	"desktop_lab/internal/models"
+	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
 // AuditRepo реализует репозиторий для аудита
 type AuditRepo struct {
-	db *sql.DB
+	db  *sqlx.DB
 	log *zap.Logger
 }
 
@@ -60,7 +61,6 @@ func (r *AuditRepo) Create(ctx context.Context, audit *models.AuditLog) error {
 		audit.IPAddress,
 		audit.UserAgent,
 	)
-
 	if err != nil {
 		r.log.Error("failed to create audit log", zap.Error(err))
 		return fmt.Errorf("create audit log: %w", err)

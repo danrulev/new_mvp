@@ -3,16 +3,17 @@ package mysql_repo
 import (
 	"context"
 	"database/sql"
+	"desktop_lab/internal/models"
 	"encoding/json"
 	"fmt"
 
-	"desktop_lab/internal/models"
+	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
 // ProtocolVersionRepo реализует репозиторий для версий протоколов
 type ProtocolVersionRepo struct {
-	db  *sql.DB
+	db  *sqlx.DB
 	log *zap.Logger
 }
 

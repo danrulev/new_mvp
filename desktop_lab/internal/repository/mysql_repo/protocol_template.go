@@ -3,15 +3,16 @@ package mysql_repo
 import (
 	"context"
 	"database/sql"
+	"desktop_lab/internal/models"
 	"fmt"
 
-	"desktop_lab/internal/models"
+	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
 // ProtocolTemplateRepo реализует репозиторий для шаблонов протоколов
 type ProtocolTemplateRepo struct {
-	db  *sql.DB
+	db  *sqlx.DB
 	log *zap.Logger
 }
 

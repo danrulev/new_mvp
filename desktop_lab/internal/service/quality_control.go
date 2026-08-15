@@ -2,32 +2,31 @@ package service
 
 import (
 	"context"
+	"desktop_lab/internal/models"
 	"encoding/json"
 	"fmt"
 	"time"
 
-	"desktop_lab/internal/models"
-	"desktop_lab/internal/repository/mysql_repo"
 	"go.uber.org/zap"
 )
 
 // QualityControlService сервис контроля качества
 type QualityControlService struct {
-	auditRepo       *mysql_repo.AuditRepo
-	versionRepo     *mysql_repo.ProtocolVersionRepo
-	templateRepo    *mysql_repo.ProtocolTemplateRepo
-	protocolRepo    *mysql_repo.ProtocolRepo // Для получения текущего протокола
-	userRepo        *mysql_repo.UserRepo
-	log             *zap.Logger
+	auditRepo    AuditRepo
+	versionRepo  ProtocolVersionRepo
+	templateRepo ProtocolTemplateRepo
+	protocolRepo ProtocolRepo // Для получения текущего протокола
+	userRepo     UserRepo
+	log          *zap.Logger
 }
 
 // NewQualityControlService создает новый сервис контроля качества
 func NewQualityControlService(
-	auditRepo *mysql_repo.AuditRepo,
-	versionRepo *mysql_repo.ProtocolVersionRepo,
-	templateRepo *mysql_repo.ProtocolTemplateRepo,
-	protocolRepo *mysql_repo.ProtocolRepo,
-	userRepo *mysql_repo.UserRepo,
+	auditRepo AuditRepo,
+	versionRepo ProtocolVersionRepo,
+	templateRepo ProtocolTemplateRepo,
+	protocolRepo ProtocolRepo,
+	userRepo UserRepo,
 	log *zap.Logger,
 ) *QualityControlService {
 	return &QualityControlService{
