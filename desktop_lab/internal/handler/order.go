@@ -75,10 +75,6 @@ func (h *Handler) createOrder(c *gin.Context) {
 		return
 	}
 	
-	// Получаем роль пользователя для установки имени
-	role, _ := getRoleFromContext(c)
-	userName := role.String() // В реальном приложении нужно получить из профиля
-	
 	order, err := h.order.CreateOrder(c.Request.Context(), req, userID)
 	if err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "create order", "failed to create order", err)
@@ -232,8 +228,13 @@ func (h *Handler) changeOrderStatus(c *gin.Context) {
 		return
 	}
 	
-	// Получаем имя пользователя (в реальном приложении из профиля)
+	// Получаем имя пользователя из контекста или профиля
 	userName := "User"
+	if nameRaw, exists := c.Get("user_name"); exists {
+		if name, ok := nameRaw.(string); ok && name != "" {
+			userName = name
+		}
+	}
 	
 	err = h.order.ChangeOrderStatus(c.Request.Context(), id, string(req.Status), userID, userName, req.Comment)
 	if err != nil {
@@ -267,7 +268,13 @@ func (h *Handler) acceptOrder(c *gin.Context) {
 		return
 	}
 	
+	// Получаем имя пользователя из контекста или профиля
 	userName := "User"
+	if nameRaw, exists := c.Get("user_name"); exists {
+		if name, ok := nameRaw.(string); ok && name != "" {
+			userName = name
+		}
+	}
 	
 	if err := h.order.AcceptOrder(c.Request.Context(), id, userID, userName, req.Comment); err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "accept order", "failed to accept order", err)
@@ -305,7 +312,13 @@ func (h *Handler) rejectOrder(c *gin.Context) {
 		return
 	}
 	
+	// Получаем имя пользователя из контекста или профиля
 	userName := "User"
+	if nameRaw, exists := c.Get("user_name"); exists {
+		if name, ok := nameRaw.(string); ok && name != "" {
+			userName = name
+		}
+	}
 	
 	if err := h.order.RejectOrder(c.Request.Context(), id, userID, userName, req.Comment); err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "reject order", "failed to reject order", err)
@@ -338,7 +351,13 @@ func (h *Handler) completeOrder(c *gin.Context) {
 		return
 	}
 	
+	// Получаем имя пользователя из контекста или профиля
 	userName := "User"
+	if nameRaw, exists := c.Get("user_name"); exists {
+		if name, ok := nameRaw.(string); ok && name != "" {
+			userName = name
+		}
+	}
 	
 	if err := h.order.CompleteOrder(c.Request.Context(), id, userID, userName, req.Comment); err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "complete order", "failed to complete order", err)

@@ -120,7 +120,7 @@ func (a *App) selectDatabase() error {
 // initServices инициализирует сервисы.
 func (a *App) initServices(repos *repository.Repository, wkhtmltopdfWindows []byte) *service.Services {
 	svc := service.NewServices(
-		repos.Material, repos.Standard, repos.Protocol, repos.Sample, repos.Group, repos.Token, repos.User, repos.Dimension, repos.Organization, repos.OrganizationTests, repos.OrganizationUser,
+		repos.Material, repos.Standard, repos.Protocol, repos.Sample, repos.Group, repos.Token, repos.User, repos.Dimension, repos.Organization, repos.OrganizationTests, repos.OrganizationUser, repos.Order,
 		a.fontDir, "templates", wkhtmltopdfWindows, *a.cfg, a.log,
 	)
 
@@ -136,7 +136,7 @@ func (a *App) initServices(repos *repository.Repository, wkhtmltopdfWindows []by
 // initHandlers инициализирует обработчики.
 func (a *App) initHandlers(svc *service.Services, frontendFS embed.FS) *handler.Handler {
 	handl := handler.NewHandler(
-		svc.Auth, svc.Dimensions, svc.Materials, svc.Groups, svc.Organizations, svc.Profile, svc.Protocols, svc.Reports, svc.Samples, svc.Standards,
+		svc.Auth, svc.Dimensions, svc.Materials, svc.Groups, svc.Organizations, svc.Orders, svc.Profile, svc.Protocols, svc.Reports, svc.Samples, svc.Standards,
 		a, a.log, a.cfg.Auth.RefreshTokenTTL,
 	)
 	handl.SetFrontendFS(frontendFS)

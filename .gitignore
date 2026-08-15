@@ -1,1 +1,36 @@
-Nothing needs to be added to .gitignore since the changes only include Go source files (.go) which are legitimate source code files that should be tracked in version control.
+```
+# Go build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Go cache and build directories
+.cache/
+go/pkg/
+go/build/
+
+# Dependencies
+vendor/
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+```
