@@ -26,6 +26,7 @@ type Handler struct {
 	material        *service.MaterialService
 	profile         *service.ProfileService
 	group           *service.ExperimentGroupService
+	order           *service.OrderService
 	protocol        *service.ProtocolService
 	report          *service.ReportService
 	sample          *service.SampleService
