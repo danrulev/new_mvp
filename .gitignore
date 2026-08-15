@@ -1,23 +1,38 @@
 ```
-# Go-specific ignores
-*.mod
-*.sum
-*.exe
-*.out
-*.test
+# Build artifacts
+dist/
+build/
+target/
 
 # Dependencies
 vendor/
+node_modules/
+*.mod
+*.sum
 
-# Build artifacts
-bin/
+# Compiled files
 *.o
-*.a
+*.obj
+*.exe
+*.dll
 *.so
+*.a
+*.out
 
-# Logs and temp files
+# Go specific
+*.test
+*.prof
+go.mod
+go.sum
+
+# Logs
 *.log
+logs/
+
+# Temp files
 *.tmp
+*.temp
+*~
 
 # Environment
 .env
@@ -34,11 +49,28 @@ bin/
 .DS_Store
 Thumbs.db
 
-# Coverage
+# Testing
 coverage/
 htmlcov/
 .coverage
+*.coverprofile
 
-# Database migrations (if generated)
-*.sql
+# Cache
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+*.so
+
+# Database
+*.db
+*.db-journal
+
+# Backup files
+*~
+*.bak
+*.swp
 ```

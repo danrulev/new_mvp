@@ -135,6 +135,7 @@ type Services struct {
 	Auth          *AuthService
 	Dimensions    *DimensionService
 	Groups        *ExperimentGroupService
+	Invitations   *InvitationService
 	Materials     *MaterialService
 	Organizations *OrganizationService
 	Profile       *ProfileService
@@ -158,6 +159,7 @@ func NewServices(
 	orgTestsRepo OrganizationTestsRepo,
 	orgUserRepo OrganizationUserRepo,
 	orderRepo OrderRepo,
+	invRepo InvitationRepo,
 
 	fontDir string,
 	templatesDir string,
@@ -176,6 +178,7 @@ func NewServices(
 	dimension := NewDimensionService(dimRepo, log)
 	organization := NewOrganizationService(orgRepo, orgUserRepo, orgTestsRepo, log)
 	orders := NewOrderService(orderRepo, orgTestsRepo, log)
+	invitations := NewInvitationService(invRepo, orgRepo, userRepo, log)
 	return &Services{
 		Auth:          auth,
 		Materials:     material,
@@ -188,5 +191,6 @@ func NewServices(
 		Reports:       report,
 		Dimensions:    dimension,
 		Orders:        orders,
+		Invitations:   invitations,
 	}
 }
