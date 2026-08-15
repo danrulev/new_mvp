@@ -5,6 +5,7 @@ import (
 	"desktop_lab/internal/config"
 	contextkeys "desktop_lab/internal/contextKey"
 	"desktop_lab/internal/models"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -131,6 +132,40 @@ type TokenRepo interface {
 	Delete(ctx context.Context, id string) error
 }
 
+// AuditRepo интерфейс для журнала аудита
+type AuditRepo interface {
+	Create(ctx context.Context, audit *models.AuditLog) error
+	GetByID(ctx context.Context, id int64) (*models.AuditLog, error)
+	List(ctx context.Context, filter models.AuditLogFilter) ([]*models.AuditLog, int, error)
+	DeleteOld(ctx context.Context, olderThan time.Time) (int64, error)
+}
+
+// ProtocolVersionRepo интерфейс для версий протоколов
+type ProtocolVersionRepo interface {
+	Create(ctx context.Context, version *models.ProtocolVersionCreate) (*models.ProtocolVersion, error)
+	GetByID(ctx context.Context, id int64) (*models.ProtocolVersion, error)
+	ListByProtocolID(ctx context.Context, protocolID int64) ([]*models.ProtocolVersion, error)
+	GetCurrentVersion(ctx context.Context, protocolID int64) (*models.ProtocolVersion, error)
+	GetByVersionNumber(ctx context.Context, protocolID int64, versionNumber int) (*models.ProtocolVersion, error)
+	Delete(ctx context.Context, id int64) error
+	GetContentSnapshot(ctx context.Context, id int64) (interface{}, error)
+	HasPDF(ctx context.Context, id int64) (bool, error)
+	GetPDFSnapshot(ctx context.Context, id int64) ([]byte, error)
+}
+
+// ProtocolTemplateRepo интерфейс для шаблонов протоколов
+type ProtocolTemplateRepo interface {
+	Create(ctx context.Context, template *models.ProtocolTemplateCreate) (*models.ProtocolTemplate, error)
+	GetByID(ctx context.Context, id int64) (*models.ProtocolTemplate, error)
+	GetByIDWithMethodName(ctx context.Context, id int64) (*models.ProtocolTemplateResponse, error)
+	Update(ctx context.Context, id int64, update *models.ProtocolTemplateUpdate) (*models.ProtocolTemplate, error)
+	Delete(ctx context.Context, id int64) error
+	ListByOrganization(ctx context.Context, orgID int64, activeOnly bool) ([]*models.ProtocolTemplateResponse, error)
+	ListByTestMethod(ctx context.Context, testMethodID int64, activeOnly bool) ([]*models.ProtocolTemplate, error)
+	GetActiveByOrgAndMethod(ctx context.Context, orgID, testMethodID int64) (*models.ProtocolTemplate, error)
+	SetAsActive(ctx context.Context, id int64) error
+}
+
 type Services struct {
 	Auth          *AuthService
 	Dimensions    *DimensionService
@@ -144,6 +179,7 @@ type Services struct {
 	Samples       *SampleService
 	Reports       *ReportService
 	Orders        *OrderService
+	QualityControl *QualityControlService
 }
 
 func NewServices(
@@ -160,6 +196,9 @@ func NewServices(
 	orgUserRepo OrganizationUserRepo,
 	orderRepo OrderRepo,
 	invRepo InvitationRepo,
+	auditRepo AuditRepo,
+	versionRepo ProtocolVersionRepo,
+	templateRepo ProtocolTemplateRepo,
 
 	fontDir string,
 	templatesDir string,
@@ -179,18 +218,20 @@ func NewServices(
 	organization := NewOrganizationService(orgRepo, orgUserRepo, orgTestsRepo, log)
 	orders := NewOrderService(orderRepo, orgTestsRepo, log)
 	invitations := NewInvitationService(invRepo, orgRepo, userRepo, log)
+	qualityControl := NewQualityControlService(auditRepo, versionRepo, templateRepo, protRepo, userRepo, log)
 	return &Services{
-		Auth:          auth,
-		Materials:     material,
-		Organizations: organization,
-		Standards:     standards,
-		Profile:       profile,
-		Protocols:     protocol,
-		Groups:        group,
-		Samples:       sample,
-		Reports:       report,
-		Dimensions:    dimension,
-		Orders:        orders,
-		Invitations:   invitations,
+		Auth:           auth,
+		Materials:      material,
+		Organizations:  organization,
+		Standards:      standards,
+		Profile:        profile,
+		Protocols:      protocol,
+		Groups:         group,
+		Samples:        sample,
+		Reports:        report,
+		Dimensions:     dimension,
+		Orders:         orders,
+		Invitations:    invitations,
+		QualityControl: qualityControl,
 	}
 }
