@@ -3,7 +3,7 @@
 
 -- Тип-перечисление для ролей (типобезопасность вместо CHECK)
 CREATE TYPE user_role AS ENUM ('admin', 'user', 'moderator');
-CREATE TYPE org_role AS ENUM ('admin', 'editor', 'viewer');
+CREATE TYPE org_role AS ENUM ('org_admin', 'manager', 'engineer', 'technician', 'client');
 CREATE TYPE test_status AS ENUM ('draft', 'completed', 'approved', 'archived');
 CREATE TYPE limit_type AS ENUM ('min', 'max', 'range', 'discrete');
 CREATE TYPE input_type AS ENUM ('number', 'select', 'text', 'boolean');

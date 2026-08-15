@@ -288,16 +288,21 @@ CREATE TABLE IF NOT EXISTS organizations (
 
 CREATE INDEX IF NOT EXISTS idx_organizations_id ON organizations(id);
 
-CREATE TABLE IF NOT EXISTS ogranization_users (
+CREATE TABLE IF NOT EXISTS organization_users (
     id TEXT PRIMARY KEY,
     organization_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
-    role TEXT NOT NULL, -- 'admin', 'editor', 'viewer'
+    role TEXT NOT NULL, -- 'org_admin', 'manager', 'engineer', 'technician', 'client'
+    is_owner INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
-    
-    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE (organization_id, user_id)
 );
+CREATE INDEX IF NOT EXISTS idx_org_users_org ON organization_users(organization_id);
+CREATE INDEX IF NOT EXISTS idx_org_users_user ON organization_users(user_id);
 
 CREATE TABLE IF NOT EXISTS organization_tests (
     id TEXT PRIMARY KEY,
