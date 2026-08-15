@@ -16,7 +16,7 @@ type ProtocolTemplateRepo struct {
 }
 
 // NewProtocolTemplateRepo создает новый репозиторий шаблонов протоколов
-func NewProtocolTemplateRepo(db *sql.DB, log *zap.Logger) *ProtocolTemplateRepo {
+func NewProtocolTemplateRepo(db *sqlx.DB, log *zap.Logger) *ProtocolTemplateRepo {
 	return &ProtocolTemplateRepo{db: db, log: log}
 }
 

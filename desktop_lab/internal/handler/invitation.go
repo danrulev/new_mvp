@@ -1,30 +1,42 @@
 package handler
 
 import (
-"desktop_lab/internal/models"
-"desktop_lab/internal/service"
-"desktop_lab/pkg/valid"
-"net/http"
-"strconv"
+	"desktop_lab/internal/models"
+	"desktop_lab/internal/service"
+	"desktop_lab/pkg/valid"
+	"net/http"
+	"strconv"
 
-"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
 )
 
 // initInvitationRoutes инициализирует маршруты для работы с приглашениями
 func (h *Handler) initInvitationRoutes(api *gin.RouterGroup) {
-h.log.Debug("Init invitation routes")
+	h.log.Debug("Init invitation routes")
 
-invitations := api.Group("/invitations")
-invitations.Use(h.authMiddleware)
-{
-invitations.POST("/", h.permissionMiddleware(models.PermInvitationCreate), h.createInvitation)
-invitations.GET("/", h.permissionMiddleware(models.PermInvitationRead), h.listInvitations)
-invitations.GET("/:id", h.permissionMiddleware(models.PermInvitationRead), h.getInvitationByID)
-invitations.POST("/accept", h.acceptInvitation)
-invitations.POST("/decline", h.declineInvitation)
-invitations.DELETE("/:id", h.permissionMiddleware(models.PermInvitationCreate), h.revokeInvitation)
-invitations.POST("/:id/resend", h.permissionMiddleware(models.PermInvitationCreate), h.resendInvitation)
+	invitations := api.Group("/invitations")
+	invitations.Use(h.authMiddleware)
+	{
+		invitations.POST("/", h.permissionMiddleware(models.PermInvitationCreate), h.createInvitation)
+		invitations.GET("/", h.permissionMiddleware(models.PermInvitationRead), h.listInvitations)
+		invitations.GET("/:id", h.permissionMiddleware(models.PermInvitationRead), h.getInvitationByID)
+		invitations.POST("/accept", h.acceptInvitation)
+		invitations.POST("/decline", h.declineInvitation)
+		invitations.DELETE("/:id", h.permissionMiddleware(models.PermInvitationCreate), h.revokeInvitation)
+		invitations.POST("/:id/resend", h.permissionMiddleware(models.PermInvitationCreate), h.resendInvitation)
+	}
 }
+
+// initQualityControlRoutes инициализирует маршруты контроля качества
+func (h *Handler) initQualityControlRoutes(api *gin.RouterGroup) {
+	h.log.Debug("Init quality control routes")
+
+	handler := NewQualityControlHandler(h.qualityControl, h.log)
+	quality := api.Group("/quality")
+	quality.Use(h.authMiddleware)
+	{
+		handler.RegisterRoutes(quality)
+	}
 }
 
 func (h *Handler) createInvitation(c *gin.Context) {

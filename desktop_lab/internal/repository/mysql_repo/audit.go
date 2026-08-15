@@ -18,7 +18,7 @@ type AuditRepo struct {
 }
 
 // NewAuditRepo создает новый репозиторий аудита
-func NewAuditRepo(db *sql.DB, log *zap.Logger) *AuditRepo {
+func NewAuditRepo(db *sqlx.DB, log *zap.Logger) *AuditRepo {
 	return &AuditRepo{db: db, log: log}
 }
 

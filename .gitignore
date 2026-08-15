@@ -1,38 +1,23 @@
 ```
-# Build artifacts
-dist/
-build/
-target/
-
-# Dependencies
-vendor/
-node_modules/
-*.mod
-*.sum
-
-# Compiled files
+# Compiled and build artifacts
 *.o
 *.obj
+*.out
 *.exe
 *.dll
 *.so
 *.a
-*.out
 
-# Go specific
-*.test
-*.prof
-go.mod
-go.sum
+# Dependencies
+vendor/
+*.mod
+*.sum
 
-# Logs
+# Logs and temp files
 *.log
-logs/
-
-# Temp files
 *.tmp
-*.temp
-*~
+*.swp
+*.swo
 
 # Environment
 .env
@@ -45,32 +30,18 @@ logs/
 *.swp
 *.swo
 
-# OS
-.DS_Store
-Thumbs.db
+# Build outputs
+bin/
+dist/
+build/
+target/
 
-# Testing
+# Coverage
 coverage/
 htmlcov/
 .coverage
-*.coverprofile
 
-# Cache
-__pycache__/
-*.pyc
-*.pyo
-.Python
-*.egg-info/
-dist/
-build/
-*.so
-
-# Database
-*.db
-*.db-journal
-
-# Backup files
-*~
-*.bak
-*.swp
+# Go specific
+*.test
+*.prof
 ```

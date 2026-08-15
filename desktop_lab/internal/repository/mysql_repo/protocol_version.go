@@ -17,7 +17,7 @@ type ProtocolVersionRepo struct {
 }
 
 // NewProtocolVersionRepo создает новый репозиторий версий протоколов
-func NewProtocolVersionRepo(db *sql.DB, log *zap.Logger) *ProtocolVersionRepo {
+func NewProtocolVersionRepo(db *sqlx.DB, log *zap.Logger) *ProtocolVersionRepo {
 	return &ProtocolVersionRepo{db: db, log: log}
 }
 
