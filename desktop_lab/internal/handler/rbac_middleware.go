@@ -139,7 +139,7 @@ func isEngineer(c *gin.Context) bool {
 	if err != nil {
 		return false
 	}
-	return role == models.RoleEngineer || role == models.RoleAdmin
+	return role == models.RoleEngineer || role == models.RoleAdmin || role == models.RoleManager
 }
 
 // isTechnician проверяет, является ли пользователь техником, инженером или админом
@@ -148,7 +148,7 @@ func isTechnician(c *gin.Context) bool {
 	if err != nil {
 		return false
 	}
-	return role == models.RoleTechnician || role == models.RoleEngineer || role == models.RoleAdmin
+	return role == models.RoleTechnician || role == models.RoleEngineer || role == models.RoleAdmin || role == models.RoleManager
 }
 
 // isClient проверяет, является ли пользователь клиентом (или имеет более высокие права)
@@ -159,4 +159,13 @@ func isClient(c *gin.Context) bool {
 	}
 	// Клиент может быть только клиентом - у него минимальные права
 	return role == models.RoleClient
+}
+
+// isManager проверяет, является ли пользователь менеджером или админом
+func isManager(c *gin.Context) bool {
+	role, err := getRoleFromContext(c)
+	if err != nil {
+		return false
+	}
+	return role == models.RoleManager || role == models.RoleAdmin
 }

@@ -3,37 +3,26 @@
 *.o
 *.a
 *.so
-*.dylib
-*.dll
 *.exe
-*.out
+*.dll
+*.dylib
+*.test
+*.prof
 
-# Go cache and modules
-go.mod
-go.sum
-!go.mod
-!go.sum
-vendor/
+# Go cache directories
+.cache/
+go/pkg/
 
 # Dependencies
-node_modules/
-venv/
-.venv/
-__pycache__/
-.mypy_cache/
-.pytest_cache/
-target/
-.gradle/
+vendor/
 
 # Build directories
-build/
-dist/
 bin/
+pkg/
+target/
 
-# Logs and temp files
+# Logs
 *.log
-*.tmp
-*.swp
 
 # Environment
 .env
@@ -46,7 +35,7 @@ bin/
 *.swp
 *.swo
 
-# System
+# OS
 .DS_Store
 Thumbs.db
 
@@ -55,27 +44,7 @@ coverage/
 htmlcov/
 .coverage
 
-# Compressed files
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
+# Database migration backups (if any temporary files created)
+*.bak
+*.backup
 ```
