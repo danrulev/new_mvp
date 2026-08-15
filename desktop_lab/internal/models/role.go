@@ -7,18 +7,20 @@ const (
 	RoleKey string = "role"
 	// RoleAdmin - администратор системы (полный доступ)
 	RoleAdmin Role = "admin"
-	// RoleEngineer - инженер (создание и редактирование протоколов, стандартов)
+	// RoleManager - менеджер организации (прием/отклонение заявок, управление заказами)
+	RoleManager Role = "manager"
+	// RoleEngineer - инженер (выполнение исследований, подписание протоколов)
 	RoleEngineer Role = "engineer"
-	// RoleTechnician - техник (создание проб, выполнение тестов)
+	// RoleTechnician - техник (создание проб, проведение тестов)
 	RoleTechnician Role = "technician"
-	// RoleClient - клиент (только просмотр своих протоколов)
+	// RoleClient - клиент (только просмотр своих заявок и результатов)
 	RoleClient Role = "client"
 )
 
 // IsValid проверяет, является ли роль допустимой
 func (r Role) IsValid() bool {
 	switch r {
-	case RoleAdmin, RoleEngineer, RoleTechnician, RoleClient:
+	case RoleAdmin, RoleManager, RoleEngineer, RoleTechnician, RoleClient:
 		return true
 	default:
 		return false
@@ -85,6 +87,19 @@ const (
 	PermOrganizationCreate Permission = "organization:create"
 	PermOrganizationUpdate Permission = "organization:update"
 	PermOrganizationDelete Permission = "organization:delete"
+
+	// Заявки (Orders)
+	PermOrderRead   Permission = "order:read"
+	PermOrderCreate Permission = "order:create"
+	PermOrderUpdate Permission = "order:update"
+	PermOrderDelete Permission = "order:delete"
+	PermOrderAccept Permission = "order:accept"
+	PermOrderReject Permission = "order:reject"
+	PermOrderComplete Permission = "order:complete"
+
+	// Приглашения
+	PermInvitationCreate Permission = "invitation:create"
+	PermInvitationRead   Permission = "invitation:read"
 )
 
 // RolePermissions определяет разрешения для каждой роли
@@ -100,6 +115,27 @@ var RolePermissions = map[Role][]Permission{
 		PermDimensionRead, PermDimensionCreate, PermDimensionUpdate, PermDimensionDelete,
 		PermReportRead, PermReportCreate,
 		PermOrganizationRead, PermOrganizationCreate, PermOrganizationUpdate, PermOrganizationDelete,
+		// Заявки
+		PermOrderRead, PermOrderCreate, PermOrderUpdate, PermOrderDelete, PermOrderAccept, PermOrderReject, PermOrderComplete,
+		// Приглашения
+		PermInvitationCreate, PermInvitationRead,
+	},
+	RoleManager: {
+		// Чтение пользователей
+		PermUserRead,
+		// Чтение протоколов и отчетов
+		PermProtocolRead,
+		PermReportRead,
+		// Чтение стандартов, материалов, измерений
+		PermStandardRead, PermMaterialRead, PermDimensionRead,
+		// Чтение проб и групп
+		PermSampleRead, PermGroupRead,
+		// Чтение организации
+		PermOrganizationRead,
+		// Полный доступ к заявкам (прием/отклонение/управление)
+		PermOrderRead, PermOrderUpdate, PermOrderAccept, PermOrderReject, PermOrderComplete,
+		// Приглашения
+		PermInvitationCreate, PermInvitationRead,
 	},
 	RoleEngineer: {
 		// Чтение всех пользователей
@@ -115,6 +151,8 @@ var RolePermissions = map[Role][]Permission{
 		PermSampleRead, PermSampleCreate, PermSampleUpdate, PermSampleDelete,
 		// Чтение организации
 		PermOrganizationRead,
+		// Чтение заявок и выполнение исследований
+		PermOrderRead, PermOrderUpdate, PermOrderComplete,
 	},
 	RoleTechnician: {
 		// Чтение пользователей
@@ -133,6 +171,8 @@ var RolePermissions = map[Role][]Permission{
 		PermReportRead,
 		// Чтение организации
 		PermOrganizationRead,
+		// Чтение заявок
+		PermOrderRead,
 	},
 	RoleClient: {
 		// Только чтение своих протоколов и отчетов
@@ -140,6 +180,8 @@ var RolePermissions = map[Role][]Permission{
 		PermReportRead,
 		// Чтение своей организации
 		PermOrganizationRead,
+		// Создание и чтение своих заявок
+		PermOrderRead, PermOrderCreate,
 	},
 }
 
