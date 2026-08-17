@@ -54,6 +54,44 @@ func (s JSONStringSlice) Value() (driver.Value, error) {
 	return json.Marshal(s)
 }
 
+// JSONStringMap - кастомный тип для хранения map[string]string в колонке TEXT (JSON)
+type JSONStringMap map[string]string
+
+// Scan реализует интерфейс sql.Scanner для чтения из БД
+func (m *JSONStringMap) Scan(value interface{}) error {
+	if value == nil {
+		*m = make(map[string]string)
+		return nil
+	}
+
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return fmt.Errorf("failed to scan JSONStringMap: unsupported type %T", value)
+	}
+
+	// Если строка пустая, возвращаем пустую мапу
+	if len(bytes) == 0 {
+		*m = make(map[string]string)
+		return nil
+	}
+
+	// Парсим JSON
+	return json.Unmarshal(bytes, m)
+}
+
+// Value реализует интерфейс driver.Valuer для записи в БД
+func (m JSONStringMap) Value() (driver.Value, error) {
+	if len(m) == 0 {
+		return nil, nil
+	}
+	return json.Marshal(m)
+}
+
 func MakePaginatedMetadata(limit, offset, total int64) PaginatedMetadata {
 	if limit <= 0 {
 		limit = 1
