@@ -25,6 +25,7 @@ type Repository struct {
 	Audit             *AuditRepo
 	ProtocolVersion   *ProtocolVersionRepo
 	ProtocolTemplate  *ProtocolTemplateRepo
+	Analytics         *AnalyticsRepositoryImpl
 }
 
 func NewRepository(db *sqlx.DB, log *zap.Logger) *Repository {
@@ -45,6 +46,7 @@ func NewRepository(db *sqlx.DB, log *zap.Logger) *Repository {
 		Audit:             NewAuditRepo(db, log),
 		ProtocolVersion:   NewProtocolVersionRepo(db, log),
 		ProtocolTemplate:  NewProtocolTemplateRepo(db, log),
+		Analytics:         NewAnalyticsRepository(db.DB),
 	}
 }
 

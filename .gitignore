@@ -1,23 +1,24 @@
 ```
-# Compiled and build artifacts
+# Go-specific ignores
 *.o
-*.obj
-*.out
-*.exe
-*.dll
 *.so
 *.a
+*.dylib
+*.dll
+*.exe
+*.out
 
-# Dependencies
+# Build artifacts
+bin/
+pkg/
 vendor/
-*.mod
-*.sum
 
-# Logs and temp files
+# Dependencies cache
+go.sum
+!go.mod
+
+# Logs
 *.log
-*.tmp
-*.swp
-*.swo
 
 # Environment
 .env
@@ -30,18 +31,15 @@ vendor/
 *.swp
 *.swo
 
-# Build outputs
-bin/
-dist/
-build/
-target/
+# OS generated files
+.DS_Store
+Thumbs.db
 
 # Coverage
 coverage/
 htmlcov/
 .coverage
 
-# Go specific
-*.test
-*.prof
+# Temporary files
+*.tmp
 ```

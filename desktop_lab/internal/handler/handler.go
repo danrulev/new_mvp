@@ -34,6 +34,7 @@ type Handler struct {
 	standard        *service.StandardService
 	organization    *service.OrganizationService
 	qualityControl  *service.QualityControlService
+	analytics       *service.AnalyticsService
 	appRef          DatabaseSwitcher
 	frontendFS      embed.FS
 	frontendFSReady bool
@@ -56,6 +57,7 @@ func NewHandler(
 	sample *service.SampleService,
 	standard *service.StandardService,
 	qualityControl *service.QualityControlService,
+	analytics *service.AnalyticsService,
 	appRef DatabaseSwitcher,
 	log *zap.Logger,
 	refreshTokenTTL time.Duration,
@@ -77,6 +79,7 @@ func NewHandler(
 		organization:    organization,
 		order:           order,
 		qualityControl:  qualityControl,
+		analytics:       analytics,
 		appRef:          appRef,
 		log:             log,
 		refreshTokenTTL: refreshTokenTTL,
@@ -117,6 +120,7 @@ func (h *Handler) Init() *gin.Engine {
 	h.initOrderRoutes(api)
 	h.initInvitationRoutes(api)
 	h.initQualityControlRoutes(api)
+	h.initAnalyticsRoutes(api)
 
 	// Frontend routes (SPA)
 	router.NoRoute(h.serveFrontend)
