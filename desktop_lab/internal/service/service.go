@@ -82,6 +82,24 @@ type StandardRepo interface {
 	LinkDimensionToStandard(ctx context.Context, standardID, dimensionID string) error
 }
 
+// AnalyticsRepo интерфейс для репозитория аналитики
+type AnalyticsRepo interface {
+	GetOrdersChartData(ctx context.Context, dateFrom, dateTo time.Time, organizationID string) ([]models.TimeSeriesData, error)
+	GetRevenueChartData(ctx context.Context, dateFrom, dateTo time.Time, organizationID string) ([]models.TimeSeriesData, error)
+	GetTopCustomers(ctx context.Context, dateFrom, dateTo time.Time, organizationID string, limit int) ([]models.TopCustomer, error)
+	GetTopTests(ctx context.Context, dateFrom, dateTo time.Time, organizationID string, limit int) ([]models.TopTest, error)
+	GetLabUtilization(ctx context.Context, organizationID string) (models.LabUtilization, error)
+	GetOrderConversionStats(ctx context.Context, dateFrom, dateTo time.Time) (models.ApplicationFunnel, error)
+	GetAvgCompletionTime(ctx context.Context, dateFrom, dateTo time.Time) (time.Duration, error)
+	GetRejectionReasons(ctx context.Context, dateFrom, dateTo time.Time) ([]models.RejectionReason, error)
+	GetNonConformanceRate(ctx context.Context, dateFrom, dateTo time.Time, testMethodID string) (float64, error)
+	GetControlChartData(ctx context.Context, dateFrom, dateTo time.Time, testMethodID string) ([]models.ControlChartData, error)
+	GetMeasurementUncertainty(ctx context.Context, testMethodID string) (models.MeasurementUncertainty, error)
+	GetPLReport(ctx context.Context, periodStart, periodEnd time.Time) (models.PLReport, error)
+	GetAccountsReceivable(ctx context.Context, periodEnd time.Time) ([]models.AccountsReceivable, error)
+	GetTaxReports(ctx context.Context, periodStart, periodEnd time.Time) ([]models.TaxReport, error)
+}
+
 // ExperimentGroupRepo управляет группами экспериментов
 type ExperimentGroupRepo interface {
 	Create(ctx context.Context, g models.ExperimentGroup) error
@@ -180,6 +198,7 @@ type Services struct {
 	Reports       *ReportService
 	Orders        *OrderService
 	QualityControl *QualityControlService
+	Analytics     *AnalyticsService
 }
 
 func NewServices(
@@ -199,6 +218,7 @@ func NewServices(
 	auditRepo AuditRepo,
 	versionRepo ProtocolVersionRepo,
 	templateRepo ProtocolTemplateRepo,
+	analyticsRepo *mysql_repo.AnalyticsRepositoryImpl,
 
 	fontDir string,
 	templatesDir string,
@@ -219,6 +239,7 @@ func NewServices(
 	orders := NewOrderService(orderRepo, orgTestsRepo, log)
 	invitations := NewInvitationService(invRepo, orgRepo, userRepo, log)
 	qualityControl := NewQualityControlService(auditRepo, versionRepo, templateRepo, protRepo, userRepo, log)
+	analytics := NewAnalyticsService(analyticsRepo, stdRepo, log)
 	return &Services{
 		Auth:           auth,
 		Materials:      material,
@@ -233,5 +254,6 @@ func NewServices(
 		Orders:         orders,
 		Invitations:    invitations,
 		QualityControl: qualityControl,
+		Analytics:      analytics,
 	}
 }

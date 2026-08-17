@@ -120,7 +120,7 @@ func (a *App) selectDatabase() error {
 // initServices инициализирует сервисы.
 func (a *App) initServices(repos *repository.Repository, wkhtmltopdfWindows []byte) *service.Services {
 	svc := service.NewServices(
-		repos.Material, repos.Standard, repos.Protocol, repos.Sample, repos.Group, repos.Token, repos.User, repos.Dimension, repos.Organization, repos.OrganizationTests, repos.OrganizationUser, repos.Order, repos.Invitation, repos.Audit, repos.ProtocolVersion, repos.ProtocolTemplate,
+		repos.Material, repos.Standard, repos.Protocol, repos.Sample, repos.Group, repos.Token, repos.User, repos.Dimension, repos.Organization, repos.OrganizationTests, repos.OrganizationUser, repos.Order, repos.Invitation, repos.Audit, repos.ProtocolVersion, repos.ProtocolTemplate, repos.Analytics,
 		a.fontDir, "templates", wkhtmltopdfWindows, *a.cfg, a.log,
 	)
 
@@ -137,7 +137,7 @@ func (a *App) initServices(repos *repository.Repository, wkhtmltopdfWindows []by
 func (a *App) initHandlers(svc *service.Services, frontendFS embed.FS) *handler.Handler {
 	handl := handler.NewHandler(
 		svc.Auth, svc.Dimensions, svc.Invitations, svc.Materials, svc.Groups, svc.Organizations, svc.Orders, svc.Profile,
-		svc.Protocols, svc.Reports, svc.Samples, svc.Standards, svc.QualityControl,
+		svc.Protocols, svc.Reports, svc.Samples, svc.Standards, svc.QualityControl, svc.Analytics,
 		a, a.log, a.cfg.Auth.RefreshTokenTTL,
 	)
 	handl.SetFrontendFS(frontendFS)
