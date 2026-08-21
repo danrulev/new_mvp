@@ -239,7 +239,7 @@ async function loadMaterials() {
   try {
     console.log('🔄 Loading materials...');
     const data = await api.getMaterials();
-    const list = Array.isArray(data) ? data : (data.items || []);
+    const list = Array.isArray(data) ? data : (data?.items || []);
 
     sel.innerHTML = '<option value="">-- Выберите материал --</option>';
 

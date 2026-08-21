@@ -50,114 +50,116 @@ func SeedData(svc *service.Services, log *zap.Logger) error {
 			return fmt.Errorf("failed to read file %s: %w", d.Name(), err)
 		}
 
-		var payload StandardSeedPayload
-		if err := json.Unmarshal(fileData, &payload); err != nil {
+		var payloads []StandardSeedPayload
+		if err := json.Unmarshal(fileData, &payloads); err != nil {
 			return fmt.Errorf("failed to parse JSON %s: %w", d.Name(), err)
 		}
 
-		// 1. Создаем или находим Материал
-		matID, err := getOrCreateMaterial(ctx, svc, payload.Material, log)
-		if err != nil {
-			return fmt.Errorf("failed to get/create material: %w", err)
-		}
-
-		// 2. Регистрируем глобальные измерения и привязываем их к материалу
-		dimMap := make(map[string]string)
-
-		// Собираем все уникальные измерения из всех стандартов в файле, чтобы не дублировать
-		allDims := make(map[string]DimSeedItem)
-		for _, stdJson := range payload.Standards {
-			for _, dimJson := range stdJson.Dimensions {
-				allDims[dimJson.KeyName] = dimJson
-			}
-		}
-
-		for keyName, dimJson := range allDims {
-			dimID, err := getOrCreateDimension(ctx, svc, dimJson, log)
+		for _, payload := range payloads {
+			// 1. Создаем или находим Материал
+			matID, err := getOrCreateMaterial(ctx, svc, payload.Material, log)
 			if err != nil {
-				return fmt.Errorf("failed to get/create dimension %s: %w", keyName, err)
-			}
-			if dimID == "" {
-				return fmt.Errorf("dimension ID is empty for %s", keyName)
-			}
-			dimMap[keyName] = dimID
-
-			// Привязываем измерение к материалу через сервис
-			if err := linkDimensionToMaterial(ctx, svc, matID, dimID, true, log); err != nil {
-				return fmt.Errorf("failed to link dimension %s to material: %w", keyName, err)
-			}
-		}
-
-		// 3. Создаем Стандарты и Методы
-		for _, stdJson := range payload.Standards {
-			req := models.CreateStandardRequest{
-				MaterialID:  matID,
-				Name:        stdJson.Name,
-				Description: stdJson.Description,
-				Dimensions:  make([]models.ContextDimensionDTO, len(stdJson.Dimensions)),
-				Methods:     make([]models.CreateMethodDTO, len(stdJson.Methods)),
+				return fmt.Errorf("failed to get/create material: %w", err)
 			}
 
-			// Маппинг Dimensions (передаем key_name, сервис сам найдет ID и создаст связь)
-			for i, dim := range stdJson.Dimensions {
-				req.Dimensions[i] = models.ContextDimensionDTO{
-					KeyName:        dim.KeyName,
-					Label:          dim.Label,
-					DataType:       dim.DataType,
-					PossibleValues: dim.PossibleValues,
+			// 2. Регистрируем глобальные измерения и привязываем их к материалу
+			dimMap := make(map[string]string)
+
+			// Собираем все уникальные измерения из всех стандартов в файле, чтобы не дублировать
+			allDims := make(map[string]DimSeedItem)
+			for _, stdJson := range payload.Standards {
+				for _, dimJson := range stdJson.Dimensions {
+					allDims[dimJson.KeyName] = dimJson
 				}
 			}
 
-			// Маппинг Methods
-			for i, m := range stdJson.Methods {
-				req.Methods[i] = models.CreateMethodDTO{
-					Code:        m.Code,
-					Name:        m.Name,
-					Unit:        m.Unit,
-					FormulaExpr: m.FormulaExpr,
-					IsMandatory: m.IsMandatory,
-					Inputs:      make([]models.MethodInputDTO, len(m.Inputs)),
-					Limits:      make([]models.CreateLimitDTO, len(m.Limits)),
+			for keyName, dimJson := range allDims {
+				dimID, err := getOrCreateDimension(ctx, svc, dimJson, log)
+				if err != nil {
+					return fmt.Errorf("failed to get/create dimension %s: %w", keyName, err)
+				}
+				if dimID == "" {
+					return fmt.Errorf("dimension ID is empty for %s", keyName)
+				}
+				dimMap[keyName] = dimID
+
+				// Привязываем измерение к материалу через сервис
+				if err := linkDimensionToMaterial(ctx, svc, matID, dimID, true, log); err != nil {
+					return fmt.Errorf("failed to link dimension %s to material: %w", keyName, err)
+				}
+			}
+
+			// 3. Создаем Стандарты и Методы
+			for _, stdJson := range payload.Standards {
+				req := models.CreateStandardRequest{
+					MaterialID:  matID,
+					Name:        stdJson.Name,
+					Description: stdJson.Description,
+					Dimensions:  make([]models.ContextDimensionDTO, len(stdJson.Dimensions)),
+					Methods:     make([]models.CreateMethodDTO, len(stdJson.Methods)),
 				}
 
-				for j, inp := range m.Inputs {
-					req.Methods[i].Inputs[j] = models.MethodInputDTO{
-						ParamKey:   inp.ParamKey,
-						Label:      inp.Label,
-						Unit:       inp.Unit,
-						InputType:  inp.InputType,
-						IsRequired: inp.IsRequired,
+				// Маппинг Dimensions (передаем key_name, сервис сам найдет ID и создаст связь)
+				for i, dim := range stdJson.Dimensions {
+					req.Dimensions[i] = models.ContextDimensionDTO{
+						KeyName:        dim.KeyName,
+						Label:          dim.Label,
+						DataType:       dim.DataType,
+						PossibleValues: dim.PossibleValues,
 					}
 				}
 
-				for k, lim := range m.Limits {
-					req.Methods[i].Limits[k] = models.CreateLimitDTO{
-						LimitType:  lim.LimitType,
-						MinValue:   lim.MinValue,
-						MaxValue:   lim.MaxValue,
-						Conditions: make([]models.ConditionDTO, len(lim.Conditions)),
+				// Маппинг Methods
+				for i, m := range stdJson.Methods {
+					req.Methods[i] = models.CreateMethodDTO{
+						Code:        m.Code,
+						Name:        m.Name,
+						Unit:        m.Unit,
+						FormulaExpr: m.FormulaExpr,
+						IsMandatory: m.IsMandatory,
+						Inputs:      make([]models.MethodInputDTO, len(m.Inputs)),
+						Limits:      make([]models.CreateLimitDTO, len(m.Limits)),
 					}
 
-					for l, cond := range lim.Conditions {
-						req.Methods[i].Limits[k].Conditions[l] = models.ConditionDTO{
-							DimensionKey:  cond.DimensionKey,
-							Operator:      cond.Operator,
-							ExpectedValue: cond.ExpectedValue,
+					for j, inp := range m.Inputs {
+						req.Methods[i].Inputs[j] = models.MethodInputDTO{
+							ParamKey:   inp.ParamKey,
+							Label:      inp.Label,
+							Unit:       inp.Unit,
+							InputType:  inp.InputType,
+							IsRequired: inp.IsRequired,
+						}
+					}
+
+					for k, lim := range m.Limits {
+						req.Methods[i].Limits[k] = models.CreateLimitDTO{
+							LimitType:  lim.LimitType,
+							MinValue:   lim.MinValue,
+							MaxValue:   lim.MaxValue,
+							Conditions: make([]models.ConditionDTO, len(lim.Conditions)),
+						}
+
+						for l, cond := range lim.Conditions {
+							req.Methods[i].Limits[k].Conditions[l] = models.ConditionDTO{
+								DimensionKey:  cond.DimensionKey,
+								Operator:      cond.Operator,
+								ExpectedValue: cond.ExpectedValue,
+							}
 						}
 					}
 				}
-			}
 
-			// Вызов сервиса создания стандарта
-			_, err := svc.Standards.CreateStandard(ctx, req)
-			if err != nil {
-				if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-					log.Debug("Standard already exists", zap.String("name", stdJson.Name))
-					continue
+				// Вызов сервиса создания стандарта
+				_, err := svc.Standards.CreateStandard(ctx, req)
+				if err != nil {
+					if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+						log.Debug("Standard already exists", zap.String("name", stdJson.Name))
+						continue
+					}
+					return fmt.Errorf("failed to create standard %s: %w", stdJson.Name, err)
 				}
-				return fmt.Errorf("failed to create standard %s: %w", stdJson.Name, err)
+				log.Info("Standard created", zap.String("name", stdJson.Name))
 			}
-			log.Info("Standard created", zap.String("name", stdJson.Name))
 		}
 
 		count++
