@@ -47,48 +47,54 @@
       </header>
 
       <div class="card">
-        <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-          <div class="form-group">
-            <label>Поиск по названию</label>
-            <input type="text" id="groupSearchInput" placeholder="Название группы...">
+        <div class="form-grid">
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Поиск по названию</label>
+              <input type="text" id="groupSearchInput" placeholder="Название группы...">
+            </div>
+            <div class="form-group">
+              <label>Проект</label>
+              <input type="text" id="filterProject" placeholder="Название проекта...">
+            </div>
+            <div class="form-group">
+              <label>Тип объекта</label>
+              <input type="text" id="filterObjectType" placeholder="Тип объекта...">
+            </div>
           </div>
-          <div class="form-group">
-            <label>Проект</label>
-            <input type="text" id="filterProject" placeholder="Название проекта...">
+          <div class="form-row-3" style="margin-top: 16px;">
+            <div class="form-group">
+              <label>Заказчик</label>
+              <input type="text" id="filterCustomer" placeholder="Название заказчика...">
+            </div>
+            <div class="form-group">
+              <label>Материал</label>
+              <select id="filterMaterial">
+                <option value="">Все материалы</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Статус</label>
+              <select id="filterStatus">
+                <option value="">Все статусы</option>
+                <option value="draft">Черновик</option>
+                <option value="in_progress">В работе</option>
+                <option value="completed">Завершено</option>
+                <option value="archived">Архивировано</option>
+              </select>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Тип объекта</label>
-            <input type="text" id="filterObjectType" placeholder="Тип объекта...">
-          </div>
-          <div class="form-group">
-            <label>Заказчик</label>
-            <input type="text" id="filterCustomer" placeholder="Название заказчика...">
-          </div>
-          <div class="form-group">
-            <label>Материал</label>
-            <select id="filterMaterial">
-              <option value="">Все материалы</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Статус</label>
-            <select id="filterStatus">
-              <option value="">Все статусы</option>
-              <option value="draft">Черновик</option>
-              <option value="in_progress">В работе</option>
-              <option value="completed">Завершено</option>
-              <option value="archived">Архивировано</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Место</label>
-            <input type="text" id="filterLocation" placeholder="Место проведения...">
-          </div>
-          <div class="form-group">
-            <label>Ответственный</label>
-            <select id="filterResponsible">
-              <option value="">Все сотрудники</option>
-            </select>
+          <div class="form-row-2" style="margin-top: 16px;">
+            <div class="form-group">
+              <label>Место</label>
+              <input type="text" id="filterLocation" placeholder="Место проведения...">
+            </div>
+            <div class="form-group">
+              <label>Ответственный</label>
+              <select id="filterResponsible">
+                <option value="">Все сотрудники</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
