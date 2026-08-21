@@ -102,56 +102,58 @@
         <div class="badge" id="calcBadge">Готов к работе</div>
       </header>
 
-      <div class="form-grid">
+      <div class="form-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
         <!-- 🔹 Параметры пробы -->
         <section class="card">
           <h3 class="card-title">Параметры пробы</h3>
           
-          <!-- Материал -->
-          <div class="form-group">
-            <label>Материал <span class="required">*</span></label>
-            <select id="materialSelect">
-              <option value="">-- Загрузка... --</option>
-            </select>
-          </div>
-          
-          <!-- Номер пробы -->
-          <div class="form-group">
-            <label>Номер пробы <span class="required">*</span></label>
-            <input type="text" id="sampleNumber" placeholder="П-001">
-          </div>
-          
-          <!-- Место отбора -->
-          <div class="form-group">
-            <label>Место отбора <span class="required">*</span></label>
-            <input type="text" id="samplePlace" placeholder="Объект №5">
-          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+            <!-- Материал -->
+            <div class="form-group">
+              <label>Материал <span class="required">*</span></label>
+              <select id="materialSelect">
+                <option value="">-- Загрузка... --</option>
+              </select>
+            </div>
+            
+            <!-- Номер пробы -->
+            <div class="form-group">
+              <label>Номер пробы <span class="required">*</span></label>
+              <input type="text" id="sampleNumber" placeholder="П-001">
+            </div>
+            
+            <!-- Место отбора -->
+            <div class="form-group">
+              <label>Место отбора <span class="required">*</span></label>
+              <input type="text" id="samplePlace" placeholder="Объект №5">
+            </div>
 
-          <!-- Дата отбора (необязательно) -->
-          <div class="form-group">
-            <label>Дата отбора</label>
-            <input type="date" id="collectionDate">
+            <!-- Дата отбора (необязательно) -->
+            <div class="form-group">
+              <label>Дата отбора</label>
+              <input type="date" id="collectionDate">
+            </div>
+            
+            <!-- Группа испытаний -->
+            <div class="form-group">
+              <label>Группа испытаний</label>
+              <select id="groupSelect">
+                <option value="">-- Без группы --</option>
+              </select>
+            </div>
           </div>
           
           <!-- Заметка к пробе (необязательно) -->
-          <div class="form-group">
+          <div class="form-group" style="margin-top: 16px;">
             <label>Заметка к пробе</label>
             <textarea id="sampleNote" rows="2" class="form-control" placeholder="Дополнительная информация о пробе..."></textarea>
-          </div>
-          
-          <!-- Группа испытаний -->
-          <div class="form-group">
-            <label>Группа испытаний</label>
-            <select id="groupSelect">
-              <option value="">-- Без группы --</option>
-            </select>
           </div>
 
           <!-- 🔹 Расширенные параметры образца -->
           <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
             <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">📐 Параметры образца</h4>
             
-            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
               <div class="form-group">
                 <label>Длина (мм)</label>
                 <input type="number" step="0.01" id="lengthMM" placeholder="0.00">
@@ -160,9 +162,6 @@
                 <label>Ширина (мм)</label>
                 <input type="number" step="0.01" id="widthMM" placeholder="0.00">
               </div>
-            </div>
-            
-            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
               <div class="form-group">
                 <label>Высота (мм)</label>
                 <input type="number" step="0.01" id="heightMM" placeholder="0.00">
@@ -173,7 +172,7 @@
               </div>
             </div>
             
-            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px;">
               <div class="form-group">
                 <label>Форма</label>
                 <select id="shape">
@@ -189,9 +188,6 @@
                 <label>Цвет</label>
                 <input type="text" id="color" placeholder="Серый">
               </div>
-            </div>
-            
-            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
               <div class="form-group">
                 <label>Номер партии</label>
                 <input type="text" id="batchNumber" placeholder="BATCH-001">
@@ -202,7 +198,7 @@
               </div>
             </div>
             
-            <div class="form-group">
+            <div class="form-group" style="margin-top: 16px;">
               <label>URL фотографии</label>
               <input type="url" id="photoURL" placeholder="https://example.com/photo.jpg">
             </div>
@@ -210,25 +206,27 @@
 
           <!-- Разделитель -->
           <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
-            <div class="form-group">
-              <label>Лаборатория <span class="required">*</span></label>
-              <input type="text" id="labName" value="БГТУ им. В.Г. Шухова">
-            </div>
-            <div class="form-group">
-              <label>Оператор <span class="required">*</span></label>
-              <input type="text" id="operator" placeholder="ФИО">
-            </div>
-            
-            <!-- Ответственное лицо (выбор из сотрудников) -->
-            <div class="form-group">
-              <label>Ответственный</label>
-              <select id="responsibleSelect">
-                <option value="">-- Без ответственного --</option>
-              </select>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+              <div class="form-group">
+                <label>Лаборатория <span class="required">*</span></label>
+                <input type="text" id="labName" value="БГТУ им. В.Г. Шухова">
+              </div>
+              <div class="form-group">
+                <label>Оператор <span class="required">*</span></label>
+                <input type="text" id="operator" placeholder="ФИО">
+              </div>
+              
+              <!-- Ответственное лицо (выбор из сотрудников) -->
+              <div class="form-group">
+                <label>Ответственный</label>
+                <select id="responsibleSelect">
+                  <option value="">-- Без ответственного --</option>
+                </select>
+              </div>
             </div>
             
             <!-- 🔥 Новое: Заметка к протоколу (необязательно) -->
-            <div class="form-group">
+            <div class="form-group" style="margin-top: 16px;">
               <label>Заметка к протоколу</label>
               <textarea id="protocolNote" rows="2" class="form-control" placeholder="Комментарии к протоколу..."></textarea>
             </div>
@@ -254,24 +252,26 @@
         <section class="card">
           <h3 class="card-title">Метод испытания</h3>
           
-          <div class="form-group">
-            <label>Стандарт <span class="required">*</span></label>
-            <select id="standardSelect" disabled>
-              <option value="">-- Выберите материал --</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label>Метод <span class="required">*</span></label>
-            <select id="methodSelect" disabled>
-              <option value="">-- Выберите стандарт --</option>
-            </select>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+            <div class="form-group">
+              <label>Стандарт <span class="required">*</span></label>
+              <select id="standardSelect" disabled>
+                <option value="">-- Выберите материал --</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Метод <span class="required">*</span></label>
+              <select id="methodSelect" disabled>
+                <option value="">-- Выберите стандарт --</option>
+              </select>
+            </div>
           </div>
 
           <!-- Контейнер для динамических полей метода -->
           <div id="methodDetails"></div>
           
-          <button class="btn btn-secondary" onclick="resetMethodForm()">🔄 Сбросить метод</button>
+          <button class="btn btn-secondary" onclick="resetMethodForm()" style="margin-top: 16px;">🔄 Сбросить метод</button>
         </section>
       </div>
 
