@@ -5,6 +5,7 @@ import (
 	"desktop_lab/internal/config"
 	contextkeys "desktop_lab/internal/contextKey"
 	"desktop_lab/internal/models"
+	"desktop_lab/internal/repository/mysql_repo"
 	"time"
 
 	"go.uber.org/zap"
@@ -185,20 +186,20 @@ type ProtocolTemplateRepo interface {
 }
 
 type Services struct {
-	Auth          *AuthService
-	Dimensions    *DimensionService
-	Groups        *ExperimentGroupService
-	Invitations   *InvitationService
-	Materials     *MaterialService
-	Organizations *OrganizationService
-	Profile       *ProfileService
-	Standards     *StandardService
-	Protocols     *ProtocolService
-	Samples       *SampleService
-	Reports       *ReportService
-	Orders        *OrderService
+	Auth           *AuthService
+	Dimensions     *DimensionService
+	Groups         *ExperimentGroupService
+	Invitations    *InvitationService
+	Materials      *MaterialService
+	Organizations  *OrganizationService
+	Profile        *ProfileService
+	Standards      *StandardService
+	Protocols      *ProtocolService
+	Samples        *SampleService
+	Reports        *ReportService
+	Orders         *OrderService
 	QualityControl *QualityControlService
-	Analytics     *AnalyticsService
+	Analytics      *AnalyticsService
 }
 
 func NewServices(

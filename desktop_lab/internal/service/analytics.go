@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"desktop_lab/internal/models"
-	"desktop_lab/internal/repository/mysql_repo"
 	"fmt"
 	"math"
 	"time"
@@ -165,7 +164,7 @@ func (s *AnalyticsService) GetQualityAnalytics(ctx context.Context, params model
 	// Контрольные карты
 	if params.TestMethodID != "" {
 		log.Debug("fetching control chart data", zap.String("test_method_id", params.TestMethodID))
-		
+
 		// Получаем информацию о методе
 		methodInfo, err := s.standardRepo.GetTestMethod(ctx, params.TestMethodID)
 		if err != nil {
