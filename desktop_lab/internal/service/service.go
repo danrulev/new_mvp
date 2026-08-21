@@ -186,20 +186,24 @@ type ProtocolTemplateRepo interface {
 }
 
 type Services struct {
-	Auth          *AuthService
-	Dimensions    *DimensionService
-	Groups        *ExperimentGroupService
-	Invitations   *InvitationService
-	Materials     *MaterialService
-	Organizations *OrganizationService
-	Profile       *ProfileService
-	Standards     *StandardService
-	Protocols     *ProtocolService
-	Samples       *SampleService
-	Reports       *ReportService
-	Orders        *OrderService
+	Auth           *AuthService
+	Dimensions     *DimensionService
+	Groups         *ExperimentGroupService
+	Invitations    *InvitationService
+	Invoices       *InvoiceService
+	Materials      *MaterialService
+	Organizations  *OrganizationService
+	Profile        *ProfileService
+	Standards      *StandardService
+	Protocols      *ProtocolService
+	Payment        *PaymentService
+	PaymentGateway *PaymentGatewayService
+	Samples        *SampleService
+	Reports        *ReportService
+	Orders         *OrderService
 	QualityControl *QualityControlService
-	Analytics     *AnalyticsService
+	Analytics      *AnalyticsService
+	Finance        *PriceListService
 }
 
 func NewServices(
