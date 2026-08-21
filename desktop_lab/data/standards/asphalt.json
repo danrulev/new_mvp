@@ -1,18 +1,19 @@
-{
+[
+  {
   "material": {
     "name": "Асфальтобетон",
-    "code": "ASPH-001"
+    "code": "ASPH-9128"
   },
   "standards": [
     {
       "name": "ГОСТ 9128-2013",
-      "description": "Смеси асфальтобетонные дорожные, аэродромные и асфальтобетон. Технические условия",
+      "description": "Смеси асфальтобетонные, полимерасфальтобетонные, асфальтобетон, полимерасфальтобетон для автомобильных дорог и аэродромов. Технические условия",
       "dimensions": [
         {
           "key_name": "climate_zone",
-          "label": "Климатическая зона",
+          "label": "Дорожно-климатическая зона",
           "data_type": "select",
-          "possible_values": ["I", "II", "III", "IV"]
+          "possible_values": ["I", "II", "III", "IV", "V"]
         },
         {
           "key_name": "layer_type",
@@ -25,1681 +26,424 @@
           "label": "Тип асфальтобетона",
           "data_type": "select",
           "possible_values": ["А", "Б", "В", "Г", "Д"]
+        },
+        {
+          "key_name": "density_category",
+          "label": "Вид по плотности",
+          "data_type": "select",
+          "possible_values": ["высокоплотный", "плотный", "пористый", "высокопористый щебеночный", "высокопористый песчаный"]
+        },
+        {
+          "key_name": "mixture_temp_type",
+          "label": "Тип смеси по температуре",
+          "data_type": "select",
+          "possible_values": ["горячие", "холодные"]
+        },
+        {
+          "key_name": "mark",
+          "label": "Марка",
+          "data_type": "select",
+          "possible_values": ["I", "II", "III"]
+        },
+        {
+          "key_name": "grain_size",
+          "label": "Вид по наибольшему размеру зёрен",
+          "data_type": "select",
+          "possible_values": ["крупнозернистые (до 40 мм)", "мелкозернистые (до 20 мм)", "песчаные (до 10 мм)"]
         }
       ],
       "methods": [
         {
           "code": "9128-P-01",
-          "name": "Плотность образца",
-          "unit": "г/см³",
-          "formula_expr": "weight_air / (weight_air - weight_water)",
+          "name": "Предел прочности при сжатии при 50°C (высокоплотные и плотные горячие)",
+          "unit": "МПа",
+          "formula_expr": "(F / A) / 1000000",
           "is_mandatory": true,
           "inputs": [
-            {
-              "param_key": "weight_air",
-              "label": "Масса в воздухе",
-              "unit": "г",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "weight_water",
-              "label": "Масса в воде",
-              "unit": "г",
-              "input_type": "number",
-              "is_required": true
-            }
+            {"param_key": "F", "label": "Разрушающая нагрузка", "unit": "Н", "input_type": "number", "is_required": true},
+            {"param_key": "A", "label": "Площадь поперечного сечения образца", "unit": "м²", "input_type": "number", "is_required": true}
           ],
           "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 2.3,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "верхний"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 2.2,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "нижний"
-                }
-              ]
-            }
+            {"limit_type": "min", "min_value": 1.0, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 1.1, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 1.2, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.9, "max_value": null, "priority": 4, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 1.0, "max_value": null, "priority": 5, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 1.1, "max_value": null, "priority": 6, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 1.0, "max_value": null, "priority": 7, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 1.2, "max_value": null, "priority": 8, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 1.3, "max_value": null, "priority": 9, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 1.1, "max_value": null, "priority": 10, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "В"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 1.3, "max_value": null, "priority": 11, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "В"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 1.6, "max_value": null, "priority": 12, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "В"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.8, "max_value": null, "priority": 13, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}]},
+            {"limit_type": "min", "min_value": 0.9, "max_value": null, "priority": 14, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}]},
+            {"limit_type": "min", "min_value": 1.0, "max_value": null, "priority": 15, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}]},
+            {"limit_type": "min", "min_value": 0.9, "max_value": null, "priority": 16, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}]},
+            {"limit_type": "min", "min_value": 1.0, "max_value": null, "priority": 17, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}]},
+            {"limit_type": "min", "min_value": 1.2, "max_value": null, "priority": 18, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}]},
+            {"limit_type": "min", "min_value": 0.8, "max_value": null, "priority": 19, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}, {"dimension_key": "mark", "operator": "=", "expected_value": "III"}]},
+            {"limit_type": "min", "min_value": 0.9, "max_value": null, "priority": 20, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}, {"dimension_key": "mark", "operator": "=", "expected_value": "III"}]}
           ]
         },
         {
           "code": "9128-P-02",
-          "name": "Водопоглощение по массе",
-          "unit": "%",
-          "formula_expr": "((weight_saturated - weight_air) / weight_air) * 100",
+          "name": "Предел прочности при сжатии при 20°C (все типы горячих)",
+          "unit": "МПа",
+          "formula_expr": "(F / A) / 1000000",
           "is_mandatory": true,
           "inputs": [
-            {
-              "param_key": "weight_air",
-              "label": "Масса сухого образца",
-              "unit": "г",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "weight_saturated",
-              "label": "Масса насыщенного образца",
-              "unit": "г",
-              "input_type": "number",
-              "is_required": true
-            }
+            {"param_key": "F", "label": "Разрушающая нагрузка", "unit": "Н", "input_type": "number", "is_required": true},
+            {"param_key": "A", "label": "Площадь поперечного сечения образца", "unit": "м²", "input_type": "number", "is_required": true}
           ],
           "limits": [
-            {
-              "limit_type": "max",
-              "min_value": null,
-              "max_value": 3.0,
-              "priority": 1,
-              "conditions": []
-            },
-            {
-              "limit_type": "max",
-              "min_value": null,
-              "max_value": 2.5,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "верхний"
-                }
-              ]
-            }
+            {"limit_type": "min", "min_value": 2.5, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "горячие"}]},
+            {"limit_type": "min", "min_value": 2.2, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "горячие"}]},
+            {"limit_type": "min", "min_value": 2.0, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "III"}, {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "горячие"}]}
           ]
         },
         {
           "code": "9128-P-03",
-          "name": "Предел прочности при сжатии при 20°C",
+          "name": "Предел прочности при сжатии при 0°C (все типы горячих)",
           "unit": "МПа",
-          "formula_expr": "(F / A) / 10",
+          "formula_expr": "(F / A) / 1000000",
           "is_mandatory": true,
           "inputs": [
-            {
-              "param_key": "F",
-              "label": "Разрушающая нагрузка",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "A",
-              "label": "Площадь сечения",
-              "unit": "см²",
-              "input_type": "number",
-              "is_required": true
-            }
+            {"param_key": "F", "label": "Разрушающая нагрузка", "unit": "Н", "input_type": "number", "is_required": true},
+            {"param_key": "A", "label": "Площадь поперечного сечения образца", "unit": "м²", "input_type": "number", "is_required": true}
           ],
           "limits": [
-            {
-              "limit_type": "range",
-              "min_value": 1.8,
-              "max_value": 4.5,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "climate_zone",
-                  "operator": "IN",
-                  "expected_value": "I,II"
-                }
-              ]
-            },
-            {
-              "limit_type": "range",
-              "min_value": 1.5,
-              "max_value": 4.0,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "climate_zone",
-                  "operator": "IN",
-                  "expected_value": "III,IV"
-                }
-              ]
-            }
+            {"limit_type": "max", "min_value": null, "max_value": 9.0, "priority": 1, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 11.0, "priority": 2, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 13.0, "priority": 3, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 10.0, "priority": 4, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 12.0, "priority": 5, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 13.0, "priority": 6, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 10.0, "priority": 7, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "III"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 12.0, "priority": 8, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "III"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 13.0, "priority": 9, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "III"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]}
           ]
         },
         {
           "code": "9128-P-04",
-          "name": "Предел прочности при сжатии при 50°C",
-          "unit": "МПа",
-          "formula_expr": "(F / A) / 10",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "F",
-              "label": "Разрушающая нагрузка",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "A",
-              "label": "Площадь сечения",
-              "unit": "см²",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 1.2,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "верхний"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 0.9,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "нижний"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "9128-P-05",
-          "name": "Предел прочности при сжатии при 0°C",
-          "unit": "МПа",
-          "formula_expr": "(F / A) / 10",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "F",
-              "label": "Разрушающая нагрузка",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "A",
-              "label": "Площадь сечения",
-              "unit": "см²",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 4.0,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "climate_zone",
-                  "operator": "IN",
-                  "expected_value": "I,II"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 3.0,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "climate_zone",
-                  "operator": "IN",
-                  "expected_value": "III,IV"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "9128-P-06",
-          "name": "Предел прочности при растяжении-изгибе при 0°C",
-          "unit": "МПа",
-          "formula_expr": "(F * L) / (b * h * h)",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "F",
-              "label": "Разрушающая нагрузка",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "L",
-              "label": "Расстояние между опорами",
-              "unit": "см",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "b",
-              "label": "Ширина образца",
-              "unit": "см",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "h",
-              "label": "Высота образца",
-              "unit": "см",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 2.8,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "climate_zone",
-                  "operator": "IN",
-                  "expected_value": "I,II"
-                },
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "верхний"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 2.2,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "climate_zone",
-                  "operator": "IN",
-                  "expected_value": "III,IV"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "9128-P-07",
-          "name": "Коэффициент водостойкости",
+          "name": "Водостойкость (горячие высокоплотные и плотные)",
           "unit": "доли ед.",
           "formula_expr": "strength_sat / strength_dry",
           "is_mandatory": true,
           "inputs": [
-            {
-              "param_key": "strength_sat",
-              "label": "Прочность насыщенного образца",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "strength_dry",
-              "label": "Прочность сухого образца",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            }
+            {"param_key": "strength_sat", "label": "Предел прочности водонасыщенного образца при 20°C", "unit": "МПа", "input_type": "number", "is_required": true},
+            {"param_key": "strength_dry", "label": "Предел прочности сухого образца при 20°C", "unit": "МПа", "input_type": "number", "is_required": true}
           ],
           "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 0.85,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "верхний"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 0.80,
-              "max_value": null,
-              "priority": 2,
-              "conditions": []
-            }
+            {"limit_type": "min", "min_value": 0.95, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "плотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.90, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "плотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "min", "min_value": 0.85, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "плотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]},
+            {"limit_type": "min", "min_value": 0.95, "max_value": null, "priority": 4, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.90, "max_value": null, "priority": 5, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "min", "min_value": 0.85, "max_value": null, "priority": 6, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]},
+            {"limit_type": "min", "min_value": 0.90, "max_value": null, "priority": 7, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "плотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.85, "max_value": null, "priority": 8, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "плотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "min", "min_value": 0.80, "max_value": null, "priority": 9, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "плотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]}
           ]
         },
         {
-          "code": "9128-P-08",
-          "name": "Коэффициент водостойкости при замораживании-оттаивании",
+          "code": "9128-P-05",
+          "name": "Водостойкость при длительном водонасыщении (горячие)",
           "unit": "доли ед.",
-          "formula_expr": "strength_frost / strength_dry",
+          "formula_expr": "strength_long_sat / strength_dry",
           "is_mandatory": true,
           "inputs": [
-            {
-              "param_key": "strength_frost",
-              "label": "Прочность после циклов замораживания-оттаивания",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "strength_dry",
-              "label": "Прочность сухого образца",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            }
+            {"param_key": "strength_long_sat", "label": "Предел прочности после длительного водонасыщения при 20°C", "unit": "МПа", "input_type": "number", "is_required": true},
+            {"param_key": "strength_dry", "label": "Предел прочности сухого образца при 20°C", "unit": "МПа", "input_type": "number", "is_required": true}
           ],
           "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 0.75,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "climate_zone",
-                  "operator": "IN",
-                  "expected_value": "I,II"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 0.70,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "climate_zone",
-                  "operator": "IN",
-                  "expected_value": "III,IV"
-                }
-              ]
-            }
+            {"limit_type": "min", "min_value": 0.90, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "плотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.85, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "плотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "min", "min_value": 0.75, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "плотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]},
+            {"limit_type": "min", "min_value": 0.95, "max_value": null, "priority": 4, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.90, "max_value": null, "priority": 5, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "min", "min_value": 0.85, "max_value": null, "priority": 6, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]}
           ]
         },
         {
-          "code": "9128-P-09",
-          "name": "Сдвиг при сжатии при 20°C",
+          "code": "9128-P-06",
+          "name": "Сдвигоустойчивость по коэффициенту внутреннего трения",
+          "unit": "доли ед.",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {"param_key": "friction_coeff", "label": "Коэффициент внутреннего трения", "unit": "доли ед.", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "min", "min_value": 0.88, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.89, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "min", "min_value": 0.91, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]},
+            {"limit_type": "min", "min_value": 0.86, "max_value": null, "priority": 4, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.80, "max_value": null, "priority": 5, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.78, "max_value": null, "priority": 6, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Г"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]}
+          ]
+        },
+        {
+          "code": "9128-P-07",
+          "name": "Сдвигоустойчивость по сцеплению при сдвиге при 50°C",
           "unit": "МПа",
           "formula_expr": "F_shear / A",
           "is_mandatory": true,
           "inputs": [
-            {
-              "param_key": "F_shear",
-              "label": "Нагрузка сдвига",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "A",
-              "label": "Площадь сечения",
-              "unit": "см²",
-              "input_type": "number",
-              "is_required": true
-            }
+            {"param_key": "F_shear", "label": "Нагрузка при сдвиге", "unit": "Н", "input_type": "number", "is_required": true},
+            {"param_key": "A", "label": "Площадь сдвига", "unit": "м²", "input_type": "number", "is_required": true}
           ],
           "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 0.45,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "верхний"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 0.35,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "нижний"
-                }
-              ]
-            }
+            {"limit_type": "min", "min_value": 0.25, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.27, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "min", "min_value": 0.30, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]},
+            {"limit_type": "min", "min_value": 0.23, "max_value": null, "priority": 4, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.32, "max_value": null, "priority": 5, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.34, "max_value": null, "priority": 6, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Г"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]}
+          ]
+        }
+      ]
+    }
+  ]
+},
+{
+  "material": {
+    "name": "Полимерасфальтобетон",
+    "code": "POLY-ASPH-9128"
+  },
+  "standards": [
+    {
+      "name": "ГОСТ 9128-2013",
+      "description": "Смеси асфальтобетонные, полимерасфальтобетонные, асфальтобетон, полимерасфальтобетон для автомобильных дорог и аэродромов. Технические условия",
+      "dimensions": [
+        {
+          "key_name": "climate_zone",
+          "label": "Дорожно-климатическая зона",
+          "data_type": "select",
+          "possible_values": ["I", "II", "III", "IV", "V"]
+        },
+        {
+          "key_name": "layer_type",
+          "label": "Тип слоя покрытия",
+          "data_type": "select",
+          "possible_values": ["верхний", "нижний"]
+        },
+        {
+          "key_name": "asphalt_type",
+          "label": "Тип полимерасфальтобетона",
+          "data_type": "select",
+          "possible_values": ["А", "Б", "В", "Г", "Д"]
+        },
+        {
+          "key_name": "polymer_density",
+          "label": "Вид по плотности",
+          "data_type": "select",
+          "possible_values": ["высокоплотный", "плотный"]
+        },
+        {
+          "key_name": "pbv_grade",
+          "label": "Марка ПБВ",
+          "data_type": "select",
+          "possible_values": ["ПБВ 300", "ПБВ 200", "ПБВ 130", "ПБВ 90", "ПБВ 60", "ПБВ 40"]
+        },
+        {
+          "key_name": "mark",
+          "label": "Марка",
+          "data_type": "select",
+          "possible_values": ["I", "II"]
+        },
+        {
+          "key_name": "grain_size",
+          "label": "Вид по наибольшему размеру зёрен",
+          "data_type": "select",
+          "possible_values": ["мелкозернистые (до 20 мм)", "песчаные (до 10 мм)"]
+        }
+      ],
+      "methods": [
+        {
+          "code": "9128-POLY-01",
+          "name": "Предел прочности при сжатии при 50°C",
+          "unit": "МПа",
+          "formula_expr": "(F / A) / 1000000",
+          "is_mandatory": true,
+          "inputs": [
+            {"param_key": "F", "label": "Разрушающая нагрузка", "unit": "Н", "input_type": "number", "is_required": true},
+            {"param_key": "A", "label": "Площадь поперечного сечения образца", "unit": "м²", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "min", "min_value": 0.9, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "polymer_density", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 1.0, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "polymer_density", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "min", "min_value": 1.1, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "polymer_density", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]},
+            {"limit_type": "min", "min_value": 0.8, "max_value": null, "priority": 4, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.9, "max_value": null, "priority": 5, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "min", "min_value": 1.0, "max_value": null, "priority": 6, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]},
+            {"limit_type": "min", "min_value": 1.0, "max_value": null, "priority": 7, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 1.1, "max_value": null, "priority": 8, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "min", "min_value": 1.2, "max_value": null, "priority": 9, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]}
           ]
         },
         {
-          "code": "9128-P-10",
-          "name": "Сдвиг при сжатии при 50°C",
+          "code": "9128-POLY-02",
+          "name": "Предел прочности при сжатии при 20°C",
+          "unit": "МПа",
+          "formula_expr": "(F / A) / 1000000",
+          "is_mandatory": true,
+          "inputs": [
+            {"param_key": "F", "label": "Разрушающая нагрузка", "unit": "Н", "input_type": "number", "is_required": true},
+            {"param_key": "A", "label": "Площадь поперечного сечения образца", "unit": "м²", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "min", "min_value": 1.9, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 2.0, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III,IV,V"}]},
+            {"limit_type": "min", "min_value": 1.8, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "II"}]}
+          ]
+        },
+        {
+          "code": "9128-POLY-03",
+          "name": "Предел прочности при сжатии при 0°C",
+          "unit": "МПа",
+          "formula_expr": "(F / A) / 1000000",
+          "is_mandatory": true,
+          "inputs": [
+            {"param_key": "F", "label": "Разрушающая нагрузка", "unit": "Н", "input_type": "number", "is_required": true},
+            {"param_key": "A", "label": "Площадь поперечного сечения образца", "unit": "м²", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "max", "min_value": null, "max_value": 7.0, "priority": 1, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 9.0, "priority": 2, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 11.0, "priority": 3, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 6.0, "priority": 4, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 9.0, "priority": 5, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "II,III"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 11.0, "priority": 6, "conditions": [{"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]}
+          ]
+        },
+        {
+          "code": "9128-POLY-04",
+          "name": "Водостойкость",
+          "unit": "доли ед.",
+          "formula_expr": "strength_sat / strength_dry",
+          "is_mandatory": true,
+          "inputs": [
+            {"param_key": "strength_sat", "label": "Предел прочности водонасыщенного образца при 20°C", "unit": "МПа", "input_type": "number", "is_required": true},
+            {"param_key": "strength_dry", "label": "Предел прочности сухого образца при 20°C", "unit": "МПа", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "min", "min_value": 0.95, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "polymer_density", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.90, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "polymer_density", "operator": "=", "expected_value": "плотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.85, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "polymer_density", "operator": "=", "expected_value": "плотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]},
+            {"limit_type": "min", "min_value": 0.90, "max_value": null, "priority": 4, "conditions": [{"dimension_key": "polymer_density", "operator": "=", "expected_value": "плотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.80, "max_value": null, "priority": 5, "conditions": [{"dimension_key": "polymer_density", "operator": "=", "expected_value": "плотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "IN", "expected_value": "IV,V"}]}
+          ]
+        },
+        {
+          "code": "9128-POLY-05",
+          "name": "Сдвигоустойчивость по коэффициенту внутреннего трения",
+          "unit": "доли ед.",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {"param_key": "friction_coeff", "label": "Коэффициент внутреннего трения", "unit": "доли ед.", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "min", "min_value": 0.88, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "polymer_density", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.86, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.80, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.74, "max_value": null, "priority": 4, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.64, "max_value": null, "priority": 5, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Г"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]}
+          ]
+        },
+        {
+          "code": "9128-POLY-06",
+          "name": "Сдвигоустойчивость по сцеплению при сдвиге при 50°C",
           "unit": "МПа",
           "formula_expr": "F_shear / A",
           "is_mandatory": true,
           "inputs": [
-            {
-              "param_key": "F_shear",
-              "label": "Нагрузка сдвига",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "A",
-              "label": "Площадь сечения",
-              "unit": "см²",
-              "input_type": "number",
-              "is_required": true
-            }
+            {"param_key": "F_shear", "label": "Нагрузка при сдвиге", "unit": "Н", "input_type": "number", "is_required": true},
+            {"param_key": "A", "label": "Площадь сдвига", "unit": "м²", "input_type": "number", "is_required": true}
           ],
           "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 0.25,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "верхний"
-                }
-              ]
-            }
+            {"limit_type": "min", "min_value": 0.20, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "polymer_density", "operator": "=", "expected_value": "высокоплотный"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.18, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.26, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"}, {"dimension_key": "mark", "operator": "=", "expected_value": "I"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.30, "max_value": null, "priority": 4, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]},
+            {"limit_type": "min", "min_value": 0.38, "max_value": null, "priority": 5, "conditions": [{"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Г"}, {"dimension_key": "mark", "operator": "=", "expected_value": "II"}, {"dimension_key": "climate_zone", "operator": "=", "expected_value": "I"}]}
           ]
+        }
+      ]
+    }
+  ]
+},
+{
+  "material": {
+    "name": "Асфальтобетонные смеси",
+    "code": "ASPH-MIX-9128"
+  },
+  "standards": [
+    {
+      "name": "ГОСТ 9128-2013",
+      "description": "Смеси асфальтобетонные, полимерасфальтобетонные, асфальтобетон, полимерасфальтобетон для автомобильных дорог и аэродромов. Технические условия",
+      "dimensions": [
+        {
+          "key_name": "mixture_temp_type",
+          "label": "Тип смеси по температуре",
+          "data_type": "select",
+          "possible_values": ["горячие", "холодные"]
         },
         {
-          "code": "9128-P-11",
-          "name": "Пористость асфальтобетона",
-          "unit": "%",
-          "formula_expr": "((rho_theor - rho_actual) / rho_theor) * 100",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "rho_theor",
-              "label": "Теоретическая средняя плотность",
-              "unit": "г/см³",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "rho_actual",
-              "label": "Фактическая средняя плотность",
-              "unit": "г/см³",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "range",
-              "min_value": 1.0,
-              "max_value": 5.0,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "верхний"
-                }
-              ]
-            },
-            {
-              "limit_type": "range",
-              "min_value": 2.0,
-              "max_value": 7.0,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "нижний"
-                }
-              ]
-            }
-          ]
+          "key_name": "asphalt_type",
+          "label": "Тип смеси",
+          "data_type": "select",
+          "possible_values": ["А", "Б", "В", "Г", "Д", "Бх", "Вх", "Гх", "Дх"]
         },
         {
-          "code": "9128-P-12",
-          "name": "Остаточная пористость",
-          "unit": "%",
-          "formula_expr": "((rho_theor - rho_sat) / rho_theor) * 100",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "rho_theor",
-              "label": "Теоретическая средняя плотность",
-              "unit": "г/см³",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "rho_sat",
-              "label": "Средняя плотность насыщенного образца",
-              "unit": "г/см³",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "range",
-              "min_value": 1.0,
-              "max_value": 4.0,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "верхний"
-                }
-              ]
-            },
-            {
-              "limit_type": "range",
-              "min_value": 2.0,
-              "max_value": 6.0,
-              "priority": 2,
-              "conditions": []
-            }
-          ]
+          "key_name": "density_category",
+          "label": "Вид по плотности",
+          "data_type": "select",
+          "possible_values": ["высокоплотный", "плотный", "пористый", "высокопористый щебеночный", "высокопористый песчаный"]
         },
         {
-          "code": "9128-P-13",
-          "name": "Межзерновая пористость",
-          "unit": "%",
-          "formula_expr": "((rho_agg_theor - rho_agg_actual) / rho_agg_theor) * 100",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "rho_agg_theor",
-              "label": "Теоретическая плотность минерального скелета",
-              "unit": "г/см³",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "rho_agg_actual",
-              "label": "Фактическая плотность минерального скелета",
-              "unit": "г/см³",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "range",
-              "min_value": 12.0,
-              "max_value": 18.0,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "верхний"
-                }
-              ]
-            },
-            {
-              "limit_type": "range",
-              "min_value": 14.0,
-              "max_value": 22.0,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "нижний"
-                }
-              ]
-            }
-          ]
+          "key_name": "mark",
+          "label": "Марка",
+          "data_type": "select",
+          "possible_values": ["I", "II", "III"]
         },
         {
-          "code": "9128-P-14",
-          "name": "Содержание битума",
-          "unit": "%",
-          "formula_expr": "(m_bitumen / m_mix) * 100",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "m_bitumen",
-              "label": "Масса битума",
-              "unit": "г",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "m_mix",
-              "label": "Масса смеси",
-              "unit": "г",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "range",
-              "min_value": 4.5,
-              "max_value": 6.0,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "asphalt_type",
-                  "operator": "=",
-                  "expected_value": "А"
-                }
-              ]
-            },
-            {
-              "limit_type": "range",
-              "min_value": 5.0,
-              "max_value": 6.5,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "asphalt_type",
-                  "operator": "=",
-                  "expected_value": "Б"
-                }
-              ]
-            },
-            {
-              "limit_type": "range",
-              "min_value": 5.0,
-              "max_value": 7.0,
-              "priority": 3,
-              "conditions": [
-                {
-                  "dimension_key": "asphalt_type",
-                  "operator": "=",
-                  "expected_value": "В"
-                }
-              ]
-            }
-          ]
+          "key_name": "grain_size",
+          "label": "Вид по наибольшему размеру зёрен",
+          "data_type": "select",
+          "possible_values": ["крупнозернистые (до 40 мм)", "мелкозернистые (до 20 мм)", "песчаные (до 10 мм)"]
         },
         {
-          "code": "9128-P-15",
-          "name": "Содержание пылевидных частиц",
-          "unit": "%",
-          "formula_expr": "(m_dust / m_aggregate) * 100",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "m_dust",
-              "label": "Масса пылевидных частиц",
-              "unit": "г",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "m_aggregate",
-              "label": "Масса минеральной части",
-              "unit": "г",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "range",
-              "min_value": 4.0,
-              "max_value": 10.0,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "верхний"
-                }
-              ]
-            },
-            {
-              "limit_type": "range",
-              "min_value": 3.0,
-              "max_value": 8.0,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "layer_type",
-                  "operator": "=",
-                  "expected_value": "нижний"
-                }
-              ]
-            }
-          ]
+          "key_name": "binder_type",
+          "label": "Тип вяжущего (битума)",
+          "data_type": "select",
+          "possible_values": ["вязкий БНД", "вязкий БН", "жидкий СГ", "жидкий МГ", "жидкий МГО"]
         },
         {
-          "code": "9128-P-16",
-          "name": "Температура укладки смеси",
+          "key_name": "binder_penetration",
+          "label": "Глубина проникания иглы битума при 25°C, 0,1 мм",
+          "data_type": "select",
+          "possible_values": ["40-60", "61-90", "91-130", "131-200", "201-300"]
+        },
+        {
+          "key_name": "binder_viscosity",
+          "label": "Условная вязкость жидкого битума при 60°C, с",
+          "data_type": "select",
+          "possible_values": ["70-130", "131-200"]
+        }
+      ],
+      "methods": [
+        {
+          "code": "9128-MIX-01",
+          "name": "Температура смеси при отгрузке потребителю (горячие)",
           "unit": "°C",
           "formula_expr": "",
           "is_mandatory": true,
           "inputs": [
             {
               "param_key": "temp",
-              "label": "Температура смеси при укладке",
-              "unit": "°C",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "range",
-              "min_value": 135,
-              "max_value": 165,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "9128-P-17",
-          "name": "Содержание глины в комках",
-          "unit": "%",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "clay_percent",
-              "label": "Массовая доля глины в комках",
-              "unit": "%",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "max",
-              "min_value": null,
-              "max_value": 0.25,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "ГОСТ 12801-2013",
-      "description": "Материалы на основе органических вяжущих для дорожного и аэродромного строительства. Методы испытаний",
-      "dimensions": [
-        {
-          "key_name": "binder_type",
-          "label": "Тип битума",
-          "data_type": "select",
-          "possible_values": ["БНД 40/60", "БНД 60/90", "БНД 90/130", "БНД 130/200", "БН 40/60", "БН 60/90"]
-        }
-      ],
-      "methods": [
-        {
-          "code": "12801-M-01",
-          "name": "Температура размягчения по кольцу и шару",
-          "unit": "°C",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "value",
-              "label": "Температура размягчения",
-              "unit": "°C",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 52,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "=",
-                  "expected_value": "БНД 40/60"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 47,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "=",
-                  "expected_value": "БНД 60/90"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 43,
-              "max_value": null,
-              "priority": 3,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "=",
-                  "expected_value": "БНД 90/130"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 40,
-              "max_value": null,
-              "priority": 4,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "=",
-                  "expected_value": "БНД 130/200"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "12801-M-02",
-          "name": "Глубина проникания иглы при 25°C (пенетрация)",
-          "unit": "0.1 мм",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "penetration_val",
-              "label": "Показание пенетрометра",
-              "unit": "0.1 мм",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "range",
-              "min_value": 40,
-              "max_value": 60,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "=",
-                  "expected_value": "БНД 40/60"
-                }
-              ]
-            },
-            {
-              "limit_type": "range",
-              "min_value": 60,
-              "max_value": 90,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "=",
-                  "expected_value": "БНД 60/90"
-                }
-              ]
-            },
-            {
-              "limit_type": "range",
-              "min_value": 90,
-              "max_value": 130,
-              "priority": 3,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "=",
-                  "expected_value": "БНД 90/130"
-                }
-              ]
-            },
-            {
-              "limit_type": "range",
-              "min_value": 130,
-              "max_value": 200,
-              "priority": 4,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "=",
-                  "expected_value": "БНД 130/200"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "12801-M-03",
-          "name": "Глубина проникания иглы при 0°C",
-          "unit": "0.1 мм",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "penetration_val_0",
-              "label": "Показание пенетрометра при 0°C",
-              "unit": "0.1 мм",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 20,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "IN",
-                  "expected_value": "БНД 40/60,БНД 60/90"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 25,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "IN",
-                  "expected_value": "БНД 90/130,БНД 130/200"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "12801-M-04",
-          "name": "Температура хрупкости по Фраасу",
-          "unit": "°C",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "temp_fraas",
-              "label": "Температура хрупкости",
-              "unit": "°C",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "max",
-              "min_value": null,
-              "max_value": -15,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "=",
-                  "expected_value": "БНД 40/60"
-                }
-              ]
-            },
-            {
-              "limit_type": "max",
-              "min_value": null,
-              "max_value": -18,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "=",
-                  "expected_value": "БНД 60/90"
-                }
-              ]
-            },
-            {
-              "limit_type": "max",
-              "min_value": null,
-              "max_value": -23,
-              "priority": 3,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "=",
-                  "expected_value": "БНД 90/130"
-                }
-              ]
-            },
-            {
-              "limit_type": "max",
-              "min_value": null,
-              "max_value": -28,
-              "priority": 4,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "=",
-                  "expected_value": "БНД 130/200"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "12801-M-05",
-          "name": "Дуктильность при 25°C",
-          "unit": "см",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "ductility_25",
-              "label": "Протяженность разрыва при 25°C",
-              "unit": "см",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 40,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "IN",
-                  "expected_value": "БНД 40/60,БНД 60/90"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 60,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "IN",
-                  "expected_value": "БНД 90/130,БНД 130/200"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "12801-M-06",
-          "name": "Дуктильность при 0°C",
-          "unit": "см",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "ductility_0",
-              "label": "Протяженность разрыва при 0°C",
-              "unit": "см",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 4.0,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "IN",
-                  "expected_value": "БНД 40/60,БНД 60/90"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 6.0,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "binder_type",
-                  "operator": "IN",
-                  "expected_value": "БНД 90/130,БНД 130/200"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "12801-M-07",
-          "name": "Индекс пенетрации",
-          "unit": "ед.",
-          "formula_expr": "(20 - 500 * A) / (1 + 50 * A)",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "A",
-              "label": "Показатель температурной чувствительности",
-              "unit": "ед.",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "range",
-              "min_value": -1.0,
-              "max_value": 1.0,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "12801-M-08",
-          "name": "Температура вспышки",
-          "unit": "°C",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "flash_temp",
-              "label": "Температура вспышки в открытом тигле",
-              "unit": "°C",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 220,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "12801-M-09",
-          "name": "Адгезия битума к минеральному материалу",
-          "unit": "баллы",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "adhesion_grade",
-              "label": "Оценка адгезии (1-5)",
-              "unit": "балл",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 4,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "12801-M-10",
-          "name": "Растворимость в трихлорэтилене",
-          "unit": "%",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "solubility",
-              "label": "Массовая доля растворимой части",
-              "unit": "%",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 99.5,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "12801-M-11",
-          "name": "Массовая доля воды",
-          "unit": "%",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "water_percent",
-              "label": "Массовая доля воды",
-              "unit": "%",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "max",
-              "min_value": null,
-              "max_value": 0.2,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "12801-M-12",
-          "name": "Изменение массы после прогрева",
-          "unit": "%",
-          "formula_expr": "((m_after - m_before) / m_before) * 100",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "m_before",
-              "label": "Масса до прогрева",
-              "unit": "г",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "m_after",
-              "label": "Масса после прогрева",
-              "unit": "г",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "max",
-              "min_value": null,
-              "max_value": 0.5,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "12801-M-13",
-          "name": "Тонкопленочный тест (TFOT) — изменение пенетрации",
-          "unit": "%",
-          "formula_expr": "((pen_after - pen_before) / pen_before) * 100",
-          "is_mandatory": false,
-          "inputs": [
-            {
-              "param_key": "pen_before",
-              "label": "Пенетрация до прогрева",
-              "unit": "0.1 мм",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "pen_after",
-              "label": "Пенетрация после прогрева",
-              "unit": "0.1 мм",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": -40,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "ГОСТ 31015-2002",
-      "description": "Смеси асфальтобетонные и асфальтобетон щебеночно-мастичные. Технические условия",
-      "dimensions": [
-        {
-          "key_name": "sma_grade",
-          "label": "Марка ЩМА",
-          "data_type": "select",
-          "possible_values": ["ЩМА-10", "ЩМА-15", "ЩМА-20"]
-        },
-        {
-          "key_name": "fiber_type",
-          "label": "Тип стабилизирующей добавки",
-          "data_type": "select",
-          "possible_values": ["целлюлозное волокно", "базальтовое волокно", "асбест"]
-        }
-      ],
-      "methods": [
-        {
-          "code": "31015-SM-01",
-          "name": "Предел прочности при сжатии при 20°C",
-          "unit": "МПа",
-          "formula_expr": "(F / A) / 10",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "F",
-              "label": "Разрушающая нагрузка",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "A",
-              "label": "Площадь сечения",
-              "unit": "см²",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 2.5,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "sma_grade",
-                  "operator": "=",
-                  "expected_value": "ЩМА-10"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 3.0,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "sma_grade",
-                  "operator": "=",
-                  "expected_value": "ЩМА-15"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 3.5,
-              "max_value": null,
-              "priority": 3,
-              "conditions": [
-                {
-                  "dimension_key": "sma_grade",
-                  "operator": "=",
-                  "expected_value": "ЩМА-20"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "31015-SM-02",
-          "name": "Предел прочности при сжатии при 50°C",
-          "unit": "МПа",
-          "formula_expr": "(F / A) / 10",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "F",
-              "label": "Разрушающая нагрузка",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "A",
-              "label": "Площадь сечения",
-              "unit": "см²",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 1.5,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "31015-SM-03",
-          "name": "Водостойкость",
-          "unit": "доли ед.",
-          "formula_expr": "strength_wet / strength_dry",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "strength_wet",
-              "label": "Прочность водонасыщенного образца",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "strength_dry",
-              "label": "Прочность сухого образца",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 0.85,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "31015-SM-04",
-          "name": "Водостойкость после циклов замораживания-оттаивания",
-          "unit": "доли ед.",
-          "formula_expr": "strength_frost / strength_dry",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "strength_frost",
-              "label": "Прочность после циклов замораживания-оттаивания",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "strength_dry",
-              "label": "Прочность сухого образца",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 0.80,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "31015-SM-05",
-          "name": "Остаточная пористость",
-          "unit": "%",
-          "formula_expr": "((rho_theor - rho_actual) / rho_theor) * 100",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "rho_theor",
-              "label": "Теоретическая плотность",
-              "unit": "г/см³",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "rho_actual",
-              "label": "Фактическая плотность",
-              "unit": "г/см³",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "range",
-              "min_value": 1.0,
-              "max_value": 3.0,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "31015-SM-06",
-          "name": "Содержание битума",
-          "unit": "%",
-          "formula_expr": "(m_bitumen / m_mix) * 100",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "m_bitumen",
-              "label": "Масса битума",
-              "unit": "г",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "m_mix",
-              "label": "Масса смеси",
-              "unit": "г",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "range",
-              "min_value": 5.5,
-              "max_value": 7.0,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "sma_grade",
-                  "operator": "=",
-                  "expected_value": "ЩМА-10"
-                }
-              ]
-            },
-            {
-              "limit_type": "range",
-              "min_value": 5.8,
-              "max_value": 7.2,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "sma_grade",
-                  "operator": "=",
-                  "expected_value": "ЩМА-15"
-                }
-              ]
-            },
-            {
-              "limit_type": "range",
-              "min_value": 6.0,
-              "max_value": 7.5,
-              "priority": 3,
-              "conditions": [
-                {
-                  "dimension_key": "sma_grade",
-                  "operator": "=",
-                  "expected_value": "ЩМА-20"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "31015-SM-07",
-          "name": "Содержание волокон",
-          "unit": "%",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "fiber_percent",
-              "label": "Массовая доля волокон",
-              "unit": "%",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 0.3,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "31015-SM-08",
-          "name": "Температура укладки",
-          "unit": "°C",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "temp_lay",
-              "label": "Температура при укладке",
+              "label": "Температура смеси при отгрузке",
               "unit": "°C",
               "input_type": "number",
               "is_required": true
@@ -1709,684 +453,75 @@
             {
               "limit_type": "range",
               "min_value": 150,
-              "max_value": 180,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "ГОСТ Р 58406.1-2020",
-      "description": "Дороги автомобильные общего пользования. Смеси асфальтобетонные дисперсно-армированные. Технические условия",
-      "dimensions": [
-        {
-          "key_name": "da_grade",
-          "label": "Марка ДА",
-          "data_type": "select",
-          "possible_values": ["ДА-10", "ДА-15", "ДА-20"]
-        },
-        {
-          "key_name": "reinforcement_type",
-          "label": "Тип армирования",
-          "data_type": "select",
-          "possible_values": ["стальная фибра", "полипропиленовая фибра", "базальтовая фибра"]
-        }
-      ],
-      "methods": [
-        {
-          "code": "58406.1-DA-01",
-          "name": "Предел прочности при сжатии при 20°C",
-          "unit": "МПа",
-          "formula_expr": "(F / A) / 10",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "F",
-              "label": "Разрушающая нагрузка",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "A",
-              "label": "Площадь сечения",
-              "unit": "см²",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 3.0,
-              "max_value": null,
+              "max_value": 160,
               "priority": 1,
               "conditions": [
-                {
-                  "dimension_key": "da_grade",
-                  "operator": "=",
-                  "expected_value": "ДА-10"
-                }
+                {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "горячие"},
+                {"dimension_key": "binder_penetration", "operator": "=", "expected_value": "40-60"}
               ]
             },
-            {
-              "limit_type": "min",
-              "min_value": 3.5,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "da_grade",
-                  "operator": "=",
-                  "expected_value": "ДА-15"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 4.0,
-              "max_value": null,
-              "priority": 3,
-              "conditions": [
-                {
-                  "dimension_key": "da_grade",
-                  "operator": "=",
-                  "expected_value": "ДА-20"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "58406.1-DA-02",
-          "name": "Предел прочности при растяжении-изгибе при 0°C",
-          "unit": "МПа",
-          "formula_expr": "(F * L) / (b * h * h)",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "F",
-              "label": "Разрушающая нагрузка",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "L",
-              "label": "Расстояние между опорами",
-              "unit": "см",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "b",
-              "label": "Ширина образца",
-              "unit": "см",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "h",
-              "label": "Высота образца",
-              "unit": "см",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 3.5,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "58406.1-DA-03",
-          "name": "Коэффициент водостойкости",
-          "unit": "доли ед.",
-          "formula_expr": "strength_sat / strength_dry",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "strength_sat",
-              "label": "Прочность насыщенного образца",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "strength_dry",
-              "label": "Прочность сухого образца",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 0.90,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "58406.1-DA-04",
-          "name": "Коэффициент водостойкости при замораживании-оттаивании",
-          "unit": "доли ед.",
-          "formula_expr": "strength_frost / strength_dry",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "strength_frost",
-              "label": "Прочность после циклов замораживания-оттаивания",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "strength_dry",
-              "label": "Прочность сухого образца",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 0.85,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "58406.1-DA-05",
-          "name": "Остаточная пористость",
-          "unit": "%",
-          "formula_expr": "((rho_theor - rho_actual) / rho_theor) * 100",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "rho_theor",
-              "label": "Теоретическая плотность",
-              "unit": "г/см³",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "rho_actual",
-              "label": "Фактическая плотность",
-              "unit": "г/см³",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
             {
               "limit_type": "range",
-              "min_value": 1.5,
-              "max_value": 4.0,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "58406.1-DA-06",
-          "name": "Содержание фибры",
-          "unit": "%",
-          "formula_expr": "",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "fiber_content",
-              "label": "Массовая доля фибры",
-              "unit": "%",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
+              "min_value": 145,
+              "max_value": 155,
+              "priority": 2,
+              "conditions": [
+                {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "горячие"},
+                {"dimension_key": "binder_penetration", "operator": "=", "expected_value": "61-90"}
+              ]
+            },
             {
               "limit_type": "range",
-              "min_value": 0.1,
-              "max_value": 0.5,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "58406.1-DA-07",
-          "name": "Трещиностойкость при многократном нагружении",
-          "unit": "циклы",
-          "formula_expr": "",
-          "is_mandatory": false,
-          "inputs": [
-            {
-              "param_key": "cycles_count",
-              "label": "Количество циклов до разрушения",
-              "unit": "циклы",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 5000,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "ГОСТ Р 58406.2-2020",
-      "description": "Дороги автомобильные общего пользования. Смеси асфальтобетонные с модифицированным битумом. Технические условия",
-      "dimensions": [
-        {
-          "key_name": "mb_grade",
-          "label": "Марка смеси с МБ",
-          "data_type": "select",
-          "possible_values": ["I", "II", "III"]
-        },
-        {
-          "key_name": "modifier_type",
-          "label": "Тип модификатора",
-          "data_type": "select",
-          "possible_values": ["СБС", "СКС", "термоэластопласт"]
-        }
-      ],
-      "methods": [
-        {
-          "code": "58406.2-MB-01",
-          "name": "Предел прочности при сжатии при 20°C",
-          "unit": "МПа",
-          "formula_expr": "(F / A) / 10",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "F",
-              "label": "Разрушающая нагрузка",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "A",
-              "label": "Площадь сечения",
-              "unit": "см²",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 2.8,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "mb_grade",
-                  "operator": "=",
-                  "expected_value": "I"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 2.5,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "mb_grade",
-                  "operator": "=",
-                  "expected_value": "II"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 2.2,
-              "max_value": null,
+              "min_value": 140,
+              "max_value": 150,
               "priority": 3,
               "conditions": [
-                {
-                  "dimension_key": "mb_grade",
-                  "operator": "=",
-                  "expected_value": "III"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "58406.2-MB-02",
-          "name": "Предел прочности при сжатии при 50°C",
-          "unit": "МПа",
-          "formula_expr": "(F / A) / 10",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "F",
-              "label": "Разрушающая нагрузка",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "A",
-              "label": "Площадь сечения",
-              "unit": "см²",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 1.8,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "mb_grade",
-                  "operator": "=",
-                  "expected_value": "I"
-                }
+                {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "горячие"},
+                {"dimension_key": "binder_penetration", "operator": "=", "expected_value": "91-130"}
               ]
             },
-            {
-              "limit_type": "min",
-              "min_value": 1.5,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "mb_grade",
-                  "operator": "=",
-                  "expected_value": "II"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 1.2,
-              "max_value": null,
-              "priority": 3,
-              "conditions": [
-                {
-                  "dimension_key": "mb_grade",
-                  "operator": "=",
-                  "expected_value": "III"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "58406.2-MB-03",
-          "name": "Предел прочности при растяжении-изгибе при 0°C",
-          "unit": "МПа",
-          "formula_expr": "(F * L) / (b * h * h)",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "F",
-              "label": "Разрушающая нагрузка",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "L",
-              "label": "Расстояние между опорами",
-              "unit": "см",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "b",
-              "label": "Ширина образца",
-              "unit": "см",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "h",
-              "label": "Высота образца",
-              "unit": "см",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 3.0,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "mb_grade",
-                  "operator": "=",
-                  "expected_value": "I"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 2.5,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "mb_grade",
-                  "operator": "=",
-                  "expected_value": "II"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 2.0,
-              "max_value": null,
-              "priority": 3,
-              "conditions": [
-                {
-                  "dimension_key": "mb_grade",
-                  "operator": "=",
-                  "expected_value": "III"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "58406.2-MB-04",
-          "name": "Коэффициент водостойкости",
-          "unit": "доли ед.",
-          "formula_expr": "strength_sat / strength_dry",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "strength_sat",
-              "label": "Прочность водонасыщенного образца",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "strength_dry",
-              "label": "Прочность сухого образца",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 0.90,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "58406.2-MB-05",
-          "name": "Коэффициент водостойкости при замораживании-оттаивании",
-          "unit": "доли ед.",
-          "formula_expr": "strength_frost / strength_dry",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "strength_frost",
-              "label": "Прочность после циклов замораживания-оттаивания",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "strength_dry",
-              "label": "Прочность сухого образца",
-              "unit": "МПа",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 0.85,
-              "max_value": null,
-              "priority": 1,
-              "conditions": []
-            }
-          ]
-        },
-        {
-          "code": "58406.2-MB-06",
-          "name": "Сдвиг при сжатии при 50°C",
-          "unit": "МПа",
-          "formula_expr": "F_shear / A",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "F_shear",
-              "label": "Нагрузка сдвига",
-              "unit": "Н",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "A",
-              "label": "Площадь сечения",
-              "unit": "см²",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
-            {
-              "limit_type": "min",
-              "min_value": 0.40,
-              "max_value": null,
-              "priority": 1,
-              "conditions": [
-                {
-                  "dimension_key": "mb_grade",
-                  "operator": "=",
-                  "expected_value": "I"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 0.35,
-              "max_value": null,
-              "priority": 2,
-              "conditions": [
-                {
-                  "dimension_key": "mb_grade",
-                  "operator": "=",
-                  "expected_value": "II"
-                }
-              ]
-            },
-            {
-              "limit_type": "min",
-              "min_value": 0.30,
-              "max_value": null,
-              "priority": 3,
-              "conditions": [
-                {
-                  "dimension_key": "mb_grade",
-                  "operator": "=",
-                  "expected_value": "III"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "58406.2-MB-07",
-          "name": "Остаточная пористость",
-          "unit": "%",
-          "formula_expr": "((rho_theor - rho_actual) / rho_theor) * 100",
-          "is_mandatory": true,
-          "inputs": [
-            {
-              "param_key": "rho_theor",
-              "label": "Теоретическая плотность",
-              "unit": "г/см³",
-              "input_type": "number",
-              "is_required": true
-            },
-            {
-              "param_key": "rho_actual",
-              "label": "Фактическая плотность",
-              "unit": "г/см³",
-              "input_type": "number",
-              "is_required": true
-            }
-          ],
-          "limits": [
             {
               "limit_type": "range",
-              "min_value": 1.0,
-              "max_value": 4.0,
-              "priority": 1,
-              "conditions": []
+              "min_value": 130,
+              "max_value": 140,
+              "priority": 4,
+              "conditions": [
+                {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "горячие"},
+                {"dimension_key": "binder_penetration", "operator": "=", "expected_value": "131-200"}
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 120,
+              "max_value": 130,
+              "priority": 5,
+              "conditions": [
+                {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "горячие"},
+                {"dimension_key": "binder_penetration", "operator": "=", "expected_value": "201-300"}
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 110,
+              "max_value": 120,
+              "priority": 6,
+              "conditions": [
+                {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "горячие"},
+                {"dimension_key": "binder_viscosity", "operator": "=", "expected_value": "131-200"}
+              ]
             }
           ]
         },
         {
-          "code": "58406.2-MB-08",
-          "name": "Температура размягчения битума",
+          "code": "9128-MIX-02",
+          "name": "Температура смеси при отгрузке потребителю (холодные)",
           "unit": "°C",
           "formula_expr": "",
           "is_mandatory": true,
           "inputs": [
             {
-              "param_key": "softening_temp",
-              "label": "Температура размягчения",
+              "param_key": "temp",
+              "label": "Температура смеси при отгрузке",
               "unit": "°C",
               "input_type": "number",
               "is_required": true
@@ -2394,24 +529,37 @@
           ],
           "limits": [
             {
-              "limit_type": "min",
-              "min_value": 65,
-              "max_value": null,
+              "limit_type": "range",
+              "min_value": 80,
+              "max_value": 100,
               "priority": 1,
-              "conditions": []
+              "conditions": [
+                {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "холодные"},
+                {"dimension_key": "binder_viscosity", "operator": "=", "expected_value": "70-130"}
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 100,
+              "max_value": 120,
+              "priority": 2,
+              "conditions": [
+                {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "холодные"},
+                {"dimension_key": "binder_viscosity", "operator": "=", "expected_value": "131-200"}
+              ]
             }
           ]
         },
         {
-          "code": "58406.2-MB-09",
-          "name": "Эластичность битума",
-          "unit": "%",
+          "code": "9128-MIX-03",
+          "name": "Отклонение содержания битума от проектного",
+          "unit": "% по массе",
           "formula_expr": "",
           "is_mandatory": true,
           "inputs": [
             {
-              "param_key": "elasticity",
-              "label": "Эластичность",
+              "param_key": "deviation",
+              "label": "Абсолютное отклонение содержания битума",
               "unit": "%",
               "input_type": "number",
               "is_required": true
@@ -2419,15 +567,852 @@
           ],
           "limits": [
             {
-              "limit_type": "min",
-              "min_value": 60,
-              "max_value": null,
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 0.5,
               "priority": 1,
               "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "9128-MIX-04",
+          "name": "Однородность смеси (коэффициент вариации)",
+          "unit": "доли ед.",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "cv",
+              "label": "Коэффициент вариации",
+              "unit": "доли ед.",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 0.16,
+              "priority": 1,
+              "conditions": [
+                {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "горячие"},
+                {"dimension_key": "mark", "operator": "=", "expected_value": "I"}
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 0.18,
+              "priority": 2,
+              "conditions": [
+                {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "горячие"},
+                {"dimension_key": "mark", "operator": "=", "expected_value": "II"}
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 0.20,
+              "priority": 3,
+              "conditions": [
+                {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "горячие"},
+                {"dimension_key": "mark", "operator": "=", "expected_value": "III"}
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 0.15,
+              "priority": 4,
+              "conditions": [
+                {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "холодные"},
+                {"dimension_key": "mark", "operator": "IN", "expected_value": "I,II"}
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-MIX-05",
+          "name": "Слеживаемость холодных смесей",
+          "unit": "число ударов",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "blows",
+              "label": "Число ударов по ГОСТ 12801",
+              "unit": "ударов",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 10,
+              "priority": 1,
+              "conditions": [
+                {"dimension_key": "mixture_temp_type", "operator": "=", "expected_value": "холодные"}
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-MIX-06",
+          "name": "Содержание зёрен пластинчатой (лещадной) и игловатой формы в щебне",
+          "unit": "% по массе",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "flake_content",
+              "label": "Содержание зёрен лещадной и игловатой формы",
+              "unit": "%",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 15,
+              "priority": 1,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 15,
+              "priority": 2,
+              "conditions": [
+                {"dimension_key": "density_category", "operator": "=", "expected_value": "высокоплотный"}
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 25,
+              "priority": 3,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "IN", "expected_value": "Б,Бх"}
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 25,
+              "priority": 4,
+              "conditions": [
+                {"dimension_key": "density_category", "operator": "=", "expected_value": "высокопористый щебеночный"}
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 35,
+              "priority": 5,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "IN", "expected_value": "В,Вх"}
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 35,
+              "priority": 6,
+              "conditions": [
+                {"dimension_key": "density_category", "operator": "=", "expected_value": "пористый"}
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-MIX-07",
+          "name": "Содержание глинистых частиц в песке из отсевов дробления",
+          "unit": "% по массе",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "clay_content",
+              "label": "Содержание глинистых частиц (метод набухания)",
+              "unit": "%",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 0.5,
+              "priority": 1,
+              "conditions": [
+                {"dimension_key": "mark", "operator": "IN", "expected_value": "I,II"}
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 1.0,
+              "priority": 2,
+              "conditions": [
+                {"dimension_key": "mark", "operator": "=", "expected_value": "III"}
+              ]
             }
           ]
         }
       ]
     }
   ]
+},
+{
+  "material": {
+    "name": "Полимерасфальтобетонные смеси",
+    "code": "POLY-ASPH-MIX-9128"
+  },
+  "standards": [
+    {
+      "name": "ГОСТ 9128-2013",
+      "description": "Смеси асфальтобетонные, полимерасфальтобетонные, асфальтобетон, полимерасфальтобетон для автомобильных дорог и аэродромов. Технические условия",
+      "dimensions": [
+        {
+          "key_name": "asphalt_type",
+          "label": "Тип смеси",
+          "data_type": "select",
+          "possible_values": ["А", "Б", "В", "Г", "Д"]
+        },
+        {
+          "key_name": "polymer_density",
+          "label": "Вид по плотности",
+          "data_type": "select",
+          "possible_values": ["высокоплотный", "плотный"]
+        },
+        {
+          "key_name": "pbv_grade",
+          "label": "Марка ПБВ",
+          "data_type": "select",
+          "possible_values": ["ПБВ 300", "ПБВ 200", "ПБВ 130", "ПБВ 90", "ПБВ 60", "ПБВ 40"]
+        },
+        {
+          "key_name": "mark",
+          "label": "Марка",
+          "data_type": "select",
+          "possible_values": ["I", "II"]
+        },
+        {
+          "key_name": "grain_size",
+          "label": "Вид по наибольшему размеру зёрен",
+          "data_type": "select",
+          "possible_values": ["мелкозернистые (до 20 мм)", "песчаные (до 10 мм)"]
+        },
+        {
+          "key_name": "pbv_penetration",
+          "label": "Глубина проникания иглы в ПБВ при 25°C, 0,1 мм",
+          "data_type": "select",
+          "possible_values": ["40-150", "151 и более"]
+        }
+      ],
+      "methods": [
+        {
+          "code": "9128-PMIX-01",
+          "name": "Температура смеси при отгрузке потребителю",
+          "unit": "°C",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "temp",
+              "label": "Температура смеси при отгрузке",
+              "unit": "°C",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 150,
+              "max_value": 160,
+              "priority": 1,
+              "conditions": [
+                {"dimension_key": "pbv_penetration", "operator": "=", "expected_value": "40-150"}
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 140,
+              "max_value": 150,
+              "priority": 2,
+              "conditions": [
+                {"dimension_key": "pbv_penetration", "operator": "=", "expected_value": "151 и более"}
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-PMIX-02",
+          "name": "Однородность смеси (коэффициент вариации предела прочности при 50°C)",
+          "unit": "доли ед.",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "cv",
+              "label": "Коэффициент вариации",
+              "unit": "доли ед.",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 0.16,
+              "priority": 1,
+              "conditions": [
+                {"dimension_key": "mark", "operator": "=", "expected_value": "I"}
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 0.18,
+              "priority": 2,
+              "conditions": [
+                {"dimension_key": "mark", "operator": "=", "expected_value": "II"}
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-PMIX-03",
+          "name": "Содержание зёрен пластинчатой (лещадной) и игловатой формы в щебне",
+          "unit": "% по массе",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "flake_content",
+              "label": "Содержание зёрен лещадной и игловатой формы",
+              "unit": "%",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 10,
+              "priority": 1,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"}
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 10,
+              "priority": 2,
+              "conditions": [
+                {"dimension_key": "polymer_density", "operator": "=", "expected_value": "высокоплотный"}
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 25,
+              "priority": 3,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"}
+              ]
+            },
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 35,
+              "priority": 4,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "=", "expected_value": "В"}
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-PMIX-04",
+          "name": "Марка песка из отсевов дробления по прочности",
+          "unit": "",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "sand_mark",
+              "label": "Марка песка по прочности",
+              "unit": "",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "min",
+              "min_value": 1000,
+              "max_value": null,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "9128-PMIX-05",
+          "name": "Содержание глинистых частиц в песке из отсевов дробления",
+          "unit": "% по массе",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "clay_content",
+              "label": "Содержание глинистых частиц (метод набухания)",
+              "unit": "%",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 0.5,
+              "priority": 1,
+              "conditions": []
+            }
+          ]
+        },
+        {
+          "code": "9128-PMIX-06",
+          "name": "Содержание зёрен менее 0,16 мм в песке для смесей типа Г",
+          "unit": "% по массе",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "fine_content",
+              "label": "Содержание зёрен менее 0,16 мм",
+              "unit": "%",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "max",
+              "min_value": null,
+              "max_value": 5.0,
+              "priority": 1,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Г"}
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-PMIX-07",
+          "name": "Содержание ПБВ в смеси (ПБВ 300, ПБВ 200)",
+          "unit": "% по массе",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "pbv_content",
+              "label": "Содержание ПБВ",
+              "unit": "%",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 4.0,
+              "max_value": 6.5,
+              "priority": 1,
+              "conditions": [
+                {"dimension_key": "polymer_density", "operator": "=", "expected_value": "высокоплотный"},
+                {"dimension_key": "pbv_grade", "operator": "IN", "expected_value": "ПБВ 300,ПБВ 200"}
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 4.5,
+              "max_value": 7.0,
+              "priority": 2,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"},
+                {"dimension_key": "pbv_grade", "operator": "IN", "expected_value": "ПБВ 300,ПБВ 200"}
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 5.0,
+              "max_value": 7.0,
+              "priority": 3,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"},
+                {"dimension_key": "pbv_grade", "operator": "IN", "expected_value": "ПБВ 300,ПБВ 200"}
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 6.0,
+              "max_value": 7.5,
+              "priority": 4,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "=", "expected_value": "В"},
+                {"dimension_key": "pbv_grade", "operator": "IN", "expected_value": "ПБВ 300,ПБВ 200"}
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 6.0,
+              "max_value": 10.0,
+              "priority": 5,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "IN", "expected_value": "Г,Д"},
+                {"dimension_key": "pbv_grade", "operator": "IN", "expected_value": "ПБВ 300,ПБВ 200"}
+              ]
+            }
+          ]
+        },
+        {
+          "code": "9128-PMIX-08",
+          "name": "Содержание ПБВ в смеси (ПБВ 130, ПБВ 90, ПБВ 60, ПБВ 40)",
+          "unit": "% по массе",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {
+              "param_key": "pbv_content",
+              "label": "Содержание ПБВ",
+              "unit": "%",
+              "input_type": "number",
+              "is_required": true
+            }
+          ],
+          "limits": [
+            {
+              "limit_type": "range",
+              "min_value": 4.0,
+              "max_value": 6.0,
+              "priority": 1,
+              "conditions": [
+                {"dimension_key": "polymer_density", "operator": "=", "expected_value": "высокоплотный"},
+                {"dimension_key": "pbv_grade", "operator": "IN", "expected_value": "ПБВ 130,ПБВ 90,ПБВ 60,ПБВ 40"}
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 4.5,
+              "max_value": 6.0,
+              "priority": 2,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "=", "expected_value": "А"},
+                {"dimension_key": "pbv_grade", "operator": "IN", "expected_value": "ПБВ 130,ПБВ 90,ПБВ 60,ПБВ 40"}
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 5.0,
+              "max_value": 6.5,
+              "priority": 3,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "=", "expected_value": "Б"},
+                {"dimension_key": "pbv_grade", "operator": "IN", "expected_value": "ПБВ 130,ПБВ 90,ПБВ 60,ПБВ 40"}
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 6.0,
+              "max_value": 7.0,
+              "priority": 4,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "=", "expected_value": "В"},
+                {"dimension_key": "pbv_grade", "operator": "IN", "expected_value": "ПБВ 130,ПБВ 90,ПБВ 60,ПБВ 40"}
+              ]
+            },
+            {
+              "limit_type": "range",
+              "min_value": 6.0,
+              "max_value": 9.0,
+              "priority": 5,
+              "conditions": [
+                {"dimension_key": "asphalt_type", "operator": "IN", "expected_value": "Г,Д"},
+                {"dimension_key": "pbv_grade", "operator": "IN", "expected_value": "ПБВ 130,ПБВ 90,ПБВ 60,ПБВ 40"}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+},
+{
+  "material": {
+    "name": "Асфальтобетонные смеси",
+    "code": "ASPH-MIX-58406"
+  },
+  "standards": [
+    {
+      "name": "ГОСТ Р 58406.2-2020",
+      "description": "Дороги автомобильные общего пользования. Смеси горячие асфальтобетонные и асфальтобетон. Технические условия",
+      "dimensions": [
+        {
+          "key_name": "layer_type",
+          "label": "Конструктивный слой дорожной одежды",
+          "data_type": "select",
+          "possible_values": ["основание", "нижний слой покрытия", "верхний слой покрытия"]
+        },
+        {
+          "key_name": "mixture_type",
+          "label": "Тип смеси по номинально максимальному размеру заполнителя",
+          "data_type": "select",
+          "possible_values": ["A32", "A22", "A16", "A11", "A8", "A5"]
+        },
+        {
+          "key_name": "traffic_condition",
+          "label": "Условия дорожного движения",
+          "data_type": "select",
+          "possible_values": ["Л", "Н", "Т"]
+        }
+      ],
+      "methods": [
+        {
+          "code": "58406-MIX-01",
+          "name": "Содержание воздушных пустот (для образцов, изготовленных в лаборатории)",
+          "unit": "%",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {"param_key": "air_voids", "label": "Содержание воздушных пустот", "unit": "%", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "range", "min_value": 3.0, "max_value": 7.0, "priority": 1, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A32,A22"}]},
+            {"limit_type": "range", "min_value": 3.0, "max_value": 8.0, "priority": 2, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}]},
+            {"limit_type": "range", "min_value": 2.0, "max_value": 6.0, "priority": 3, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A32,A22"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Л,Н"}]},
+            {"limit_type": "range", "min_value": 2.0, "max_value": 5.5, "priority": 4, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A32,A22"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Т"}]},
+            {"limit_type": "range", "min_value": 2.0, "max_value": 5.0, "priority": 5, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "range", "min_value": 2.0, "max_value": 6.0, "priority": 6, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Н"}]},
+            {"limit_type": "range", "min_value": 2.0, "max_value": 5.5, "priority": 7, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Т"}]},
+            {"limit_type": "range", "min_value": 2.0, "max_value": 5.0, "priority": 8, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Л,Н"}]},
+            {"limit_type": "range", "min_value": 2.0, "max_value": 5.5, "priority": 9, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Т"}]},
+            {"limit_type": "range", "min_value": 2.5, "max_value": 5.0, "priority": 10, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A22"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "range", "min_value": 2.5, "max_value": 4.5, "priority": 11, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A22"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Н,Т"}]},
+            {"limit_type": "range", "min_value": 2.5, "max_value": 5.0, "priority": 12, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "range", "min_value": 2.5, "max_value": 4.5, "priority": 13, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Н"}]},
+            {"limit_type": "range", "min_value": 2.0, "max_value": 4.5, "priority": 14, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Т"}]},
+            {"limit_type": "range", "min_value": 2.0, "max_value": 4.5, "priority": 15, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Л,Н"}]},
+            {"limit_type": "range", "min_value": 1.5, "max_value": 4.5, "priority": 16, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Т"}]},
+            {"limit_type": "range", "min_value": 1.5, "max_value": 5.0, "priority": 17, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A8,A5"}]}
+          ]
+        },
+        {
+          "code": "58406-MIX-02",
+          "name": "Пустоты в минеральном заполнителе (ПМЗ)",
+          "unit": "%",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {"param_key": "vmz", "label": "ПМЗ", "unit": "%", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "min", "min_value": 12.0, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A32,A22"}]},
+            {"limit_type": "min", "min_value": 13.0, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}]},
+            {"limit_type": "min", "min_value": 11.0, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A32,A22"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "min", "min_value": 12.0, "max_value": null, "priority": 4, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A32,A22,A16"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Н"}]},
+            {"limit_type": "min", "min_value": 13.0, "max_value": null, "priority": 5, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A32,A22,A16"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Т"}]},
+            {"limit_type": "min", "min_value": 13.0, "max_value": null, "priority": 6, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "min", "min_value": 13.0, "max_value": null, "priority": 7, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "min", "min_value": 14.0, "max_value": null, "priority": 8, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Н"}]},
+            {"limit_type": "min", "min_value": 15.0, "max_value": null, "priority": 9, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Т"}]},
+            {"limit_type": "min", "min_value": 11.0, "max_value": null, "priority": 10, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A22,A16"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "min", "min_value": 12.0, "max_value": null, "priority": 11, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A22,A16,A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Н"}]},
+            {"limit_type": "min", "min_value": 13.0, "max_value": null, "priority": 12, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A22,A16,A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Т"}]},
+            {"limit_type": "min", "min_value": 14.0, "max_value": null, "priority": 13, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "min", "min_value": 14.0, "max_value": null, "priority": 14, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A8"}]},
+            {"limit_type": "min", "min_value": 15.0, "max_value": null, "priority": 15, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A5"}]}
+          ]
+        },
+        {
+          "code": "58406-MIX-03",
+          "name": "Пустоты, наполненные битумным вяжущим (ПНБ)",
+          "unit": "%",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {"param_key": "vnb", "label": "ПНБ", "unit": "%", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "range", "min_value": 66.0, "max_value": 76.0, "priority": 1, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}]},
+            {"limit_type": "range", "min_value": 65.0, "max_value": 75.0, "priority": 2, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A32"}]},
+            {"limit_type": "range", "min_value": 65.0, "max_value": 78.0, "priority": 3, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A22"}]},
+            {"limit_type": "range", "min_value": 65.0, "max_value": 78.0, "priority": 4, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "range", "min_value": 67.0, "max_value": 80.0, "priority": 5, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Н,Т"}]},
+            {"limit_type": "range", "min_value": 67.0, "max_value": 80.0, "priority": 6, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "range", "min_value": 70.0, "max_value": 90.0, "priority": 7, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Н,Т"}]},
+            {"limit_type": "range", "min_value": 67.0, "max_value": 80.0, "priority": 8, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A22,A16"}]},
+            {"limit_type": "range", "min_value": 72.0, "max_value": 85.0, "priority": 9, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}]},
+            {"limit_type": "range", "min_value": 75.0, "max_value": 90.0, "priority": 10, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A8,A5"}]}
+          ]
+        },
+        {
+          "code": "58406-MIX-04",
+          "name": "Средняя глубина колеи",
+          "unit": "мм",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {"param_key": "rut_depth", "label": "Средняя глубина колеи", "unit": "мм", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "max", "min_value": null, "max_value": 8.0, "priority": 1, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A32,A22"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 9.0, "priority": 2, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 5.5, "priority": 3, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A32"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 6.0, "priority": 4, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A22,A16"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 4.0, "priority": 5, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A22"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 4.5, "priority": 6, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 4.5, "priority": 7, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 6.5, "priority": 8, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Н,Т"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 7.0, "priority": 9, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A8,A5"}]}
+          ]
+        },
+        {
+          "code": "58406-MIX-05",
+          "name": "Коэффициент водостойкости",
+          "unit": "доли ед.",
+          "formula_expr": "",
+          "is_mandatory": true,
+          "inputs": [
+            {"param_key": "water_resistance", "label": "Коэффициент водостойкости", "unit": "доли ед.", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "min", "min_value": 0.80, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}]},
+            {"limit_type": "min", "min_value": 0.85, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "layer_type", "operator": "IN", "expected_value": "нижний слой покрытия,верхний слой покрытия"}]}
+          ]
+        },
+        {
+          "code": "58406-MIX-06",
+          "name": "Предел прочности на растяжение при изгибе",
+          "unit": "МПа",
+          "formula_expr": "",
+          "is_mandatory": false,
+          "inputs": [
+            {"param_key": "tensile_strength", "label": "Предел прочности на растяжение при изгибе", "unit": "МПа", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "min", "min_value": 5.5, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A32"}]},
+            {"limit_type": "min", "min_value": 5.0, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A22"}]},
+            {"limit_type": "min", "min_value": 4.0, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}]},
+            {"limit_type": "min", "min_value": 6.5, "max_value": null, "priority": 4, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A32"}]},
+            {"limit_type": "min", "min_value": 6.0, "max_value": null, "priority": 5, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A22"}]},
+            {"limit_type": "min", "min_value": 6.0, "max_value": null, "priority": 6, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "min", "min_value": 5.5, "max_value": null, "priority": 7, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Н,Т"}]},
+            {"limit_type": "min", "min_value": 5.0, "max_value": null, "priority": 8, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}]},
+            {"limit_type": "min", "min_value": 7.0, "max_value": null, "priority": 9, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A22"}]},
+            {"limit_type": "min", "min_value": 6.5, "max_value": null, "priority": 10, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}]},
+            {"limit_type": "min", "min_value": 6.5, "max_value": null, "priority": 11, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "min", "min_value": 5.5, "max_value": null, "priority": 12, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Н,Т"}]},
+            {"limit_type": "min", "min_value": 5.5, "max_value": null, "priority": 13, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A8,A5"}]}
+          ]
+        },
+        {
+          "code": "58406-MIX-07",
+          "name": "Предельная относительная деформация растяжения",
+          "unit": "доли ед.",
+          "formula_expr": "",
+          "is_mandatory": false,
+          "inputs": [
+            {"param_key": "strain_limit", "label": "Предельная относительная деформация", "unit": "доли ед.", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "min", "min_value": 0.0040, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A32"}]},
+            {"limit_type": "min", "min_value": 0.0035, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A22"}]},
+            {"limit_type": "min", "min_value": 0.0030, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}]},
+            {"limit_type": "min", "min_value": 0.0045, "max_value": null, "priority": 4, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A32"}]},
+            {"limit_type": "min", "min_value": 0.0040, "max_value": null, "priority": 5, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A22,A16"}]},
+            {"limit_type": "min", "min_value": 0.0035, "max_value": null, "priority": 6, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}]},
+            {"limit_type": "min", "min_value": 0.005, "max_value": null, "priority": 7, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A22,A16"}]},
+            {"limit_type": "min", "min_value": 0.005, "max_value": null, "priority": 8, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "min", "min_value": 0.004, "max_value": null, "priority": 9, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Н,Т"}]},
+            {"limit_type": "min", "min_value": 0.004, "max_value": null, "priority": 10, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A8,A5"}]}
+          ]
+        },
+        {
+          "code": "58406-MIX-08",
+          "name": "Угол наклона кривой колееобразования",
+          "unit": "мм/1000 циклов",
+          "formula_expr": "",
+          "is_mandatory": false,
+          "inputs": [
+            {"param_key": "rut_slope", "label": "Угол наклона кривой колееобразования", "unit": "мм/1000 циклов", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "max", "min_value": null, "max_value": 0.30, "priority": 1, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A32"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 0.40, "priority": 2, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "основание"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A22"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 0.25, "priority": 3, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A32"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 0.30, "priority": 4, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A22,A16"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 0.15, "priority": 5, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A22"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 0.20, "priority": 6, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 0.20, "priority": 7, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 0.30, "priority": 8, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Н,Т"}]},
+            {"limit_type": "max", "min_value": null, "max_value": 0.30, "priority": 9, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A8,A5"}]}
+          ]
+        },
+        {
+          "code": "58406-MIX-09",
+          "name": "Разрушающая нагрузка по Маршаллу",
+          "unit": "Н",
+          "formula_expr": "",
+          "is_mandatory": false,
+          "inputs": [
+            {"param_key": "marshall_load", "label": "Разрушающая нагрузка по Маршаллу", "unit": "Н", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "min", "min_value": 8010, "max_value": null, "priority": 1, "conditions": [{"dimension_key": "layer_type", "operator": "IN", "expected_value": "нижний слой покрытия,верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A32"}]},
+            {"limit_type": "min", "min_value": 5340, "max_value": null, "priority": 2, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A22,A16"}]},
+            {"limit_type": "min", "min_value": 5340, "max_value": null, "priority": 3, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}]},
+            {"limit_type": "min", "min_value": 5340, "max_value": null, "priority": 4, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "min", "min_value": 4150, "max_value": null, "priority": 5, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "нижний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Н,Т"}]},
+            {"limit_type": "min", "min_value": 5340, "max_value": null, "priority": 6, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "min", "min_value": 4150, "max_value": null, "priority": 7, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Н,Т"}]},
+            {"limit_type": "min", "min_value": 4150, "max_value": null, "priority": 8, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A8,A5"}]}
+          ]
+        },
+        {
+          "code": "58406-MIX-10",
+          "name": "Деформация по Маршаллу",
+          "unit": "мм",
+          "formula_expr": "",
+          "is_mandatory": false,
+          "inputs": [
+            {"param_key": "marshall_def", "label": "Деформация по Маршаллу", "unit": "мм", "input_type": "number", "is_required": true}
+          ],
+          "limits": [
+            {"limit_type": "range", "min_value": 2.0, "max_value": 3.5, "priority": 1, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A22"}]},
+            {"limit_type": "range", "min_value": 2.0, "max_value": 4.0, "priority": 2, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A16"}]},
+            {"limit_type": "range", "min_value": 2.0, "max_value": 4.0, "priority": 3, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "=", "expected_value": "Л"}]},
+            {"limit_type": "range", "min_value": 2.0, "max_value": 4.5, "priority": 4, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "=", "expected_value": "A11"}, {"dimension_key": "traffic_condition", "operator": "IN", "expected_value": "Н,Т"}]},
+            {"limit_type": "range", "min_value": 2.0, "max_value": 4.5, "priority": 5, "conditions": [{"dimension_key": "layer_type", "operator": "=", "expected_value": "верхний слой покрытия"}, {"dimension_key": "mixture_type", "operator": "IN", "expected_value": "A8,A5"}]}
+          ]
+        }
+      ]
+    }
+  ]
 }
+]
