@@ -39,6 +39,17 @@ type LoggerConfig struct {
 	Encoding          string   `mapstructure:"encoding" validate:"required"`
 	OutputPaths       []string `mapstructure:"output_paths"`
 	ErrorOutputPaths  []string `mapstructure:"error_output_paths"`
+	
+	// Production настройки
+	Environment        string `mapstructure:"environment"`
+	ServiceName        string `mapstructure:"service_name"`
+	EnableSampling     bool   `mapstructure:"enable_sampling"`
+	SamplingInitial    int    `mapstructure:"sampling_initial"`
+	SamplingThereafter int    `mapstructure:"sampling_thereafter"`
+	MaxFileSize        int    `mapstructure:"max_file_size_mb"`
+	MaxBackups         int    `mapstructure:"max_backups"`
+	MaxAge             int    `mapstructure:"max_age_days"`
+	Compress           bool   `mapstructure:"compress_logs"`
 }
 
 type Config struct {
