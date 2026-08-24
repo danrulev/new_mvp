@@ -1,0 +1,40 @@
+# Production конфигурация для logging
+# Используйте: export CONFIG_NAME=production
+
+auth:
+  access_token_ttl: 150m
+  refresh_token_ttl: 300m
+  jwt_secret: "${JWT_SECRET}"  # Обязательно установите через env variable
+
+db:
+  allow_selection: false
+
+server:
+  host: 0.0.0.0
+  port: 8080
+  max_header_bytes: 1048576
+  read_timeout: 30s
+  write_timeout: 60s
+  idle_timeout: 120s
+
+logger:
+  level: warn
+  development: false
+  disable_caller: true
+  disable_stacktrace: false
+  encoding: json
+  output_paths:
+    - ./logs/app.log
+    - stdout
+  error_output_paths:
+    - ./logs/error.log
+    - stderr
+  environment: production
+  service_name: desktop-lab
+  enable_sampling: true
+  sampling_initial: 100
+  sampling_thereafter: 100
+  max_file_size_mb: 100
+  max_backups: 10
+  max_age_days: 30
+  compress_logs: true
