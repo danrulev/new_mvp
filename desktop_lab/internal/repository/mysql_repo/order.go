@@ -12,6 +12,25 @@ import (
 	"go.uber.org/zap"
 )
 
+// GetUserByID получает пользователя по ID (реализация для OrderRepo)
+func (r *OrderRepo) GetUserByID(ctx context.Context, id string) (models.User, error) {
+	log := r.log.With(zap.String("method", "GetUserByID"), zap.String("user_id", id))
+	log.Debug("fetching user by ID")
+
+	var user models.User
+	err := r.db.QueryRowContext(ctx, "SELECT id, name, email, role FROM users WHERE id = ? AND deleted_at IS NULL", id).Scan(
+		&user.ID, &user.Name, &user.Email, &user.Role)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return models.User{}, fmt.Errorf("user not found")
+		}
+		return models.User{}, err
+	}
+
+	log.Debug("user fetched successfully")
+	return user, nil
+}
+
 type OrderRepo struct {
 	db  *sqlx.DB
 	log *zap.Logger
@@ -411,17 +430,49 @@ func (r *OrderRepo) Update(ctx context.Context, id string, req models.UpdateOrde
 	setClauses := []string{"updated_at = ?"}
 	args := []interface{}{time.Now().Format(time.RFC3339)}
 
+	if req.Title != nil {
+		setClauses = append(setClauses, "title = ?")
+		args = append(args, *req.Title)
+	}
+	if req.Description != nil {
+		setClauses = append(setClauses, "description = ?")
+		args = append(args, *req.Description)
+	}
+	if req.Priority != nil {
+		setClauses = append(setClauses, "priority = ?")
+		args = append(args, *req.Priority)
+	}
 	if req.ClientName != nil {
-		setClauses = append(setClauses, "Client_name = ?")
+		setClauses = append(setClauses, "client_name = ?")
 		args = append(args, *req.ClientName)
 	}
 	if req.ClientEmail != nil {
-		setClauses = append(setClauses, "Client_email = ?")
+		setClauses = append(setClauses, "client_email = ?")
 		args = append(args, *req.ClientEmail)
 	}
 	if req.ClientPhone != nil {
-		setClauses = append(setClauses, "Client_phone = ?")
+		setClauses = append(setClauses, "client_phone = ?")
 		args = append(args, *req.ClientPhone)
+	}
+	if req.ExternalComment != nil {
+		setClauses = append(setClauses, "external_comment = ?")
+		args = append(args, *req.ExternalComment)
+	}
+	if req.InternalComment != nil {
+		setClauses = append(setClauses, "internal_comment = ?")
+		args = append(args, *req.InternalComment)
+	}
+	if req.SampleLocation != nil {
+		setClauses = append(setClauses, "sample_location = ?")
+		args = append(args, *req.SampleLocation)
+	}
+	if req.DueDate != nil {
+		setClauses = append(setClauses, "due_date = ?")
+		if req.DueDate.IsZero() {
+			args = append(args, (*string)(nil))
+		} else {
+			args = append(args, req.DueDate.Format(time.RFC3339))
+		}
 	}
 
 	args = append(args, id)
@@ -603,6 +654,114 @@ func (r *OrderRepo) RecalculateTotal(ctx context.Context, orderID string) error 
 	}
 
 	log.Info("order total recalculated successfully")
+	return nil
+}
+
+// AssignOrder назначает ответственного за заявку
+func (r *OrderRepo) AssignOrder(ctx context.Context, id, assignedTo, userID, userName, comment string) error {
+	log := logQuery(ctx, r.log, "UPDATE", "orders", zap.String("id", id), zap.String("assigned_to", assignedTo))
+	log.Info("assigning order to manager")
+
+	order, err := r.GetByID(ctx, id)
+	if err != nil {
+		log.Error("failed to get order", zap.Error(err))
+		return err
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Error("failed to begin transaction", zap.Error(err))
+		return err
+	}
+	defer tx.Rollback()
+
+	// Обновляем ответственного
+	updateQuery := `UPDATE orders SET assigned_to = ?, status = ?, updated_at = ? WHERE id = ?`
+	_, err = tx.ExecContext(ctx, updateQuery, assignedTo, models.OrderStatusAssigned, time.Now().Format(time.RFC3339), id)
+	if err != nil {
+		log.Error("failed to update order", zap.Error(err))
+		return err
+	}
+
+	// Добавляем запись в workflow
+	entry := models.OrderWorkflowEntry{
+		ID:         uuid.New().String(),
+		OrderID:    id,
+		FromStatus: string(order.Status),
+		ToStatus:   string(models.OrderStatusAssigned),
+		UserID:     userID,
+		UserName:   userName,
+		Comment:    comment,
+		CreatedAt:  time.Now(),
+	}
+
+	insertQuery := `INSERT INTO order_workflow (id, order_id, from_status, to_status, user_id, user_name, comment, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err = tx.ExecContext(ctx, insertQuery, entry.ID, entry.OrderID, entry.FromStatus, entry.ToStatus, entry.UserID, entry.UserName, entry.Comment, entry.CreatedAt.Format(time.RFC3339))
+	if err != nil {
+		log.Error("failed to add workflow entry", zap.Error(err))
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Error("failed to commit transaction", zap.Error(err))
+		return err
+	}
+
+	log.Info("order assigned successfully")
+	return nil
+}
+
+// AssignOrderItem назначает исполнителя для позиции заявки
+func (r *OrderRepo) AssignOrderItem(ctx context.Context, id, assignedTo, userID, userName, comment string) error {
+	log := logQuery(ctx, r.log, "UPDATE", "order_items", zap.String("id", id), zap.String("assigned_to", assignedTo))
+	log.Info("assigning order item to executor")
+
+	item, err := r.GetItemByID(ctx, id)
+	if err != nil {
+		log.Error("failed to get order item", zap.Error(err))
+		return err
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Error("failed to begin transaction", zap.Error(err))
+		return err
+	}
+	defer tx.Rollback()
+
+	// Обновляем исполнителя и статус
+	updateQuery := `UPDATE order_items SET assigned_to = ?, status = ?, updated_at = ? WHERE id = ?`
+	_, err = tx.ExecContext(ctx, updateQuery, assignedTo, models.OrderItemStatusAssigned, time.Now().Format(time.RFC3339), id)
+	if err != nil {
+		log.Error("failed to update order item", zap.Error(err))
+		return err
+	}
+
+	// Добавляем запись в workflow родительской заявки
+	entry := models.OrderWorkflowEntry{
+		ID:         uuid.New().String(),
+		OrderID:    item.OrderID,
+		FromStatus: string(models.OrderStatusAssigned),
+		ToStatus:   string(models.OrderStatusInProgress),
+		UserID:     userID,
+		UserName:   userName,
+		Comment:    fmt.Sprintf("Назначен исполнитель на позицию: %s (%s)", comment, id),
+		CreatedAt:  time.Now(),
+	}
+
+	insertQuery := `INSERT INTO order_workflow (id, order_id, from_status, to_status, user_id, user_name, comment, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err = tx.ExecContext(ctx, insertQuery, entry.ID, entry.OrderID, entry.FromStatus, entry.ToStatus, entry.UserID, entry.UserName, entry.Comment, entry.CreatedAt.Format(time.RFC3339))
+	if err != nil {
+		log.Error("failed to add workflow entry", zap.Error(err))
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Error("failed to commit transaction", zap.Error(err))
+		return err
+	}
+
+	log.Info("order item assigned successfully")
 	return nil
 }
 
