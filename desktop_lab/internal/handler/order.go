@@ -124,11 +124,13 @@ func (h *Handler) listOrders(c *gin.Context) {
 			Limit:  limit,
 			Offset: offset,
 		},
-		OrganizationID: c.Query("organization_id"),
-		CustomerID:     c.Query("customer_id"),
-		Status:         models.OrderStatus(c.Query("status")),
-		DateFrom:       c.Query("date_from"),
-		DateTo:         c.Query("date_to"),
+		Status:      models.OrderStatus(c.Query("status")),
+		Priority:    c.Query("priority"),
+		CreatedBy:   c.Query("created_by"),
+		AssignedTo:  c.Query("assigned_to"),
+		DateFrom:    c.Query("date_from"),
+		DateTo:      c.Query("date_to"),
+		SearchQuery: c.Query("search"),
 	}
 
 	// Если пользователь не админ, фильтруем по его данным
@@ -136,12 +138,11 @@ func (h *Handler) listOrders(c *gin.Context) {
 	role, _ := getRoleFromContext(c)
 
 	if role == models.RoleClient {
-		// Клиент видит только свои заявки
-		filter.CustomerID = userID
-	} else if role == models.RoleTechnician {
-		// Техник видит только заявки своей организации
-		// Нужно получить organization_id из профиля пользователя
-		// Пока оставляем пустым, фильтрация будет на уровне сервиса
+		// Клиент видит только свои заявки (по email или ID создателя)
+		filter.CreatedBy = userID
+	} else if role == models.RoleEngineer || role == models.RoleTechnician {
+		// Инженер/техник видит назначенные ему заявки
+		filter.AssignedTo = userID
 	}
 
 	data, err := h.order.ListOrders(c.Request.Context(), filter)
@@ -269,12 +270,12 @@ func (h *Handler) acceptOrder(c *gin.Context) {
 		}
 	}
 	
-	if err := h.order.AcceptOrder(c.Request.Context(), id, userID, userName, req.Comment); err != nil {
-		h.newErrorResponse(c, http.StatusInternalServerError, "accept order", "failed to accept order", err)
+	if err := h.order.ApproveOrder(c.Request.Context(), id, userID, userName, req.Comment); err != nil {
+		h.newErrorResponse(c, http.StatusInternalServerError, "approve order", "failed to approve order", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "order accepted"})
+	c.JSON(http.StatusOK, gin.H{"message": "order approved"})
 }
 
 // rejectOrder отклоняет заявку

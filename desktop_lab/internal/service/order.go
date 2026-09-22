@@ -336,12 +336,6 @@ func (s *OrderService) AssignOrderItem(ctx context.Context, itemID, assignedTo, 
 		return fmt.Errorf("пользователь не может быть назначен исполнителем")
 	}
 
-	item, err := s.repo.GetItemByID(ctx, itemID)
-	if err != nil {
-		logger.Error("failed to get order item", zap.Error(err))
-		return err
-	}
-
 	if err := s.repo.AssignOrderItem(ctx, itemID, assignedTo, userID, userName, comment); err != nil {
 		logger.Error("failed to assign order item", zap.Error(err))
 		return err
