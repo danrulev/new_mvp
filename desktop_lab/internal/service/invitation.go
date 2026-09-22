@@ -2,9 +2,7 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
 	"desktop_lab/internal/models"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -14,21 +12,19 @@ import (
 )
 
 var (
-	ErrInvitationNotFound    = errors.New("приглашение не найдено")
-	ErrInvitationExpired     = errors.New("срок действия приглашения истек")
-	ErrInvitationAlreadyUsed = errors.New("приглашение уже было использовано")
-	ErrInvalidRole           = errors.New("недопустимая роль")
+	ErrInvitationNotFound = errors.New("заявка не найдена")
+	ErrInvitationExists   = errors.New("заявка уже существует")
+	ErrInvalidRole        = errors.New("недопустимая роль")
+	ErrAlreadyReviewed    = errors.New("заявка уже рассмотрена")
 )
 
 type InvitationRepo interface {
-	Create(ctx context.Context, invitation models.OrganizationInvitation) error
-	GetByID(ctx context.Context, id string) (models.OrganizationInvitation, error)
-	GetByToken(ctx context.Context, token string) (models.OrganizationInvitation, error)
-	List(ctx context.Context, filter models.InvitationListFilter) ([]models.OrganizationInvitation, int64, error)
-	UpdateStatus(ctx context.Context, id string, status models.InvitationStatus, acceptedAt *time.Time) error
+	Create(ctx context.Context, invitation models.RegistrationInvitation) error
+	GetByID(ctx context.Context, id string) (models.RegistrationInvitation, error)
+	GetByEmail(ctx context.Context, email string) (models.RegistrationInvitation, error)
+	List(ctx context.Context, filter models.InvitationListFilter) ([]models.RegistrationInvitation, int64, error)
+	UpdateStatus(ctx context.Context, id string, status models.InvitationStatus, reviewedBy *string, reviewedAt *time.Time, message string) error
 	Delete(ctx context.Context, id string) error
-	GetPendingByOrgAndEmail(ctx context.Context, orgID, email string) ([]models.OrganizationInvitation, error)
-	UpdateTokenAndExpires(ctx context.Context, id, token string, expiresAt time.Time) error
 }
 
 type InvitationService struct {
@@ -45,75 +41,56 @@ func NewInvitationService(repo InvitationRepo, userRepo UserRepo, log *zap.Logge
 	}
 }
 
-// generateToken генерирует случайный токен для приглашения
-func (s *InvitationService) generateToken() (string, error) {
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", fmt.Errorf("failed to generate random bytes: %w", err)
-	}
-	return hex.EncodeToString(bytes), nil
-}
-
-// CreateInvitation создает новое
-func (s *InvitationService) CreateInvitation(ctx context.Context, req models.CreateInvitationRequest, inviterID, inviterName string) (models.OrganizationInvitation, error) {
+// CreateInvitation создает новую заявку на регистрацию
+func (s *InvitationService) CreateInvitation(ctx context.Context, req models.CreateInvitationRequest) (models.RegistrationInvitation, error) {
 	logger := loggerWith(ctx, s.log,
 		zap.String("operation", "CreateInvitation"),
-		zap.String("organization_id", req.OrganizationID),
 		zap.String("email", req.Email),
 		zap.String("role", req.Role))
 
-	logger.Info("creating new invitation")
+	logger.Info("creating new registration invitation")
 
 	// Проверяем допустимость роли
 	role := models.Role(req.Role)
 	if !role.IsValid() {
 		logger.Error("invalid role", zap.String("role", req.Role))
-		return models.OrganizationInvitation{}, ErrInvalidRole
+		return models.RegistrationInvitation{}, ErrInvalidRole
 	}
 
-	// Проверяем, нет ли уже активных приглашений для этого email в этой организации
-	existingInvites, err := s.repo.GetPendingByOrgAndEmail(ctx, req.OrganizationID, req.Email)
-	if err != nil {
-		logger.Warn("failed to check existing invitations", zap.Error(err))
-	} else if len(existingInvites) > 0 {
-		logger.Warn("pending invitation already exists", zap.String("existing_id", existingInvites[0].ID))
-		return models.OrganizationInvitation{}, fmt.Errorf("уже существует активное приглашение для email %s", req.Email)
-	}
-
-	token, err := s.generateToken()
-	if err != nil {
-		logger.Error("failed to generate token", zap.Error(err))
-		return models.OrganizationInvitation{}, err
+	// Проверяем, не существует ли уже заявка с этим email
+	existingInvite, err := s.repo.GetByEmail(ctx, req.Email)
+	if err == nil && existingInvite.ID != "" {
+		if existingInvite.Status == models.InvitationStatusPending {
+			logger.Warn("pending invitation already exists", zap.String("existing_id", existingInvite.ID))
+			return models.RegistrationInvitation{}, ErrInvitationExists
+		}
+		// Если заявка уже рассмотрена, можно создать новую
 	}
 
 	now := time.Now()
-	invitation := models.OrganizationInvitation{
-		ID:             uuid.New().String(),
-		OrganizationID: req.OrganizationID,
-		Email:          req.Email,
-		Role:           req.Role,
-		InvitedBy:      inviterID,
-		InviterName:    inviterName,
-		Status:         models.InvitationStatusPending,
-		Token:          token,
-		CreatedAt:      now,
-		ExpiresAt:      now.Add(7 * 24 * time.Hour), // 7 дней
+	invitation := models.RegistrationInvitation{
+		ID:        uuid.New().String(),
+		Email:     req.Email,
+		Name:      req.Name,
+		Role:      req.Role,
+		Status:    models.InvitationStatusPending,
+		Message:   req.Message,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 
 	if err := s.repo.Create(ctx, invitation); err != nil {
 		logger.Error("failed to create invitation", zap.Error(err))
-		return models.OrganizationInvitation{}, err
+		return models.RegistrationInvitation{}, err
 	}
 
 	logger.Info("invitation created successfully", zap.String("invitation_id", invitation.ID))
 
-	// Возвращаем приглашение без токена (токен нужно отправить только на email)
-	invitation.Token = ""
 	return invitation, nil
 }
 
-// GetInvitation получает приглашение по ID
-func (s *InvitationService) GetInvitation(ctx context.Context, id string) (models.OrganizationInvitation, error) {
+// GetInvitation получает заявку по ID
+func (s *InvitationService) GetInvitation(ctx context.Context, id string) (models.RegistrationInvitation, error) {
 	logger := loggerWith(ctx, s.log,
 		zap.String("invitation_id", id),
 		zap.String("operation", "GetInvitation"))
@@ -123,32 +100,15 @@ func (s *InvitationService) GetInvitation(ctx context.Context, id string) (model
 	invitation, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		logger.Error("failed to get invitation", zap.Error(err))
-		return models.OrganizationInvitation{}, ErrInvitationNotFound
+		return models.RegistrationInvitation{}, ErrInvitationNotFound
 	}
 
 	logger.Debug("invitation retrieved successfully")
 	return invitation, nil
 }
 
-// GetInvitationByToken получает приглашение по токену
-func (s *InvitationService) GetInvitationByToken(ctx context.Context, token string) (models.OrganizationInvitation, error) {
-	logger := loggerWith(ctx, s.log,
-		zap.String("operation", "GetInvitationByToken"))
-
-	logger.Debug("fetching invitation by token")
-
-	invitation, err := s.repo.GetByToken(ctx, token)
-	if err != nil {
-		logger.Error("failed to get invitation by token", zap.Error(err))
-		return models.OrganizationInvitation{}, ErrInvitationNotFound
-	}
-
-	logger.Debug("invitation retrieved successfully")
-	return invitation, nil
-}
-
-// ListInvitations получает список приглашений с фильтрацией
-func (s *InvitationService) ListInvitations(ctx context.Context, filter models.InvitationListFilter) ([]models.OrganizationInvitation, int64, error) {
+// ListInvitations получает список заявок с фильтрацией
+func (s *InvitationService) ListInvitations(ctx context.Context, filter models.InvitationListFilter) ([]models.RegistrationInvitation, int64, error) {
 	logger := loggerWith(ctx, s.log,
 		zap.Any("filter", filter),
 		zap.String("operation", "ListInvitations"))
@@ -158,111 +118,87 @@ func (s *InvitationService) ListInvitations(ctx context.Context, filter models.I
 	return s.repo.List(ctx, filter)
 }
 
-// AcceptInvitation принимает приглашение и добавляет пользователя в организацию
-func (s *InvitationService) AcceptInvitation(ctx context.Context, token string, userID string) error {
+// ReviewInvitation рассматривает заявку (подтверждает или отказывает)
+func (s *InvitationService) ReviewInvitation(ctx context.Context, id string, adminID string, req models.ReviewInvitationRequest) error {
 	logger := loggerWith(ctx, s.log,
-		zap.String("operation", "AcceptInvitation"),
-		zap.String("user_id", userID))
-
-	logger.Info("accepting invitation")
-
-	// Получаем приглашение по токену
-	invitation, err := s.repo.GetByToken(ctx, token)
-	if err != nil {
-		logger.Error("invitation not found", zap.Error(err))
-		return ErrInvitationNotFound
-	}
-
-	// Проверяем, не истекло ли приглашение
-	if invitation.IsExpired() {
-		logger.Error("invitation expired", zap.Time("expires_at", invitation.ExpiresAt))
-		return ErrInvitationExpired
-	}
-
-	// Проверяем статус приглашения
-	if !invitation.CanBeAccepted() {
-		logger.Error("invitation cannot be accepted", zap.String("status", string(invitation.Status)))
-		if invitation.Status == models.InvitationStatusAccepted {
-			return ErrInvitationAlreadyUsed
-		}
-		if invitation.Status == models.InvitationStatusDeclined {
-			return errors.New("приглашение было отклонено")
-		}
-		return fmt.Errorf("приглашение не может быть принято в текущем статусе: %s", invitation.Status)
-	}
-
-	// Проверяем существование пользователя
-	user, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		logger.Error("user not found", zap.Error(err))
-		return fmt.Errorf("пользователь не найден: %w", err)
-	}
-
-	// Проверяем, что email пользователя совпадает с email в приглашении
-	if user.Email != invitation.Email {
-		logger.Error("email mismatch", zap.String("user_email", user.Email), zap.String("invite_email", invitation.Email))
-		return errors.New("email пользователя не совпадает с email в приглашении")
-	}
-
-	// Обновляем статус приглашения
-	now := time.Now()
-	if err := s.repo.UpdateStatus(ctx, invitation.ID, models.InvitationStatusAccepted, &now); err != nil {
-		logger.Error("failed to update invitation status", zap.Error(err))
-		return fmt.Errorf("не удалось обновить статус приглашения: %w", err)
-	}
-
-	logger.Info("invitation accepted successfully",
-		zap.String("invitation_id", invitation.ID),
-		zap.String("organization_id", invitation.OrganizationID),
-		zap.String("user_id", userID))
-
-	return nil
-}
-
-// DeclineInvitation отклоняет приглашение
-func (s *InvitationService) DeclineInvitation(ctx context.Context, token string) error {
-	logger := loggerWith(ctx, s.log,
-		zap.String("operation", "DeclineInvitation"))
-
-	logger.Info("declining invitation")
-
-	invitation, err := s.repo.GetByToken(ctx, token)
-	if err != nil {
-		logger.Error("invitation not found", zap.Error(err))
-		return ErrInvitationNotFound
-	}
-
-	if invitation.Status != models.InvitationStatusPending {
-		logger.Error("invitation is not pending", zap.String("status", string(invitation.Status)))
-		return fmt.Errorf("нельзя отклонить приглашение в статусе %s", invitation.Status)
-	}
-
-	if err := s.repo.UpdateStatus(ctx, invitation.ID, models.InvitationStatusDeclined, nil); err != nil {
-		logger.Error("failed to update invitation status", zap.Error(err))
-		return err
-	}
-
-	logger.Info("invitation declined successfully", zap.String("invitation_id", invitation.ID))
-	return nil
-}
-
-// RevokeInvitation отзывает приглашение (только для администраторов организации)
-func (s *InvitationService) RevokeInvitation(ctx context.Context, id string) error {
-	logger := loggerWith(ctx, s.log,
+		zap.String("operation", "ReviewInvitation"),
 		zap.String("invitation_id", id),
-		zap.String("operation", "RevokeInvitation"))
+		zap.String("admin_id", adminID))
 
-	logger.Info("revoking invitation")
+	logger.Info("reviewing invitation")
 
+	// Получаем заявку
 	invitation, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		logger.Error("invitation not found", zap.Error(err))
 		return ErrInvitationNotFound
 	}
 
+	// Проверяем, не была ли заявка уже рассмотрена
 	if invitation.Status != models.InvitationStatusPending {
-		logger.Error("cannot revoke non-pending invitation", zap.String("status", string(invitation.Status)))
-		return fmt.Errorf("нельзя отозвать приглашение в статусе %s", invitation.Status)
+		logger.Error("invitation already reviewed", zap.String("status", string(invitation.Status)))
+		return ErrAlreadyReviewed
+	}
+
+	// Определяем новый статус
+	var newStatus models.InvitationStatus
+	if req.Approved {
+		newStatus = models.InvitationStatusAccepted
+	} else {
+		newStatus = models.InvitationStatusDeclined
+	}
+
+	// Обновляем статус заявки
+	now := time.Now()
+	if err := s.repo.UpdateStatus(ctx, id, newStatus, &adminID, &now, req.Message); err != nil {
+		logger.Error("failed to update invitation status", zap.Error(err))
+		return fmt.Errorf("не удалось обновить статус заявки: %w", err)
+	}
+
+	// Если заявка одобрена, создаем пользователя
+	if req.Approved {
+		logger.Info("creating user for approved invitation",
+			zap.String("email", invitation.Email),
+			zap.String("name", invitation.Name),
+			zap.String("role", invitation.Role))
+
+		user := models.User{
+			ID:       uuid.New().String(),
+			Email:    invitation.Email,
+			Name:     invitation.Name,
+			Role:     models.Role(invitation.Role),
+			Password: "", // Пользователь должен будет установить пароль при первом входе
+		}
+
+		if err := s.userRepo.Create(ctx, user); err != nil {
+			logger.Error("failed to create user after approval", zap.Error(err))
+			// Откатываем статус заявки
+			s.repo.UpdateStatus(ctx, id, models.InvitationStatusPending, nil, nil, "")
+			return fmt.Errorf("не удалось создать пользователя: %w", err)
+		}
+
+		logger.Info("user created successfully", zap.String("user_id", user.ID))
+	}
+
+	logger.Info("invitation reviewed successfully",
+		zap.String("invitation_id", id),
+		zap.String("new_status", string(newStatus)))
+
+	return nil
+}
+
+// DeleteInvitation удаляет заявку (только для администраторов)
+func (s *InvitationService) DeleteInvitation(ctx context.Context, id string) error {
+	logger := loggerWith(ctx, s.log,
+		zap.String("invitation_id", id),
+		zap.String("operation", "DeleteInvitation"))
+
+	logger.Info("deleting invitation")
+
+	_, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		logger.Error("invitation not found", zap.Error(err))
+		return ErrInvitationNotFound
 	}
 
 	if err := s.repo.Delete(ctx, id); err != nil {
@@ -270,56 +206,14 @@ func (s *InvitationService) RevokeInvitation(ctx context.Context, id string) err
 		return err
 	}
 
-	logger.Info("invitation revoked successfully")
+	logger.Info("invitation deleted successfully")
 	return nil
 }
 
-// ResendInvitation перевыпускает приглашение с новым токеном и сроком действия
-func (s *InvitationService) ResendInvitation(ctx context.Context, id string) (models.OrganizationInvitation, error) {
-	logger := loggerWith(ctx, s.log,
-		zap.String("invitation_id", id),
-		zap.String("operation", "ResendInvitation"))
-
-	logger.Info("resending invitation")
-
-	invitation, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		logger.Error("invitation not found", zap.Error(err))
-		return models.OrganizationInvitation{}, ErrInvitationNotFound
-	}
-
-	if invitation.Status != models.InvitationStatusPending && invitation.Status != models.InvitationStatusExpired {
-		logger.Error("cannot resend non-pending/expired invitation", zap.String("status", string(invitation.Status)))
-		return models.OrganizationInvitation{}, fmt.Errorf("нельзя перевыпустить приглашение в статусе %s", invitation.Status)
-	}
-
-	// Генерируем новый токен
-	token, err := s.generateToken()
-	if err != nil {
-		logger.Error("failed to generate new token", zap.Error(err))
-		return models.OrganizationInvitation{}, err
-	}
-
-	// Обновляем токен и срок действия
-	now := time.Now()
-	if err := s.repo.UpdateTokenAndExpires(ctx, id, token, now.Add(7*24*time.Hour)); err != nil {
-		logger.Error("failed to update invitation token and expiry", zap.Error(err))
-		return models.OrganizationInvitation{}, err
-	}
-
-	logger.Info("invitation resent successfully", zap.String("invitation_id", invitation.ID))
-
-	// Возвращаем обновленное приглашение без токена
-	invitation.Token = ""
-	invitation.ExpiresAt = now.Add(7 * 24 * time.Hour)
-	invitation.Status = models.InvitationStatusPending
-	return invitation, nil
-}
-
-// GetOrganizationRoles возвращает доступные роли для организации
-func (s *InvitationService) GetOrganizationRoles() []map[string]string {
+// GetAvailableRoles возвращает доступные роли для регистрации
+func (s *InvitationService) GetAvailableRoles() []map[string]string {
 	return []map[string]string{
-		{"role": "org_admin", "description": "Администратор организации - полный доступ"},
+		{"role": "admin", "description": "Администратор системы - полный доступ"},
 		{"role": "manager", "description": "Менеджер - управление заявками"},
 		{"role": "engineer", "description": "Инженер - выполнение исследований"},
 		{"role": "technician", "description": "Техник - проведение тестов"},
