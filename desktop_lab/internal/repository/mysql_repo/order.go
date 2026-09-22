@@ -27,22 +27,35 @@ func (r *OrderRepo) Create(ctx context.Context, order models.Order) error {
 	log.Info("creating new order")
 
 	query := `INSERT INTO orders (
-		id, customer_id, customer_id, status, total_amount, currency,
-		customer_name, customer_email, customer_phone, comment,
+		id, created_by, assigned_to, status, priority, title, description,
+		internal_comment, external_comment, total_amount, currency,
+		client_name, client_email, client_phone, sample_location, due_date,
 		created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+	var dueDate *string
+	if order.DueDate != nil {
+		d := order.DueDate.Format(time.RFC3339)
+		dueDate = &d
+	}
 
 	_, err := r.db.ExecContext(ctx, query,
 		order.ID,
-		order.CustomerID,
-		order.CustomerID,
+		order.CreatedBy,
+		order.AssignedTo,
 		order.Status,
+		order.Priority,
+		order.Title,
+		order.Description,
+		order.InternalComment,
+		order.ExternalComment,
 		order.TotalAmount,
 		order.Currency,
-		order.CustomerName,
-		order.CustomerEmail,
-		order.CustomerPhone,
-		order.Comment,
+		order.ClientName,
+		order.ClientEmail,
+		order.ClientPhone,
+		order.SampleLocation,
+		dueDate,
 		order.CreatedAt.Format(time.RFC3339),
 		order.UpdatedAt.Format(time.RFC3339),
 	)
@@ -107,29 +120,42 @@ func (r *OrderRepo) GetByID(ctx context.Context, id string) (models.Order, error
 
 	var order models.Order
 	var createdAt, updatedAt string
-	var completedAt sql.NullString
+	var completedAt, dueDate sql.NullString
+	var assignedTo sql.NullString
 
-	query := `SELECT id, customer_id, customer_id, status, total_amount, currency,
-		customer_name, customer_email, customer_phone, comment,
+	query := `SELECT id, created_by, assigned_to, status, priority, title, description,
+		internal_comment, external_comment, total_amount, currency,
+		client_name, client_email, client_phone, sample_location, due_date,
 		created_at, updated_at, completed_at
 		FROM orders WHERE id = ?`
 
 	row := r.db.QueryRowContext(ctx, query, id)
 	err := row.Scan(
-		&order.ID, &order.CustomerID, &order.CustomerID, &order.Status,
-		&order.TotalAmount, &order.Currency, &order.CustomerName, &order.CustomerEmail,
-		&order.CustomerPhone, &order.Comment, &createdAt, &updatedAt, &completedAt,
+		&order.ID, &order.CreatedBy, &assignedTo, &order.Status,
+		&order.Priority, &order.Title, &order.Description,
+		&order.InternalComment, &order.ExternalComment,
+		&order.TotalAmount, &order.Currency,
+		&order.ClientName, &order.ClientEmail, &order.ClientPhone,
+		&order.SampleLocation, &dueDate,
+		&createdAt, &updatedAt, &completedAt,
 	)
 	if err != nil {
 		log.Error("failed to fetch order", zap.Error(err))
 		return models.Order{}, err
 	}
 
+	if assignedTo.Valid {
+		order.AssignedTo = &assignedTo.String
+	}
 	order.CreatedAt, _ = parseTime(createdAt)
 	order.UpdatedAt, _ = parseTime(updatedAt)
 	if completedAt.Valid {
 		t, _ := parseTime(completedAt.String)
 		order.CompletedAt = &t
+	}
+	if dueDate.Valid {
+		t, _ := parseTime(dueDate.String)
+		order.DueDate = &t
 	}
 
 	log.Debug("order retrieved successfully")
@@ -280,17 +306,21 @@ func (r *OrderRepo) List(ctx context.Context, filter models.OrderListFilter) ([]
 	countQuery := `SELECT COUNT(*) ` + baseQuery
 	args := []interface{}{}
 
-	if filter.OrganizationID != "" {
-		baseQuery += ` AND organization_id = ?`
-		args = append(args, filter.OrganizationID)
+	if filter.CreatedBy != "" {
+		baseQuery += ` AND created_by = ?`
+		args = append(args, filter.CreatedBy)
 	}
-	if filter.CustomerID != "" {
-		baseQuery += ` AND customer_id = ?`
-		args = append(args, filter.CustomerID)
+	if filter.AssignedTo != "" {
+		baseQuery += ` AND assigned_to = ?`
+		args = append(args, filter.AssignedTo)
 	}
 	if filter.Status != "" {
 		baseQuery += ` AND status = ?`
 		args = append(args, filter.Status)
+	}
+	if filter.Priority != "" {
+		baseQuery += ` AND priority = ?`
+		args = append(args, filter.Priority)
 	}
 	if filter.DateFrom != "" {
 		baseQuery += ` AND created_at >= ?`
@@ -299,6 +329,11 @@ func (r *OrderRepo) List(ctx context.Context, filter models.OrderListFilter) ([]
 	if filter.DateTo != "" {
 		baseQuery += ` AND created_at <= ?`
 		args = append(args, filter.DateTo)
+	}
+	if filter.SearchQuery != "" {
+		baseQuery += ` AND (title LIKE ? OR description LIKE ? OR client_name LIKE ?)`
+		searchPattern := "%" + filter.SearchQuery + "%"
+		args = append(args, searchPattern, searchPattern, searchPattern)
 	}
 
 	var total int64
@@ -312,8 +347,9 @@ func (r *OrderRepo) List(ctx context.Context, filter models.OrderListFilter) ([]
 		return nil, 0, nil
 	}
 
-	selectQuery := `SELECT id, customer_id, customer_id, status, total_amount, currency,
-		customer_name, customer_email, customer_phone, comment,
+	selectQuery := `SELECT id, created_by, assigned_to, status, priority, title, description,
+		internal_comment, external_comment, total_amount, currency,
+		client_name, client_email, client_phone, sample_location, due_date,
 		created_at, updated_at, completed_at ` + baseQuery + ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
 
 	args = append(args, filter.Limit, filter.Offset)
@@ -329,23 +365,35 @@ func (r *OrderRepo) List(ctx context.Context, filter models.OrderListFilter) ([]
 	for rows.Next() {
 		var order models.Order
 		var createdAt, updatedAt string
-		var completedAt sql.NullString
+		var completedAt, dueDate sql.NullString
+		var assignedTo sql.NullString
 
 		err := rows.Scan(
-			&order.ID, &order.CustomerID, &order.CustomerID, &order.Status,
-			&order.TotalAmount, &order.Currency, &order.CustomerName, &order.CustomerEmail,
-			&order.CustomerPhone, &order.Comment, &createdAt, &updatedAt, &completedAt,
+			&order.ID, &order.CreatedBy, &assignedTo, &order.Status,
+			&order.Priority, &order.Title, &order.Description,
+			&order.InternalComment, &order.ExternalComment,
+			&order.TotalAmount, &order.Currency,
+			&order.ClientName, &order.ClientEmail, &order.ClientPhone,
+			&order.SampleLocation, &dueDate,
+			&createdAt, &updatedAt, &completedAt,
 		)
 		if err != nil {
 			log.Error("failed to scan order", zap.Error(err))
 			return nil, 0, err
 		}
 
+		if assignedTo.Valid {
+			order.AssignedTo = &assignedTo.String
+		}
 		order.CreatedAt, _ = parseTime(createdAt)
 		order.UpdatedAt, _ = parseTime(updatedAt)
 		if completedAt.Valid {
 			t, _ := parseTime(completedAt.String)
 			order.CompletedAt = &t
+		}
+		if dueDate.Valid {
+			t, _ := parseTime(dueDate.String)
+			order.DueDate = &t
 		}
 
 		orders = append(orders, order)
