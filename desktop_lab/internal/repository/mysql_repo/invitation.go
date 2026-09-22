@@ -19,25 +19,24 @@ func NewInvitationRepo(db *sqlx.DB, log *zap.Logger) *InvitationRepo {
 	return &InvitationRepo{db: db, log: log}
 }
 
-// Create создает новое приглашение
-func (r *InvitationRepo) Create(ctx context.Context, invitation models.OrganizationInvitation) error {
-	logger := logQuery(ctx, r.log, "INSERT", "organization_invitations", zap.String("id", invitation.ID))
-	logger.Info("creating new invitation")
+// Create создает новую заявку на регистрацию
+func (r *InvitationRepo) Create(ctx context.Context, invitation models.RegistrationInvitation) error {
+	logger := logQuery(ctx, r.log, "INSERT", "registration_invitations", zap.String("id", invitation.ID))
+	logger.Info("creating new registration invitation")
 
-	query := `INSERT INTO organization_invitations (
-id, organization_id, email, role, invited_by, status, token, expires_at, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	query := `INSERT INTO registration_invitations (
+		id, email, name, role, status, message, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := r.db.ExecContext(ctx, query,
 		invitation.ID,
-		invitation.OrganizationID,
 		invitation.Email,
+		invitation.Name,
 		invitation.Role,
-		invitation.InvitedBy,
 		invitation.Status,
-		invitation.Token,
-		invitation.ExpiresAt.Format(time.RFC3339),
+		invitation.Message,
 		invitation.CreatedAt.Format(time.RFC3339),
+		invitation.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		logger.Error("failed to create invitation", zap.Error(err))
@@ -48,85 +47,97 @@ id, organization_id, email, role, invited_by, status, token, expires_at, created
 	return nil
 }
 
-// GetByID получает приглашение по ID
-func (r *InvitationRepo) GetByID(ctx context.Context, id string) (models.OrganizationInvitation, error) {
-	logger := logQuery(ctx, r.log, "SELECT", "organization_invitations", zap.String("id", id))
+// GetByID получает заявку по ID
+func (r *InvitationRepo) GetByID(ctx context.Context, id string) (models.RegistrationInvitation, error) {
+	logger := logQuery(ctx, r.log, "SELECT", "registration_invitations", zap.String("id", id))
 	logger.Debug("fetching invitation by ID")
 
-	var invitation models.OrganizationInvitation
-	var createdAt, expiresAt, acceptedAt sql.NullString
+	var invitation models.RegistrationInvitation
+	var createdAt, updatedAt sql.NullString
+	var reviewedBy sql.NullString
+	var reviewedAt sql.NullString
 
-	query := `SELECT id, organization_id, email, role, invited_by, status, token, expires_at, created_at, accepted_at
-FROM organization_invitations WHERE id = ?`
+	query := `SELECT id, email, name, role, status, message, reviewed_by, reviewed_at, created_at, updated_at
+	FROM registration_invitations WHERE id = ?`
 
 	row := r.db.QueryRowContext(ctx, query, id)
 	err := row.Scan(
-		&invitation.ID, &invitation.OrganizationID, &invitation.Email, &invitation.Role,
-		&invitation.InvitedBy, &invitation.Status, &invitation.Token,
-		&expiresAt, &createdAt, &acceptedAt,
+		&invitation.ID, &invitation.Email, &invitation.Name, &invitation.Role,
+		&invitation.Status, &invitation.Message,
+		&reviewedBy, &reviewedAt, &createdAt, &updatedAt,
 	)
 	if err != nil {
 		logger.Error("failed to fetch invitation", zap.Error(err))
-		return models.OrganizationInvitation{}, err
+		return models.RegistrationInvitation{}, err
 	}
 
 	invitation.CreatedAt, _ = parseTime(createdAt.String)
-	invitation.ExpiresAt, _ = parseTime(expiresAt.String)
-	if acceptedAt.Valid && acceptedAt.String != "" {
-		t, _ := parseTime(acceptedAt.String)
-		invitation.AcceptedAt = &t
+	invitation.UpdatedAt, _ = parseTime(updatedAt.String)
+	
+	if reviewedBy.Valid && reviewedBy.String != "" {
+		invitation.ReviewedBy = &reviewedBy.String
+	}
+	if reviewedAt.Valid && reviewedAt.String != "" {
+		t, _ := parseTime(reviewedAt.String)
+		invitation.ReviewedAt = &t
 	}
 
 	logger.Debug("invitation retrieved successfully")
 	return invitation, nil
 }
 
-// GetByToken получает приглашение по токену
-func (r *InvitationRepo) GetByToken(ctx context.Context, token string) (models.OrganizationInvitation, error) {
-	logger := logQuery(ctx, r.log, "SELECT", "organization_invitations", zap.String("token", token[:8]+"..."))
-	logger.Debug("fetching invitation by token")
+// GetByEmail получает заявку по email
+func (r *InvitationRepo) GetByEmail(ctx context.Context, email string) (models.RegistrationInvitation, error) {
+	logger := logQuery(ctx, r.log, "SELECT", "registration_invitations", zap.String("email", email))
+	logger.Debug("fetching invitation by email")
 
-	var invitation models.OrganizationInvitation
-	var createdAt, expiresAt, acceptedAt sql.NullString
+	var invitation models.RegistrationInvitation
+	var createdAt, updatedAt sql.NullString
+	var reviewedBy sql.NullString
+	var reviewedAt sql.NullString
 
-	query := `SELECT id, organization_id, email, role, invited_by, status, token, expires_at, created_at, accepted_at
-FROM organization_invitations WHERE token = ?`
+	query := `SELECT id, email, name, role, status, message, reviewed_by, reviewed_at, created_at, updated_at
+	FROM registration_invitations WHERE email = ? ORDER BY created_at DESC LIMIT 1`
 
-	row := r.db.QueryRowContext(ctx, query, token)
+	row := r.db.QueryRowContext(ctx, query, email)
 	err := row.Scan(
-		&invitation.ID, &invitation.OrganizationID, &invitation.Email, &invitation.Role,
-		&invitation.InvitedBy, &invitation.Status, &invitation.Token,
-		&expiresAt, &createdAt, &acceptedAt,
+		&invitation.ID, &invitation.Email, &invitation.Name, &invitation.Role,
+		&invitation.Status, &invitation.Message,
+		&reviewedBy, &reviewedAt, &createdAt, &updatedAt,
 	)
 	if err != nil {
-		logger.Error("failed to fetch invitation by token", zap.Error(err))
-		return models.OrganizationInvitation{}, err
+		if err == sql.ErrNoRows {
+			logger.Debug("invitation not found by email")
+			return models.RegistrationInvitation{}, err
+		}
+		logger.Error("failed to fetch invitation by email", zap.Error(err))
+		return models.RegistrationInvitation{}, err
 	}
 
 	invitation.CreatedAt, _ = parseTime(createdAt.String)
-	invitation.ExpiresAt, _ = parseTime(expiresAt.String)
-	if acceptedAt.Valid && acceptedAt.String != "" {
-		t, _ := parseTime(acceptedAt.String)
-		invitation.AcceptedAt = &t
+	invitation.UpdatedAt, _ = parseTime(updatedAt.String)
+	
+	if reviewedBy.Valid && reviewedBy.String != "" {
+		invitation.ReviewedBy = &reviewedBy.String
+	}
+	if reviewedAt.Valid && reviewedAt.String != "" {
+		t, _ := parseTime(reviewedAt.String)
+		invitation.ReviewedAt = &t
 	}
 
-	logger.Debug("invitation retrieved successfully by token")
+	logger.Debug("invitation retrieved successfully by email")
 	return invitation, nil
 }
 
-// List получает список приглашений с фильтрацией
-func (r *InvitationRepo) List(ctx context.Context, filter models.InvitationListFilter) ([]models.OrganizationInvitation, int64, error) {
-	logger := logQuery(ctx, r.log, "SELECT", "organization_invitations", zap.Any("filter", filter))
+// List получает список заявок с фильтрацией
+func (r *InvitationRepo) List(ctx context.Context, filter models.InvitationListFilter) ([]models.RegistrationInvitation, int64, error) {
+	logger := logQuery(ctx, r.log, "SELECT", "registration_invitations", zap.Any("filter", filter))
 	logger.Debug("fetching invitations list")
 
-	baseQuery := `FROM organization_invitations WHERE 1=1`
+	baseQuery := `FROM registration_invitations WHERE 1=1`
 	countQuery := `SELECT COUNT(*) ` + baseQuery
 	args := []interface{}{}
 
-	if filter.OrganizationID != "" {
-		baseQuery += ` AND organization_id = ?`
-		args = append(args, filter.OrganizationID)
-	}
 	if filter.Email != "" {
 		baseQuery += ` AND email LIKE ?`
 		args = append(args, "%"+filter.Email+"%")
@@ -134,10 +145,6 @@ func (r *InvitationRepo) List(ctx context.Context, filter models.InvitationListF
 	if filter.Status != "" {
 		baseQuery += ` AND status = ?`
 		args = append(args, filter.Status)
-	}
-	if filter.InvitedBy != "" {
-		baseQuery += ` AND invited_by = ?`
-		args = append(args, filter.InvitedBy)
 	}
 
 	var total int64
@@ -151,7 +158,7 @@ func (r *InvitationRepo) List(ctx context.Context, filter models.InvitationListF
 		return nil, 0, nil
 	}
 
-	selectQuery := `SELECT id, organization_id, email, role, invited_by, status, token, expires_at, created_at, accepted_at ` +
+	selectQuery := `SELECT id, email, name, role, status, message, reviewed_by, reviewed_at, created_at, updated_at ` +
 		baseQuery + ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
 
 	args = append(args, filter.Limit, filter.Offset)
@@ -163,16 +170,17 @@ func (r *InvitationRepo) List(ctx context.Context, filter models.InvitationListF
 	}
 	defer rows.Close()
 
-	var invitations []models.OrganizationInvitation
+	var invitations []models.RegistrationInvitation
 	for rows.Next() {
-		var inv models.OrganizationInvitation
-		var createdAt, expiresAt, acceptedAt sql.NullString
-		var token string
+		var inv models.RegistrationInvitation
+		var createdAt, updatedAt sql.NullString
+		var reviewedBy sql.NullString
+		var reviewedAt sql.NullString
 
 		err := rows.Scan(
-			&inv.ID, &inv.OrganizationID, &inv.Email, &inv.Role,
-			&inv.InvitedBy, &inv.Status, &token,
-			&expiresAt, &createdAt, &acceptedAt,
+			&inv.ID, &inv.Email, &inv.Name, &inv.Role,
+			&inv.Status, &inv.Message,
+			&reviewedBy, &reviewedAt, &createdAt, &updatedAt,
 		)
 		if err != nil {
 			logger.Error("failed to scan invitation", zap.Error(err))
@@ -180,13 +188,15 @@ func (r *InvitationRepo) List(ctx context.Context, filter models.InvitationListF
 		}
 
 		inv.CreatedAt, _ = parseTime(createdAt.String)
-		inv.ExpiresAt, _ = parseTime(expiresAt.String)
-		if acceptedAt.Valid && acceptedAt.String != "" {
-			t, _ := parseTime(acceptedAt.String)
-			inv.AcceptedAt = &t
+		inv.UpdatedAt, _ = parseTime(updatedAt.String)
+		
+		if reviewedBy.Valid && reviewedBy.String != "" {
+			inv.ReviewedBy = &reviewedBy.String
 		}
-		// Не возвращаем токен в списке
-		inv.Token = ""
+		if reviewedAt.Valid && reviewedAt.String != "" {
+			t, _ := parseTime(reviewedAt.String)
+			inv.ReviewedAt = &t
+		}
 
 		invitations = append(invitations, inv)
 	}
@@ -195,20 +205,24 @@ func (r *InvitationRepo) List(ctx context.Context, filter models.InvitationListF
 	return invitations, total, nil
 }
 
-// UpdateStatus обновляет статус приглашения
-func (r *InvitationRepo) UpdateStatus(ctx context.Context, id string, status models.InvitationStatus, acceptedAt *time.Time) error {
-	logger := logQuery(ctx, r.log, "UPDATE", "organization_invitations", zap.String("id", id), zap.String("status", string(status)))
+// UpdateStatus обновляет статус заявки
+func (r *InvitationRepo) UpdateStatus(ctx context.Context, id string, status models.InvitationStatus, reviewedBy *string, reviewedAt *time.Time, message string) error {
+	logger := logQuery(ctx, r.log, "UPDATE", "registration_invitations", zap.String("id", id), zap.String("status", string(status)))
 	logger.Info("updating invitation status")
 
 	var query string
 	var args []interface{}
 
-	if acceptedAt != nil {
-		query = `UPDATE organization_invitations SET status = ?, accepted_at = ? WHERE id = ?`
-		args = []interface{}{status, acceptedAt.Format(time.RFC3339), id}
+	if reviewedBy != nil && reviewedAt != nil {
+		query = `UPDATE registration_invitations 
+			SET status = ?, reviewed_by = ?, reviewed_at = ?, updated_at = ? 
+			WHERE id = ?`
+		args = []interface{}{status, *reviewedBy, reviewedAt.Format(time.RFC3339), time.Now().Format(time.RFC3339), id}
 	} else {
-		query = `UPDATE organization_invitations SET status = ? WHERE id = ?`
-		args = []interface{}{status, id}
+		query = `UPDATE registration_invitations 
+			SET status = ?, updated_at = ? 
+			WHERE id = ?`
+		args = []interface{}{status, time.Now().Format(time.RFC3339), id}
 	}
 
 	_, err := r.db.ExecContext(ctx, query, args...)
@@ -221,12 +235,12 @@ func (r *InvitationRepo) UpdateStatus(ctx context.Context, id string, status mod
 	return nil
 }
 
-// Delete удаляет приглашение
+// Delete удаляет заявку
 func (r *InvitationRepo) Delete(ctx context.Context, id string) error {
-	logger := logQuery(ctx, r.log, "DELETE", "organization_invitations", zap.String("id", id))
+	logger := logQuery(ctx, r.log, "DELETE", "registration_invitations", zap.String("id", id))
 	logger.Info("deleting invitation")
 
-	query := `DELETE FROM organization_invitations WHERE id = ?`
+	query := `DELETE FROM registration_invitations WHERE id = ?`
 	_, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		logger.Error("failed to delete invitation", zap.Error(err))
@@ -234,68 +248,5 @@ func (r *InvitationRepo) Delete(ctx context.Context, id string) error {
 	}
 
 	logger.Info("invitation deleted successfully")
-	return nil
-}
-
-// GetPendingByOrgAndEmail получает активные приглашения для организации и email
-func (r *InvitationRepo) GetPendingByOrgAndEmail(ctx context.Context, orgID, email string) ([]models.OrganizationInvitation, error) {
-	logger := logQuery(ctx, r.log, "SELECT", "organization_invitations", zap.String("org_id", orgID), zap.String("email", email))
-	logger.Debug("fetching pending invitations")
-
-	query := `SELECT id, organization_id, email, role, invited_by, status, token, expires_at, created_at, accepted_at
-FROM organization_invitations 
-WHERE organization_id = ? AND email = ? AND status = 'pending'
-ORDER BY created_at DESC`
-
-	rows, err := r.db.QueryContext(ctx, query, orgID, email)
-	if err != nil {
-		logger.Error("failed to fetch pending invitations", zap.Error(err))
-		return nil, err
-	}
-	defer rows.Close()
-
-	var invitations []models.OrganizationInvitation
-	for rows.Next() {
-		var inv models.OrganizationInvitation
-		var createdAt, expiresAt, acceptedAt sql.NullString
-		var token string
-
-		err := rows.Scan(
-			&inv.ID, &inv.OrganizationID, &inv.Email, &inv.Role,
-			&inv.InvitedBy, &inv.Status, &token,
-			&expiresAt, &createdAt, &acceptedAt,
-		)
-		if err != nil {
-			logger.Error("failed to scan invitation", zap.Error(err))
-			return nil, err
-		}
-
-		inv.CreatedAt, _ = parseTime(createdAt.String)
-		inv.ExpiresAt, _ = parseTime(expiresAt.String)
-		if acceptedAt.Valid && acceptedAt.String != "" {
-			t, _ := parseTime(acceptedAt.String)
-			inv.AcceptedAt = &t
-		}
-
-		invitations = append(invitations, inv)
-	}
-
-	logger.Debug("pending invitations retrieved", zap.Int("count", len(invitations)))
-	return invitations, nil
-}
-
-// UpdateTokenAndExpires обновляет токен и срок действия приглашения
-func (r *InvitationRepo) UpdateTokenAndExpires(ctx context.Context, id, token string, expiresAt time.Time) error {
-	logger := logQuery(ctx, r.log, "UPDATE", "organization_invitations", zap.String("id", id))
-	logger.Info("updating invitation token and expiry")
-
-	query := `UPDATE organization_invitations SET token = ?, expires_at = ?, status = 'pending' WHERE id = ?`
-	_, err := r.db.ExecContext(ctx, query, token, expiresAt.Format(time.RFC3339), id)
-	if err != nil {
-		logger.Error("failed to update invitation token and expiry", zap.Error(err))
-		return err
-	}
-
-	logger.Info("invitation token and expiry updated successfully")
 	return nil
 }
