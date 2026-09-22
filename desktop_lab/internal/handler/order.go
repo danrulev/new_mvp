@@ -74,7 +74,7 @@ func (h *Handler) createOrder(c *gin.Context) {
 		h.newErrorResponse(c, http.StatusUnauthorized, "create order", "user not authenticated", err)
 		return
 	}
-	
+
 	order, err := h.order.CreateOrder(c.Request.Context(), req, userID)
 	if err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "create order", "failed to create order", err)
@@ -221,7 +221,7 @@ func (h *Handler) changeOrderStatus(c *gin.Context) {
 		h.newErrorResponse(c, http.StatusUnauthorized, "change order status", "user not authenticated", err)
 		return
 	}
-	
+
 	// Получаем имя пользователя из контекста или профиля
 	userName := "User"
 	if nameRaw, exists := c.Get("user_name"); exists {
@@ -229,7 +229,7 @@ func (h *Handler) changeOrderStatus(c *gin.Context) {
 			userName = name
 		}
 	}
-	
+
 	err = h.order.ChangeOrderStatus(c.Request.Context(), id, string(req.Status), userID, userName, req.Comment)
 	if err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "change order status", "failed to change status", err)
@@ -261,7 +261,7 @@ func (h *Handler) acceptOrder(c *gin.Context) {
 		h.newErrorResponse(c, http.StatusUnauthorized, "accept order", "user not authenticated", err)
 		return
 	}
-	
+
 	// Получаем имя пользователя из контекста или профиля
 	userName := "User"
 	if nameRaw, exists := c.Get("user_name"); exists {
@@ -305,7 +305,7 @@ func (h *Handler) rejectOrder(c *gin.Context) {
 		h.newErrorResponse(c, http.StatusUnauthorized, "reject order", "user not authenticated", err)
 		return
 	}
-	
+
 	// Получаем имя пользователя из контекста или профиля
 	userName := "User"
 	if nameRaw, exists := c.Get("user_name"); exists {
@@ -313,7 +313,7 @@ func (h *Handler) rejectOrder(c *gin.Context) {
 			userName = name
 		}
 	}
-	
+
 	if err := h.order.RejectOrder(c.Request.Context(), id, userID, userName, req.Comment); err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "reject order", "failed to reject order", err)
 		return
@@ -344,7 +344,7 @@ func (h *Handler) completeOrder(c *gin.Context) {
 		h.newErrorResponse(c, http.StatusUnauthorized, "complete order", "user not authenticated", err)
 		return
 	}
-	
+
 	// Получаем имя пользователя из контекста или профиля
 	userName := "User"
 	if nameRaw, exists := c.Get("user_name"); exists {
@@ -352,7 +352,7 @@ func (h *Handler) completeOrder(c *gin.Context) {
 			userName = name
 		}
 	}
-	
+
 	if err := h.order.CompleteOrder(c.Request.Context(), id, userID, userName, req.Comment); err != nil {
 		h.newErrorResponse(c, http.StatusInternalServerError, "complete order", "failed to complete order", err)
 		return
