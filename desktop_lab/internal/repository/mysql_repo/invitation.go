@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"desktop_lab/internal/models"
-	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -298,45 +297,5 @@ func (r *InvitationRepo) UpdateTokenAndExpires(ctx context.Context, id, token st
 	}
 
 	logger.Info("invitation token and expiry updated successfully")
-	return nil
-}
-
-// AddOrganizationUser добавляет пользователя в организацию
-// Этот метод нужен для принятия приглашения
-func (r *InvitationRepo) AddOrganizationUser(ctx context.Context, orgUser models.OrganizationUser) error {
-	logger := logQuery(ctx, r.log, "INSERT", "organization_users", zap.String("user_id", orgUser.UserID), zap.String("org_id", orgUser.OrganizationID))
-	logger.Info("adding user to organization")
-
-	// Проверяем, не состоит ли уже пользователь в организации
-	checkQuery := `SELECT COUNT(*) FROM organization_users WHERE organization_id = ? AND user_id = ?`
-	var count int
-	err := r.db.QueryRowContext(ctx, checkQuery, orgUser.OrganizationID, orgUser.UserID).Scan(&count)
-	if err != nil {
-		logger.Error("failed to check existing membership", zap.Error(err))
-		return err
-	}
-
-	if count > 0 {
-		logger.Warn("user already member of organization")
-		return fmt.Errorf("пользователь уже состоит в организации")
-	}
-
-	query := `INSERT INTO organization_users (id, organization_id, user_id, role, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?)`
-
-	_, err = r.db.ExecContext(ctx, query,
-		orgUser.ID,
-		orgUser.OrganizationID,
-		orgUser.UserID,
-		orgUser.Role,
-		orgUser.CreatedAt.Format(time.RFC3339),
-		orgUser.UpdatedAt.Format(time.RFC3339),
-	)
-	if err != nil {
-		logger.Error("failed to add user to organization", zap.Error(err))
-		return err
-	}
-
-	logger.Info("user added to organization successfully")
 	return nil
 }

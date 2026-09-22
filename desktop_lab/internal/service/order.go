@@ -64,19 +64,11 @@ func (s *OrderService) CreateOrder(ctx context.Context, req models.CreateOrderRe
 
 	// Создаем позиции заявки
 	for _, itemReq := range req.Items {
-		orgTest, err := s.orgTestsRepo.GetOrganizationTest(ctx, itemReq.TestMethodID)
-		if err != nil {
-			logger.Error("failed to get test method", zap.Error(err))
-			return models.Order{}, fmt.Errorf("не удалось получить информацию о тесте: %w", err)
-		}
-
 		item := models.OrderItem{
 			ID:             uuid.New().String(),
 			OrderID:        orderID,
 			TestMethodID:   itemReq.TestMethodID,
-			TestMethodName: orgTest.Description,
 			Quantity:       itemReq.Quantity,
-			UnitPrice:      orgTest.Price,
 			SampleRequired: itemReq.SampleRequired,
 			SampleNotes:    itemReq.SampleNotes,
 			SampleCount:    itemReq.SampleCount,
@@ -308,20 +300,12 @@ func (s *OrderService) CreateOrderItem(ctx context.Context, orderID string, req 
 	logger := loggerWith(ctx, s.log, zap.String("order_id", orderID), zap.String("operation", "CreateOrderItem"))
 	logger.Info("creating order item")
 
-	orgTest, err := s.orgTestsRepo.GetOrganizationTest(ctx, req.TestMethodID)
-	if err != nil {
-		logger.Error("failed to get test method", zap.Error(err))
-		return models.OrderItem{}, fmt.Errorf("не удалось получить информацию о тесте: %w", err)
-	}
-
 	itemID := uuid.New().String()
 	item := models.OrderItem{
 		ID:             itemID,
 		OrderID:        orderID,
 		TestMethodID:   req.TestMethodID,
-		TestMethodName: orgTest.Description,
 		Quantity:       req.Quantity,
-		UnitPrice:      orgTest.Price,
 		SampleRequired: req.SampleRequired,
 		SampleNotes:    req.SampleNotes,
 		SampleCount:    req.SampleCount,

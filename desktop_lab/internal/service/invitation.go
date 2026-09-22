@@ -33,15 +33,13 @@ type InvitationRepo interface {
 
 type InvitationService struct {
 	repo     InvitationRepo
-	orgRepo  OrganizationRepo
 	userRepo UserRepo
 	log      *zap.Logger
 }
 
-func NewInvitationService(repo InvitationRepo, orgRepo OrganizationRepo, userRepo UserRepo, log *zap.Logger) *InvitationService {
+func NewInvitationService(repo InvitationRepo, userRepo UserRepo, log *zap.Logger) *InvitationService {
 	return &InvitationService{
 		repo:     repo,
-		orgRepo:  orgRepo,
 		userRepo: userRepo,
 		log:      log,
 	}
@@ -56,7 +54,7 @@ func (s *InvitationService) generateToken() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-// CreateInvitation создает новое приглашение в организацию
+// CreateInvitation создает новое
 func (s *InvitationService) CreateInvitation(ctx context.Context, req models.CreateInvitationRequest, inviterID, inviterName string) (models.OrganizationInvitation, error) {
 	logger := loggerWith(ctx, s.log,
 		zap.String("operation", "CreateInvitation"),
@@ -65,13 +63,6 @@ func (s *InvitationService) CreateInvitation(ctx context.Context, req models.Cre
 		zap.String("role", req.Role))
 
 	logger.Info("creating new invitation")
-
-	// Проверяем существование организации
-	org, err := s.orgRepo.GetByID(ctx, req.OrganizationID)
-	if err != nil {
-		logger.Error("organization not found", zap.Error(err))
-		return models.OrganizationInvitation{}, fmt.Errorf("организация не найдена: %w", err)
-	}
 
 	// Проверяем допустимость роли
 	role := models.Role(req.Role)
@@ -97,17 +88,16 @@ func (s *InvitationService) CreateInvitation(ctx context.Context, req models.Cre
 
 	now := time.Now()
 	invitation := models.OrganizationInvitation{
-		ID:               uuid.New().String(),
-		OrganizationID:   req.OrganizationID,
-		Email:            req.Email,
-		Role:             req.Role,
-		InvitedBy:        inviterID,
-		InviterName:      inviterName,
-		OrganizationName: org.Name,
-		Status:           models.InvitationStatusPending,
-		Token:            token,
-		CreatedAt:        now,
-		ExpiresAt:        now.Add(7 * 24 * time.Hour), // 7 дней
+		ID:             uuid.New().String(),
+		OrganizationID: req.OrganizationID,
+		Email:          req.Email,
+		Role:           req.Role,
+		InvitedBy:      inviterID,
+		InviterName:    inviterName,
+		Status:         models.InvitationStatusPending,
+		Token:          token,
+		CreatedAt:      now,
+		ExpiresAt:      now.Add(7 * 24 * time.Hour), // 7 дней
 	}
 
 	if err := s.repo.Create(ctx, invitation); err != nil {
@@ -212,21 +202,6 @@ func (s *InvitationService) AcceptInvitation(ctx context.Context, token string, 
 	if user.Email != invitation.Email {
 		logger.Error("email mismatch", zap.String("user_email", user.Email), zap.String("invite_email", invitation.Email))
 		return errors.New("email пользователя не совпадает с email в приглашении")
-	}
-
-	// Добавляем пользователя в организацию с указанной ролью
-	orgUser := models.OrganizationUser{
-		ID:             uuid.New().String(),
-		OrganizationID: invitation.OrganizationID,
-		UserID:         userID,
-		Role:           invitation.Role,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
-	}
-
-	if err := s.repo.AddOrganizationUser(ctx, orgUser); err != nil {
-		logger.Error("failed to add user to organization", zap.Error(err))
-		return fmt.Errorf("не удалось добавить пользователя в организацию: %w", err)
 	}
 
 	// Обновляем статус приглашения

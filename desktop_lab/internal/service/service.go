@@ -206,8 +206,8 @@ func NewServices(
 	profile := NewProfileService(userRepo, log)
 	report := NewReportService(protocol, material, fontDir, templatesDir, wkhtmltopdfWindows, log)
 	dimension := NewDimensionService(dimRepo, log)
-	orders := NewOrderService(orderRepo, orgTestsRepo, log)
-	invitations := NewInvitationService(invRepo, orgRepo, userRepo, log)
+	orders := NewOrderService(orderRepo, log)
+	invitations := NewInvitationService(invRepo, userRepo, log)
 	qualityControl := NewQualityControlService(auditRepo, versionRepo, templateRepo, protRepo, userRepo, log)
 	analytics := NewAnalyticsService(analyticsRepo, stdRepo, log)
 	return &Services{
