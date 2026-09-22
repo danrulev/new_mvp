@@ -3,12 +3,15 @@ package service
 import (
 	"context"
 	"desktop_lab/internal/models"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
+// OrderRepo интерфейс репозитория для работы с заявками
 type OrderRepo interface {
 	Create(ctx context.Context, order models.Order) error
 	CreateItem(ctx context.Context, item models.OrderItem) error
@@ -25,6 +28,9 @@ type OrderRepo interface {
 	Delete(ctx context.Context, id string) error
 	DeleteItem(ctx context.Context, id string) error
 	RecalculateTotal(ctx context.Context, orderID string) error
+	AssignOrder(ctx context.Context, id, assignedTo, userID, userName, comment string) error
+	AssignOrderItem(ctx context.Context, id, assignedTo, userID, userName, comment string) error
+	GetUserByID(ctx context.Context, id string) (models.User, error)
 }
 
 type OrderService struct {
@@ -39,22 +45,49 @@ func NewOrderService(repo OrderRepo, log *zap.Logger) *OrderService {
 	}
 }
 
-// CreateOrder создает новую заявку
+// Ошибки сервиса заявок
+var (
+	ErrOrderNotFound      = errors.New("заявка не найдена")
+	ErrInvalidStatus      = errors.New("недопустимый статус")
+	ErrInvalidTransition  = errors.New("недопустимый переход статуса")
+	ErrUserNotFound       = errors.New("пользователь не найден")
+	ErrInvalidPriority    = errors.New("недопустимый приоритет")
+)
+
+// CreateOrder создает новую заявку на исследования
 func (s *OrderService) CreateOrder(ctx context.Context, req models.CreateOrderRequest, userID string) (models.Order, error) {
 	logger := loggerWith(ctx, s.log, zap.String("operation", "CreateOrder"))
 	logger.Info("creating new order")
 
+	// Валидация приоритета
+	priority := req.Priority
+	if priority == "" {
+		priority = "normal"
+	}
+	if !isValidPriority(priority) {
+		return models.Order{}, ErrInvalidPriority
+	}
+
 	orderID := uuid.New().String()
+	now := time.Now()
 
 	order := models.Order{
-		ID:            orderID,
-		CustomerID:    userID,
-		Status:        models.OrderStatusDraft,
-		Currency:      "RUB",
-		CustomerName:  req.CustomerName,
-		CustomerEmail: req.CustomerEmail,
-		CustomerPhone: req.CustomerPhone,
-		Comment:       req.Comment,
+		ID:              orderID,
+		CreatedBy:       userID,
+		Status:          models.OrderStatusNew,
+		Priority:        priority,
+		Title:           req.Title,
+		Description:     req.Description,
+		InternalComment: req.InternalComment,
+		ExternalComment: req.ExternalComment,
+		Currency:        "RUB",
+		ClientName:      req.ClientName,
+		ClientEmail:     req.ClientEmail,
+		ClientPhone:     req.ClientPhone,
+		SampleLocation:  req.SampleLocation,
+		DueDate:         req.DueDate,
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}
 
 	if err := s.repo.Create(ctx, order); err != nil {
@@ -69,10 +102,13 @@ func (s *OrderService) CreateOrder(ctx context.Context, req models.CreateOrderRe
 			OrderID:        orderID,
 			TestMethodID:   itemReq.TestMethodID,
 			Quantity:       itemReq.Quantity,
+			UnitPrice:      itemReq.UnitPrice,
 			SampleRequired: itemReq.SampleRequired,
 			SampleNotes:    itemReq.SampleNotes,
 			SampleCount:    itemReq.SampleCount,
-			Status:         "pending",
+			Status:         models.OrderItemStatusPending,
+			CreatedAt:      now,
+			UpdatedAt:      now,
 		}
 		item.Subtotal = float64(item.Quantity) * item.UnitPrice
 
@@ -86,8 +122,32 @@ func (s *OrderService) CreateOrder(ctx context.Context, req models.CreateOrderRe
 		logger.Warn("failed to recalculate total", zap.Error(err))
 	}
 
+	// Добавляем запись в workflow
+	workflowEntry := models.OrderWorkflowEntry{
+		OrderID:    orderID,
+		FromStatus: "",
+		ToStatus:   string(models.OrderStatusNew),
+		UserID:     userID,
+		UserName:   "", // Будет заполнено при получении пользователя
+		Comment:    "Заявка создана",
+		CreatedAt:  now,
+	}
+	if err := s.repo.AddWorkflowEntry(ctx, workflowEntry); err != nil {
+		logger.Warn("failed to add workflow entry", zap.Error(err))
+	}
+
 	logger.Info("order created successfully", zap.String("order_id", orderID))
 	return s.repo.GetByID(ctx, orderID)
+}
+
+// isValidPriority проверяет допустимость приоритета
+func isValidPriority(priority string) bool {
+	validPriorities := map[string]bool{
+		"normal": true,
+		"high":   true,
+		"urgent": true,
+	}
+	return validPriorities[priority]
 }
 
 // GetOrder получает заявку по ID
@@ -158,24 +218,32 @@ func (s *OrderService) ChangeOrderStatus(ctx context.Context, id, newStatus, use
 // validateStatusTransition проверяет допустимость перехода между статусами
 func (s *OrderService) validateStatusTransition(from, to models.OrderStatus) error {
 	validTransitions := map[models.OrderStatus][]models.OrderStatus{
-		models.OrderStatusDraft: {
-			models.OrderStatusPending,
-			models.OrderStatusCancelled,
-		},
-		models.OrderStatusPending: {
-			models.OrderStatusAccepted,
+		models.OrderStatusNew: {
+			models.OrderStatusApproved,
 			models.OrderStatusRejected,
 			models.OrderStatusCancelled,
 		},
-		models.OrderStatusAccepted: {
-			models.OrderStatusInProgress,
+		models.OrderStatusApproved: {
+			models.OrderStatusAssigned,
+			models.OrderStatusOnHold,
 			models.OrderStatusCancelled,
 		},
 		models.OrderStatusRejected: {
-			models.OrderStatusPending,
+			models.OrderStatusNew, // Можно вернуть на рассмотрение
+		},
+		models.OrderStatusAssigned: {
+			models.OrderStatusInProgress,
+			models.OrderStatusOnHold,
+			models.OrderStatusCancelled,
 		},
 		models.OrderStatusInProgress: {
+			models.OrderStatusOnHold,
 			models.OrderStatusCompleted,
+		},
+		models.OrderStatusOnHold: {
+			models.OrderStatusInProgress,
+			models.OrderStatusAssigned,
+			models.OrderStatusCancelled,
 		},
 		models.OrderStatusCompleted: {},
 		models.OrderStatusCancelled: {},
@@ -195,14 +263,92 @@ func (s *OrderService) validateStatusTransition(from, to models.OrderStatus) err
 	return fmt.Errorf("переход из статуса %s в %s недопустим", from, to)
 }
 
-// AcceptOrder принимает заявку
-func (s *OrderService) AcceptOrder(ctx context.Context, id, userID, userName, comment string) error {
-	return s.ChangeOrderStatus(ctx, id, string(models.OrderStatusAccepted), userID, userName, comment)
+// ApproveOrder одобряет заявку (менеджером)
+func (s *OrderService) ApproveOrder(ctx context.Context, id, userID, userName, comment string) error {
+	return s.ChangeOrderStatus(ctx, id, string(models.OrderStatusApproved), userID, userName, comment)
 }
 
 // RejectOrder отклоняет заявку
 func (s *OrderService) RejectOrder(ctx context.Context, id, userID, userName, comment string) error {
 	return s.ChangeOrderStatus(ctx, id, string(models.OrderStatusRejected), userID, userName, comment)
+}
+
+// AssignOrder назначает ответственного менеджера за заявку
+func (s *OrderService) AssignOrder(ctx context.Context, id, assignedTo, userID, userName, comment string) error {
+	logger := loggerWith(ctx, s.log,
+		zap.String("order_id", id),
+		zap.String("assigned_to", assignedTo),
+		zap.String("operation", "AssignOrder"))
+	logger.Info("assigning order to manager")
+
+	// Проверяем, существует ли пользователь
+	user, err := s.repo.GetUserByID(ctx, assignedTo)
+	if err != nil {
+		logger.Error("user not found", zap.Error(err))
+		return ErrUserNotFound
+	}
+
+	// Проверяем роль пользователя (должен быть менеджером или админом)
+	if user.Role != models.RoleManager && user.Role != models.RoleAdmin {
+		logger.Error("user has invalid role for assignment")
+		return fmt.Errorf("пользователь не может быть назначен ответственным")
+	}
+
+	order, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		logger.Error("failed to get order", zap.Error(err))
+		return err
+	}
+
+	// Можно назначать только заявки в статусе approved
+	if order.Status != models.OrderStatusApproved {
+		logger.Error("cannot assign order with status", zap.String("status", string(order.Status)))
+		return fmt.Errorf("можно назначить ответственного только для заявки в статусе approved")
+	}
+
+	if err := s.repo.AssignOrder(ctx, id, assignedTo, userID, userName, comment); err != nil {
+		logger.Error("failed to assign order", zap.Error(err))
+		return err
+	}
+
+	logger.Info("order assigned successfully")
+	return nil
+}
+
+// AssignOrderItem назначает исполнителя для позиции заявки
+func (s *OrderService) AssignOrderItem(ctx context.Context, itemID, assignedTo, userID, userName, comment string) error {
+	logger := loggerWith(ctx, s.log,
+		zap.String("item_id", itemID),
+		zap.String("assigned_to", assignedTo),
+		zap.String("operation", "AssignOrderItem"))
+	logger.Info("assigning order item to executor")
+
+	// Проверяем, существует ли пользователь
+	user, err := s.repo.GetUserByID(ctx, assignedTo)
+	if err != nil {
+		logger.Error("user not found", zap.Error(err))
+		return ErrUserNotFound
+	}
+
+	// Проверяем роль пользователя (должен быть инженером, техником или админом)
+	if user.Role != models.RoleEngineer && user.Role != models.RoleTechnician && user.Role != models.RoleAdmin {
+		logger.Error("user has invalid role for assignment")
+		return fmt.Errorf("пользователь не может быть назначен исполнителем")
+	}
+
+	item, err := s.repo.GetItemByID(ctx, itemID)
+	if err != nil {
+		logger.Error("failed to get order item", zap.Error(err))
+		return err
+	}
+
+	if err := s.repo.AssignOrderItem(ctx, itemID, assignedTo, userID, userName, comment); err != nil {
+		logger.Error("failed to assign order item", zap.Error(err))
+		return err
+	}
+
+	logger.Info("order item assigned successfully")
+	return nil
 }
 
 // CompleteOrder завершает заявку
@@ -213,6 +359,11 @@ func (s *OrderService) CompleteOrder(ctx context.Context, id, userID, userName, 
 // CancelOrder отменяет заявку
 func (s *OrderService) CancelOrder(ctx context.Context, id, userID, userName, comment string) error {
 	return s.ChangeOrderStatus(ctx, id, string(models.OrderStatusCancelled), userID, userName, comment)
+}
+
+// PutOnHold приостанавливает заявку
+func (s *OrderService) PutOnHold(ctx context.Context, id, userID, userName, comment string) error {
+	return s.ChangeOrderStatus(ctx, id, string(models.OrderStatusOnHold), userID, userName, comment)
 }
 
 // UpdateOrderItem обновляет позицию заявки
@@ -300,16 +451,33 @@ func (s *OrderService) CreateOrderItem(ctx context.Context, orderID string, req 
 	logger := loggerWith(ctx, s.log, zap.String("order_id", orderID), zap.String("operation", "CreateOrderItem"))
 	logger.Info("creating order item")
 
+	order, err := s.repo.GetByID(ctx, orderID)
+	if err != nil {
+		logger.Error("failed to get order", zap.Error(err))
+		return models.OrderItem{}, err
+	}
+
+	// Нельзя добавлять позиции в завершенные или отмененные заявки
+	if order.Status == models.OrderStatusCompleted || order.Status == models.OrderStatusCancelled {
+		logger.Error("cannot add items to completed/cancelled order")
+		return models.OrderItem{}, fmt.Errorf("нельзя добавлять позиции в завершенную или отмененную заявку")
+	}
+
 	itemID := uuid.New().String()
+	now := time.Now()
+
 	item := models.OrderItem{
 		ID:             itemID,
 		OrderID:        orderID,
 		TestMethodID:   req.TestMethodID,
 		Quantity:       req.Quantity,
+		UnitPrice:      req.UnitPrice,
 		SampleRequired: req.SampleRequired,
 		SampleNotes:    req.SampleNotes,
 		SampleCount:    req.SampleCount,
-		Status:         "pending",
+		Status:         models.OrderItemStatusPending,
+		CreatedAt:      now,
+		UpdatedAt:      now,
 	}
 	item.Subtotal = float64(item.Quantity) * item.UnitPrice
 
