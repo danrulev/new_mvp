@@ -9,44 +9,38 @@ import (
 )
 
 type Repository struct {
-	Dimension         *DimensionRepo
-	Group             *ExperimentGroupRepo
-	Invitation        *InvitationRepo
-	Material          *MaterialRepo
-	Order             *OrderRepo
-	Organization      *OrganizationRepo
-	OrganizationTests *OrganizationTestsRepo
-	OrganizationUser  *OrganizationUserRepo
-	Protocol          *ProtocolRepo
-	Sample            *SampleRepo
-	Standard          *StandardRepo
-	Token             *TokenRepo
-	User              *UserRepo
-	Audit             *AuditRepo
-	ProtocolVersion   *ProtocolVersionRepo
-	ProtocolTemplate  *ProtocolTemplateRepo
-	Analytics         *AnalyticsRepositoryImpl
+	Dimension        *DimensionRepo
+	Group            *ExperimentGroupRepo
+	Invitation       *InvitationRepo
+	Material         *MaterialRepo
+	Order            *OrderRepo
+	Protocol         *ProtocolRepo
+	Sample           *SampleRepo
+	Standard         *StandardRepo
+	Token            *TokenRepo
+	User             *UserRepo
+	Audit            *AuditRepo
+	ProtocolVersion  *ProtocolVersionRepo
+	ProtocolTemplate *ProtocolTemplateRepo
+	Analytics        *AnalyticsRepositoryImpl
 }
 
 func NewRepository(db *sqlx.DB, log *zap.Logger) *Repository {
 	return &Repository{
-		Dimension:         NewDimensionRepo(db, log),
-		Group:             NewExperimentGroupRepo(db, log),
-		Invitation:        NewInvitationRepo(db, log),
-		Material:          NewMaterialRepo(db, log),
-		Order:             NewOrderRepo(db, log),
-		Organization:      NewOrganizationRepo(db, log),
-		OrganizationTests: NewOrganizationTestsRepo(db, log),
-		OrganizationUser:  NewOrganizationUserRepo(db, log),
-		Protocol:          NewProtocolRepo(db, log),
-		Sample:            NewSampleRepo(db, log),
-		Standard:          NewStandardRepo(db, log),
-		Token:             NewTokenRepo(db, log),
-		User:              NewUserRepo(db, log),
-		Audit:             NewAuditRepo(db, log),
-		ProtocolVersion:   NewProtocolVersionRepo(db, log),
-		ProtocolTemplate:  NewProtocolTemplateRepo(db, log),
-		Analytics:         NewAnalyticsRepository(db.DB),
+		Dimension:        NewDimensionRepo(db, log),
+		Group:            NewExperimentGroupRepo(db, log),
+		Invitation:       NewInvitationRepo(db, log),
+		Material:         NewMaterialRepo(db, log),
+		Order:            NewOrderRepo(db, log),
+		Protocol:         NewProtocolRepo(db, log),
+		Sample:           NewSampleRepo(db, log),
+		Standard:         NewStandardRepo(db, log),
+		Token:            NewTokenRepo(db, log),
+		User:             NewUserRepo(db, log),
+		Audit:            NewAuditRepo(db, log),
+		ProtocolVersion:  NewProtocolVersionRepo(db, log),
+		ProtocolTemplate: NewProtocolTemplateRepo(db, log),
+		Analytics:        NewAnalyticsRepository(db.DB),
 	}
 }
 

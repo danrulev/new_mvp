@@ -32,7 +32,6 @@ type Handler struct {
 	report          *service.ReportService
 	sample          *service.SampleService
 	standard        *service.StandardService
-	organization    *service.OrganizationService
 	qualityControl  *service.QualityControlService
 	analytics       *service.AnalyticsService
 	appRef          DatabaseSwitcher
@@ -49,7 +48,6 @@ func NewHandler(
 	invitation *service.InvitationService,
 	material *service.MaterialService,
 	group *service.ExperimentGroupService,
-	organization *service.OrganizationService,
 	order *service.OrderService,
 	profile *service.ProfileService,
 	protocol *service.ProtocolService,
@@ -76,7 +74,6 @@ func NewHandler(
 		report:          report,
 		sample:          sample,
 		standard:        standard,
-		organization:    organization,
 		order:           order,
 		qualityControl:  qualityControl,
 		analytics:       analytics,
@@ -115,7 +112,6 @@ func (h *Handler) Init() *gin.Engine {
 	h.initProtocolRoutes(api)
 	h.initReportRoutes(api)
 	h.initDBRoutes(api)
-	h.initOrganizationRoutes(api)
 	h.initProfileRoutes(api)
 	h.initOrderRoutes(api)
 	h.initInvitationRoutes(api)

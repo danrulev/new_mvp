@@ -40,32 +40,6 @@ type MaterialRepo interface {
 	DeleteContextDimensionFromMaterial(ctx context.Context, materialID, dimensionID string) error
 }
 
-type OrganizationUserRepo interface {
-	Create(ctx context.Context, id string, ou models.CreateOrganizationUserRequest) error
-	GetByID(ctx context.Context, id string) (models.OrganizationUser, error)
-	GetByRole(ctx context.Context, organizationID, role string, limit, offset int64) ([]models.OrganizationUser, int64, error)
-	List(ctx context.Context, organizationID string, limit, offset int64) ([]models.OrganizationUser, int64, error)
-	UpdateUser(ctx context.Context, id string, role *string) (models.OrganizationUser, error)
-	Delete(ctx context.Context, id string) error
-}
-
-type OrganizationRepo interface {
-	Create(ctx context.Context, id string, org models.CreateOrganizationRequest) error
-	GetByID(ctx context.Context, id string) (models.Organization, error)
-	GetOrganizationByName(ctx context.Context, name string) (models.Organization, error)
-	List(ctx context.Context, limit, offset int64) ([]models.Organization, int64, error)
-	Update(ctx context.Context, id string, req models.UpdateOrganizationRequest) (models.Organization, error)
-	Delete(ctx context.Context, id string) error
-}
-
-type OrganizationTestsRepo interface {
-	Create(ctx context.Context, id string, req models.CreateOrganizationTestRequest) error
-	GetOrganizationTest(ctx context.Context, id string) (models.OrganizationTest, error)
-	ListOrganizationTests(ctx context.Context, limit, offset int64) ([]models.OrganizationTest, int64, error)
-	Update(ctx context.Context, id string, req models.UpdateOrganizationTestRequest) (models.OrganizationTest, error)
-	DeleteOrganizationTest(ctx context.Context, id string) error
-}
-
 // StandardRepo управляет стандартами, методами и нормативами
 type StandardRepo interface {
 	CreateFull(ctx context.Context, req models.CreateStandardRequest) (string, error)
@@ -191,7 +165,6 @@ type Services struct {
 	Groups         *ExperimentGroupService
 	Invitations    *InvitationService
 	Materials      *MaterialService
-	Organizations  *OrganizationService
 	Profile        *ProfileService
 	Standards      *StandardService
 	Protocols      *ProtocolService
@@ -211,9 +184,6 @@ func NewServices(
 	tokenRepo TokenRepo,
 	userRepo UserRepo,
 	dimRepo DimensionRepo,
-	orgRepo OrganizationRepo,
-	orgTestsRepo OrganizationTestsRepo,
-	orgUserRepo OrganizationUserRepo,
 	orderRepo OrderRepo,
 	invRepo InvitationRepo,
 	auditRepo AuditRepo,
@@ -236,7 +206,6 @@ func NewServices(
 	profile := NewProfileService(userRepo, log)
 	report := NewReportService(protocol, material, fontDir, templatesDir, wkhtmltopdfWindows, log)
 	dimension := NewDimensionService(dimRepo, log)
-	organization := NewOrganizationService(orgRepo, orgUserRepo, orgTestsRepo, log)
 	orders := NewOrderService(orderRepo, orgTestsRepo, log)
 	invitations := NewInvitationService(invRepo, orgRepo, userRepo, log)
 	qualityControl := NewQualityControlService(auditRepo, versionRepo, templateRepo, protRepo, userRepo, log)
@@ -244,7 +213,6 @@ func NewServices(
 	return &Services{
 		Auth:           auth,
 		Materials:      material,
-		Organizations:  organization,
 		Standards:      standards,
 		Profile:        profile,
 		Protocols:      protocol,

@@ -28,16 +28,14 @@ type OrderRepo interface {
 }
 
 type OrderService struct {
-	repo         OrderRepo
-	orgTestsRepo OrganizationTestsRepo
-	log          *zap.Logger
+	repo OrderRepo
+	log  *zap.Logger
 }
 
-func NewOrderService(repo OrderRepo, orgTestsRepo OrganizationTestsRepo, log *zap.Logger) *OrderService {
+func NewOrderService(repo OrderRepo, log *zap.Logger) *OrderService {
 	return &OrderService{
-		repo:         repo,
-		orgTestsRepo: orgTestsRepo,
-		log:          log,
+		repo: repo,
+		log:  log,
 	}
 }
 
@@ -49,15 +47,14 @@ func (s *OrderService) CreateOrder(ctx context.Context, req models.CreateOrderRe
 	orderID := uuid.New().String()
 
 	order := models.Order{
-		ID:             orderID,
-		CustomerID:     userID,
-		OrganizationID: req.OrganizationID,
-		Status:         models.OrderStatusDraft,
-		Currency:       "RUB",
-		CustomerName:   req.CustomerName,
-		CustomerEmail:  req.CustomerEmail,
-		CustomerPhone:  req.CustomerPhone,
-		Comment:        req.Comment,
+		ID:            orderID,
+		CustomerID:    userID,
+		Status:        models.OrderStatusDraft,
+		Currency:      "RUB",
+		CustomerName:  req.CustomerName,
+		CustomerEmail: req.CustomerEmail,
+		CustomerPhone: req.CustomerPhone,
+		Comment:       req.Comment,
 	}
 
 	if err := s.repo.Create(ctx, order); err != nil {

@@ -27,7 +27,7 @@ func (r *OrderRepo) Create(ctx context.Context, order models.Order) error {
 	log.Info("creating new order")
 
 	query := `INSERT INTO orders (
-		id, customer_id, organization_id, status, total_amount, currency,
+		id, customer_id, customer_id, status, total_amount, currency,
 		customer_name, customer_email, customer_phone, comment,
 		created_at, updated_at
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -35,7 +35,7 @@ func (r *OrderRepo) Create(ctx context.Context, order models.Order) error {
 	_, err := r.db.ExecContext(ctx, query,
 		order.ID,
 		order.CustomerID,
-		order.OrganizationID,
+		order.CustomerID,
 		order.Status,
 		order.TotalAmount,
 		order.Currency,
@@ -109,14 +109,14 @@ func (r *OrderRepo) GetByID(ctx context.Context, id string) (models.Order, error
 	var createdAt, updatedAt string
 	var completedAt sql.NullString
 
-	query := `SELECT id, customer_id, organization_id, status, total_amount, currency,
+	query := `SELECT id, customer_id, customer_id, status, total_amount, currency,
 		customer_name, customer_email, customer_phone, comment,
 		created_at, updated_at, completed_at
 		FROM orders WHERE id = ?`
 
 	row := r.db.QueryRowContext(ctx, query, id)
 	err := row.Scan(
-		&order.ID, &order.CustomerID, &order.OrganizationID, &order.Status,
+		&order.ID, &order.CustomerID, &order.CustomerID, &order.Status,
 		&order.TotalAmount, &order.Currency, &order.CustomerName, &order.CustomerEmail,
 		&order.CustomerPhone, &order.Comment, &createdAt, &updatedAt, &completedAt,
 	)
@@ -312,7 +312,7 @@ func (r *OrderRepo) List(ctx context.Context, filter models.OrderListFilter) ([]
 		return nil, 0, nil
 	}
 
-	selectQuery := `SELECT id, customer_id, organization_id, status, total_amount, currency,
+	selectQuery := `SELECT id, customer_id, customer_id, status, total_amount, currency,
 		customer_name, customer_email, customer_phone, comment,
 		created_at, updated_at, completed_at ` + baseQuery + ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
 
@@ -332,7 +332,7 @@ func (r *OrderRepo) List(ctx context.Context, filter models.OrderListFilter) ([]
 		var completedAt sql.NullString
 
 		err := rows.Scan(
-			&order.ID, &order.CustomerID, &order.OrganizationID, &order.Status,
+			&order.ID, &order.CustomerID, &order.CustomerID, &order.Status,
 			&order.TotalAmount, &order.Currency, &order.CustomerName, &order.CustomerEmail,
 			&order.CustomerPhone, &order.Comment, &createdAt, &updatedAt, &completedAt,
 		)
