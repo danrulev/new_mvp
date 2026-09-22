@@ -411,21 +411,17 @@ func (r *OrderRepo) Update(ctx context.Context, id string, req models.UpdateOrde
 	setClauses := []string{"updated_at = ?"}
 	args := []interface{}{time.Now().Format(time.RFC3339)}
 
-	if req.CustomerName != nil {
-		setClauses = append(setClauses, "customer_name = ?")
-		args = append(args, *req.CustomerName)
+	if req.ClientName != nil {
+		setClauses = append(setClauses, "Client_name = ?")
+		args = append(args, *req.ClientName)
 	}
-	if req.CustomerEmail != nil {
-		setClauses = append(setClauses, "customer_email = ?")
-		args = append(args, *req.CustomerEmail)
+	if req.ClientEmail != nil {
+		setClauses = append(setClauses, "Client_email = ?")
+		args = append(args, *req.ClientEmail)
 	}
-	if req.CustomerPhone != nil {
-		setClauses = append(setClauses, "customer_phone = ?")
-		args = append(args, *req.CustomerPhone)
-	}
-	if req.Comment != nil {
-		setClauses = append(setClauses, "comment = ?")
-		args = append(args, *req.Comment)
+	if req.ClientPhone != nil {
+		setClauses = append(setClauses, "Client_phone = ?")
+		args = append(args, *req.ClientPhone)
 	}
 
 	args = append(args, id)
